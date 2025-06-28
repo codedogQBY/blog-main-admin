@@ -1,241 +1,542 @@
 <template>
-  <el-container class="dashboard-container">
+  <div class="admin-dashboard">
     <!-- 侧边栏 -->
-    <el-aside :width="isCollapse ? '64px' : '240px'" class="sidebar">
-      <div class="logo-container">
-        <div v-if="!isCollapse" class="logo">
-          <h2>博客管理</h2>
+    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+      <div class="sidebar-header">
+        <div class="logo">
+          <div class="logo-icon">
+            <el-icon><EditPen /></el-icon>
+          </div>
+          <span v-show="!sidebarCollapsed" class="logo-text">博客管理</span>
         </div>
-        <div v-else class="logo-mini">
-          <span>B</span>
-        </div>
+        <el-button 
+          class="collapse-btn"
+          size="small"
+          text
+          @click="toggleSidebar"
+        >
+          <el-icon>
+            <Expand v-if="sidebarCollapsed" />
+            <Fold v-else />
+          </el-icon>
+        </el-button>
       </div>
       
-      <div class="menu-container">
-        <DynamicMenu :is-collapse="isCollapse" />
+      <div class="sidebar-content">
+        <DynamicMenu :is-collapse="sidebarCollapsed" />
       </div>
-    </el-aside>
+    </aside>
 
     <!-- 主内容区 -->
-    <el-container>
-      <!-- 顶栏 -->
-      <el-header class="header">
+    <div class="main-container">
+      <!-- 顶部导航栏 -->
+      <header class="header">
         <div class="header-left">
-          <el-button
-            :icon="isCollapse ? Expand : Fold"
-            @click="toggleCollapse"
-            text
-            size="large"
-          />
-          
-          <!-- 面包屑导航 -->
-          <el-breadcrumb separator="/" class="breadcrumb">
-            <el-breadcrumb-item>控制台</el-breadcrumb-item>
-            <el-breadcrumb-item v-if="currentPageTitle">{{ currentPageTitle }}</el-breadcrumb-item>
-          </el-breadcrumb>
+          <div class="breadcrumb">
+            <el-breadcrumb separator="/">
+              <el-breadcrumb-item to="/admin">
+                <el-icon><HomeFilled /></el-icon>
+                控制台
+              </el-breadcrumb-item>
+              <el-breadcrumb-item v-if="currentRoute">{{ currentRoute }}</el-breadcrumb-item>
+            </el-breadcrumb>
+          </div>
         </div>
         
         <div class="header-right">
-          <!-- 用户权限信息 -->
-          <div class="user-role" v-if="authStore.user">
-            <el-tag v-if="authStore.user.isSuperAdmin" type="danger" size="small">超级管理员</el-tag>
-            <el-tag v-else-if="authStore.user.role" type="info" size="small">{{ authStore.user.role.name }}</el-tag>
+          <!-- 快捷操作 -->
+          <div class="quick-actions">
+            <el-tooltip content="创作新文章" placement="bottom">
+              <el-button 
+                class="action-btn" 
+                text 
+                @click="$router.push('/admin/articles/create')"
+              >
+                <el-icon><Plus /></el-icon>
+              </el-button>
+            </el-tooltip>
           </div>
           
-          <el-dropdown @command="handleCommand">
-            <span class="user-info">
-              <el-avatar :size="32" :src="'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'" />
-              <span v-if="authStore.user" class="username">{{ authStore.user.name }}</span>
-            </span>
+          <!-- 通知 -->
+          <el-badge :value="3" class="notification-badge">
+            <el-button class="header-btn" text circle>
+              <el-icon><Bell /></el-icon>
+            </el-button>
+          </el-badge>
+          
+          <!-- 用户信息 -->
+          <el-dropdown @command="handleUserCommand" class="user-dropdown">
+            <div class="user-info">
+              <el-avatar 
+                :size="36" 
+                :src="userStore.user?.avatar" 
+                class="user-avatar"
+              >
+                {{ userStore.user?.name?.charAt(0) }}
+              </el-avatar>
+              <div v-show="!sidebarCollapsed" class="user-details">
+                <span class="user-name">{{ userStore.user?.name }}</span>
+                <span class="user-role">管理员</span>
+              </div>
+              <el-icon class="dropdown-arrow"><ArrowDown /></el-icon>
+            </div>
             <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人信息</el-dropdown-item>
-                <el-dropdown-item command="refresh" divided>刷新权限</el-dropdown-item>
-                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              <el-dropdown-menu class="user-menu">
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>
+                  个人资料
+                </el-dropdown-item>
+                <el-dropdown-item command="settings">
+                  <el-icon><Setting /></el-icon>
+                  系统设置
+                </el-dropdown-item>
+                <el-dropdown-item divided command="logout">
+                  <el-icon><SwitchButton /></el-icon>
+                  退出登录
+                </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
         </div>
-      </el-header>
+      </header>
 
-      <!-- 主内容 -->
-      <el-main class="main-content">
-        <router-view />
-      </el-main>
-    </el-container>
-  </el-container>
+      <!-- 页面内容 -->
+      <main class="content">
+        <div class="content-wrapper">
+          <router-view v-slot="{ Component }">
+            <transition name="fade-slide" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
+        </div>
+      </main>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Fold, Expand } from '@element-plus/icons-vue'
-import { useAuthStore } from '../lib/store'
-import DynamicMenu from '../components/DynamicMenu.vue'
+import {
+  EditPen,
+  Expand,
+  Fold,
+  Bell,
+  ArrowDown,
+  User,
+  Setting,
+  SwitchButton,
+  HomeFilled,
+  Plus
+} from '@element-plus/icons-vue'
+import DynamicMenu from '@/components/DynamicMenu.vue'
+import { useAuthStore } from '@/lib/store'
 
-const router = useRouter()
 const route = useRoute()
-const authStore = useAuthStore()
+const router = useRouter()
+const userStore = useAuthStore()
 
-const isCollapse = ref(false)
+const sidebarCollapsed = ref(false)
 
-// 当前页面标题
-const currentPageTitle = computed(() => {
-  return route.meta.title as string || ''
+// 当前路由标题
+const currentRoute = computed(() => {
+  return route.meta?.title as string
 })
 
-const toggleCollapse = () => {
-  isCollapse.value = !isCollapse.value
+// 切换侧边栏
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
 }
 
-const handleCommand = async (command: string) => {
+// 处理用户下拉菜单命令
+const handleUserCommand = async (command: string) => {
   switch (command) {
     case 'profile':
-      ElMessage.info('个人信息功能开发中')
+      ElMessage.info('个人资料功能开发中...')
       break
-    case 'refresh':
-      try {
-        await authStore.fetchUserProfile()
-        ElMessage.success('权限信息已刷新')
-      } catch (error) {
-        ElMessage.error('刷新权限失败')
-      }
+    case 'settings':
+      ElMessage.info('系统设置功能开发中...')
       break
     case 'logout':
-      ElMessageBox.confirm('确定要退出登录吗?', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }).then(() => {
-        authStore.logout()
+      try {
+        await ElMessageBox.confirm(
+          '确定要退出登录吗？',
+          '退出确认',
+          {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+            customClass: 'logout-confirm'
+          }
+        )
+        
+        userStore.logout()
         router.push('/login')
         ElMessage.success('已退出登录')
-      })
+      } catch {
+        // 用户取消
+      }
       break
   }
 }
 </script>
 
-<style scoped>
-.dashboard-container {
+<style scoped lang="scss">
+.admin-dashboard {
+  display: flex;
   height: 100vh;
+  background: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .sidebar {
-  background-color: #304156;
-  transition: width 0.3s;
-  overflow: hidden;
+  width: 280px;
+  background: linear-gradient(180deg, #1e293b 0%, #334155 100%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 100;
+  
+  &.collapsed {
+    width: 72px;
+  }
+
+  .sidebar-header {
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+    .logo {
+      display: flex;
+      align-items: center;
+      color: white;
+      font-weight: 600;
+      gap: 12px;
+
+      .logo-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+
+        .el-icon {
+          font-size: 20px;
+          color: white;
+        }
+      }
+
+      .logo-text {
+        font-size: 18px;
+        transition: opacity 0.3s ease;
+      }
+    }
+
+    .collapse-btn {
+      color: rgba(255, 255, 255, 0.7);
+      padding: 8px;
+      border-radius: 8px;
+      
+      &:hover {
+        color: white;
+        background: rgba(255, 255, 255, 0.1);
+      }
+    }
+  }
+
+  .sidebar-content {
+    height: calc(100vh - 72px);
+    overflow-y: auto;
+    padding: 16px 0;
+    
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+    }
+  }
+}
+
+.main-container {
+  flex: 1;
   display: flex;
   flex-direction: column;
-}
-
-.logo-container {
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-bottom: 1px solid #434a50;
-  margin-bottom: 1px;
-  flex-shrink: 0;
-}
-
-.logo h2 {
-  color: white;
-  font-size: 18px;
-  margin: 0;
-}
-
-.logo-mini span {
-  color: white;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.menu-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 0;
+  min-width: 0;
 }
 
 .header {
+  height: 72px;
   background: white;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #f0f0f0;
-  padding: 0 20px;
+  padding: 0 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  position: relative;
+  z-index: 50;
+
+  .header-left {
+    .breadcrumb {
+      :deep(.el-breadcrumb__item) {
+        font-size: 14px;
+        
+        .el-breadcrumb__inner {
+          color: #64748b;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          
+          &:hover {
+            color: #3b82f6;
+          }
+        }
+        
+        &:last-child .el-breadcrumb__inner {
+          color: #1e293b;
+          font-weight: 600;
+        }
+      }
+    }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .quick-actions {
+      display: flex;
+      gap: 8px;
+
+      .action-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        color: #64748b;
+        border: none;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: #e2e8f0;
+          color: #3b82f6;
+          transform: translateY(-1px);
+        }
+
+        .el-icon {
+          font-size: 18px;
+        }
+      }
+    }
+
+    .notification-badge {
+      .header-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        color: #64748b;
+        border: none;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          background: #e2e8f0;
+          color: #3b82f6;
+          transform: translateY(-1px);
+        }
+
+        .el-icon {
+          font-size: 18px;
+        }
+      }
+    }
+
+    .user-dropdown {
+      .user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 16px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+
+        &:hover {
+          background: #f8fafc;
+          border-color: #e2e8f0;
+        }
+
+        .user-avatar {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          font-weight: 600;
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .user-details {
+          display: flex;
+          flex-direction: column;
+          text-align: left;
+
+          .user-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            line-height: 1.2;
+          }
+
+          .user-role {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.2;
+          }
+        }
+
+        .dropdown-arrow {
+          color: #94a3b8;
+          font-size: 12px;
+          transition: transform 0.2s ease;
+        }
+      }
+    }
+  }
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+.content {
+  flex: 1;
+  overflow: auto;
+  background: #f8fafc;
+
+  .content-wrapper {
+    min-height: 100%;
+    padding: 24px 32px;
+  }
 }
 
-.breadcrumb {
-  margin-left: 16px;
+// 页面切换动画
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
 }
 
-.user-role {
-  margin-right: 8px;
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
 }
 
-.user-info {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
+// 用户菜单样式
+:deep(.user-menu) {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   padding: 8px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+
+  .el-dropdown-menu__item {
+    border-radius: 8px;
+    margin: 2px 0;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #374151;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #f8fafc;
+      color: #3b82f6;
+    }
+
+    .el-icon {
+      margin-right: 8px;
+      font-size: 16px;
+    }
+  }
 }
 
-.user-info:hover {
-  background-color: #f5f5f5;
+// 退出确认对话框样式
+:deep(.logout-confirm) {
+  border-radius: 12px;
+  
+  .el-message-box__header {
+    padding: 24px 24px 16px;
+  }
+
+  .el-message-box__content {
+    padding: 0 24px 24px;
+  }
+
+  .el-message-box__btns {
+    padding: 16px 24px 24px;
+  }
 }
 
-.username {
-  margin-left: 8px;
-  color: #333;
-  font-size: 14px;
+// 响应式设计
+@media (max-width: 1024px) {
+  .sidebar {
+    position: fixed;
+    left: -280px;
+    z-index: 1000;
+    
+    &.collapsed {
+      left: 0;
+      width: 72px;
+    }
+  }
+  
+  .main-container {
+    margin-left: 0;
+  }
+  
+  .header {
+    padding: 0 20px;
+    
+    .user-details {
+      display: none !important;
+    }
+  }
+  
+  .content-wrapper {
+    padding: 20px;
+  }
 }
 
-.main-content {
-  background-color: #f0f2f5;
-  padding: 20px;
-  overflow-y: auto;
-}
-
-/* 动态菜单样式适配 */
-.menu-container :deep(.dynamic-menu) {
-  background-color: #304156;
-}
-
-.menu-container :deep(.el-menu-item) {
-  color: #bfcbd9;
-  background-color: transparent;
-}
-
-.menu-container :deep(.el-menu-item:hover) {
-  background-color: rgba(64, 158, 255, 0.2);
-}
-
-.menu-container :deep(.el-menu-item.is-active) {
-  background-color: #409eff;
-  color: white;
-}
-
-.menu-container :deep(.el-sub-menu__title) {
-  color: #bfcbd9;
-}
-
-.menu-container :deep(.el-sub-menu__title:hover) {
-  background-color: rgba(64, 158, 255, 0.2);
+@media (max-width: 768px) {
+  .header {
+    .quick-actions {
+      display: none;
+    }
+    
+    .breadcrumb {
+      display: none;
+    }
+  }
+  
+  .content-wrapper {
+    padding: 16px;
+  }
 }
 </style> 
