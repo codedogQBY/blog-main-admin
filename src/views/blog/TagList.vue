@@ -1,23 +1,23 @@
 <template>
-  <div class="modern-users-page">
+  <div class="modern-tags-page">
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">
-          <el-icon class="title-icon"><UserFilled /></el-icon>
-          用户管理
+          <el-icon class="title-icon"><CollectionTag /></el-icon>
+          标签管理
         </h1>
-        <p class="page-subtitle">管理系统用户和权限分配</p>
+        <p class="page-subtitle">管理文章标签和分类标记</p>
       </div>
       <div class="header-right">
-        <PermissionCheck permission="user.create">
+        <PermissionCheck permission="tag.create">
           <el-button 
             type="primary" 
             @click="showCreateDialog"
             class="create-btn"
           >
             <el-icon><Plus /></el-icon>
-            新增用户
+            新增标签
           </el-button>
         </PermissionCheck>
       </div>
@@ -31,7 +31,7 @@
             <div class="search-item">
               <el-input
                 v-model="searchText"
-                placeholder="搜索用户名或邮箱..."
+                placeholder="搜索标签名称或描述..."
                 class="search-input"
                 clearable
                 @input="handleSearch"
@@ -44,18 +44,23 @@
             
             <div class="search-item">
               <el-select
-                v-model="roleFilter"
-                placeholder="选择角色"
+                v-model="colorFilter"
+                placeholder="选择颜色"
                 clearable
                 @change="handleSearch"
-                class="role-filter"
+                class="color-filter"
               >
                 <el-option
-                  v-for="role in roles"
-                  :key="role.id"
-                  :label="role.name"
-                  :value="role.id"
-                />
+                  v-for="color in tagColors"
+                  :key="color.value"
+                  :label="color.label"
+                  :value="color.value"
+                >
+                  <div class="color-option">
+                    <div class="color-dot" :style="{ backgroundColor: color.value }"></div>
+                    <span>{{ color.label }}</span>
+                  </div>
+                </el-option>
               </el-select>
             </div>
 
@@ -75,31 +80,31 @@
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-icon total">
-            <el-icon><UserFilled /></el-icon>
+            <el-icon><CollectionTag /></el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-number">{{ stats.total }}</div>
-            <div class="stat-label">总用户数</div>
+            <div class="stat-label">总标签数</div>
           </div>
         </div>
         
         <div class="stat-card">
-          <div class="stat-icon active">
+          <div class="stat-icon used">
             <el-icon><Check /></el-icon>
           </div>
           <div class="stat-content">
-            <div class="stat-number">{{ stats.active }}</div>
-            <div class="stat-label">活跃用户</div>
+            <div class="stat-number">{{ stats.used }}</div>
+            <div class="stat-label">已使用标签</div>
           </div>
         </div>
         
         <div class="stat-card">
-          <div class="stat-icon admin">
-            <el-icon><Key /></el-icon>
+          <div class="stat-icon articles">
+            <el-icon><Document /></el-icon>
           </div>
           <div class="stat-content">
-            <div class="stat-number">{{ stats.admin }}</div>
-            <div class="stat-label">管理员</div>
+            <div class="stat-number">{{ stats.articles }}</div>
+            <div class="stat-label">文章总数</div>
           </div>
         </div>
         
@@ -115,68 +120,78 @@
       </div>
     </div>
 
-    <!-- 用户列表 -->
+    <!-- 标签列表 -->
     <div class="list-section">
       <el-card class="list-card" shadow="never">
         <template #header>
           <div class="list-header">
             <div class="header-info">
-              <span class="result-count">共 {{ total }} 个用户</span>
+              <span class="result-count">共 {{ total }} 个标签</span>
             </div>
           </div>
         </template>
 
-        <div v-loading="loading" class="user-list">
+        <div v-loading="loading" class="tag-list">
           <div 
-            v-for="user in users" 
-            :key="user.id" 
-            class="user-item"
+            v-for="tag in tags" 
+            :key="tag.id" 
+            class="tag-item"
           >
-            <div class="user-avatar">
-              <el-avatar 
-                :size="56" 
-                :src="user.avatar"
-                class="avatar"
+            <div class="tag-icon">
+              <div 
+                class="tag-avatar" 
+                :style="{ backgroundColor: tag.color || '#6b7280' }"
               >
-                {{ user.name?.charAt(0) }}
-              </el-avatar>
+                <el-icon><CollectionTag /></el-icon>
+              </div>
             </div>
             
-            <div class="user-info">
-              <div class="user-header">
-                <h3 class="user-name">{{ user.name }}</h3>
-                <div class="user-badges">
-                  <el-tag v-if="user.isSuperAdmin" type="danger" size="small">超级管理员</el-tag>
-                  <el-tag v-else-if="user.role" type="primary" size="small">{{ user.role.name }}</el-tag>
-                  <el-tag v-else type="info" size="small">无角色</el-tag>
+            <div class="tag-info">
+              <div class="tag-header">
+                <h3 class="tag-name">{{ tag.name }}</h3>
+                <div class="tag-badges">
+                  <el-tag 
+                    :color="tag.color" 
+                    size="small"
+                    class="color-tag"
+                  >
+                    {{ tag.color || '默认' }}
+                  </el-tag>
+                  <el-tag type="info" size="small">
+                    {{ tag.articleCount || 0 }} 篇文章
+                  </el-tag>
                 </div>
               </div>
               
-              <div class="user-details">
-                <div class="detail-item">
-                  <el-icon><Message /></el-icon>
-                  <span>{{ user.mail }}</span>
+              <div class="tag-details">
+                <div class="detail-item" v-if="tag.description">
+                  <el-icon><Document /></el-icon>
+                  <span>{{ tag.description }}</span>
+                </div>
+                <div class="detail-item" v-if="tag.slug">
+                  <el-icon><Link /></el-icon>
+                  <span>别名：{{ tag.slug }}</span>
                 </div>
                 <div class="detail-item">
                   <el-icon><Calendar /></el-icon>
-                  <span>{{ formatDate(user.createdAt) }}</span>
+                  <span>{{ formatDate(tag.createdAt) }}</span>
                 </div>
               </div>
             </div>
             
-            <div class="user-actions">
-              <PermissionCheck :permissions="['user.update', 'user.update.basic']">
-                <el-button type="primary" size="small" @click="editUser(user)">
+            <div class="tag-actions">
+              <PermissionCheck permission="tag.update">
+                <el-button type="primary" size="small" @click="editTag(tag)">
                   <el-icon><Edit /></el-icon>
                   编辑
                 </el-button>
               </PermissionCheck>
-              <PermissionCheck permission="user.delete">
+              <PermissionCheck permission="tag.delete">
                 <el-button 
                   type="danger" 
                   size="small" 
-                  @click="deleteUser(user)" 
-                  :disabled="user.isSuperAdmin && !authStore.user?.isSuperAdmin"
+                  @click="deleteTag(tag)"
+                  :disabled="tag.articleCount > 0"
                 >
                   <el-icon><Delete /></el-icon>
                   删除
@@ -187,18 +202,18 @@
         </div>
 
         <!-- 空状态 -->
-        <div v-if="!loading && users.length === 0" class="empty-state">
+        <div v-if="!loading && tags.length === 0" class="empty-state">
           <div class="empty-icon">
-            <el-icon><UserFilled /></el-icon>
+            <el-icon><CollectionTag /></el-icon>
           </div>
-          <h3 class="empty-title">暂无用户</h3>
+          <h3 class="empty-title">暂无标签</h3>
           <p class="empty-description">
-            {{ searchText ? '没有找到匹配的用户' : '还没有创建任何用户' }}
+            {{ searchText ? '没有找到匹配的标签' : '还没有创建任何标签' }}
           </p>
         </div>
 
         <!-- 分页 -->
-        <div v-if="users.length > 0" class="pagination-section">
+        <div v-if="tags.length > 0" class="pagination-section">
           <el-pagination
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
@@ -213,59 +228,60 @@
       </el-card>
     </div>
 
-    <!-- 创建/编辑用户对话框 -->
+    <!-- 创建/编辑标签对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="isEdit ? '编辑用户' : '新增用户'"
+      :title="isEdit ? '编辑标签' : '新增标签'"
       width="600px"
       @close="resetForm"
-      class="user-dialog"
+      class="tag-dialog"
     >
       <el-form
-        ref="userFormRef"
-        :model="userForm"
-        :rules="userRules"
+        ref="tagFormRef"
+        :model="tagForm"
+        :rules="tagRules"
         label-width="100px"
-        class="user-form"
+        class="tag-form"
       >
         <div class="form-row">
-          <el-form-item label="用户名" prop="name">
-            <el-input v-model="userForm.name" placeholder="请输入用户名" />
+          <el-form-item label="标签名称" prop="name">
+            <el-input v-model="tagForm.name" placeholder="请输入标签名称" />
           </el-form-item>
           
-          <el-form-item label="邮箱" prop="mail">
-            <el-input v-model="userForm.mail" placeholder="请输入邮箱" />
+          <el-form-item label="标签别名" prop="slug">
+            <el-input v-model="tagForm.slug" placeholder="请输入标签别名，用于URL" />
           </el-form-item>
         </div>
         
-        <el-form-item label="密码" prop="password">
+        <el-form-item label="标签描述">
           <el-input
-            v-model="userForm.password"
-            type="password"
-            :placeholder="isEdit ? '留空则不修改密码' : '请输入密码'"
-            show-password
+            v-model="tagForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入标签描述"
           />
         </el-form-item>
         
         <div class="form-row">
-          <PermissionCheck permission="user.manage.role">
-            <el-form-item label="角色">
-              <el-select v-model="userForm.roleId" placeholder="请选择角色" clearable>
-                <el-option
-                  v-for="role in roles"
-                  :key="role.id"
-                  :label="role.name"
-                  :value="role.id"
-                />
-              </el-select>
-            </el-form-item>
-          </PermissionCheck>
+          <el-form-item label="标签颜色">
+            <div class="color-picker-section">
+              <el-color-picker 
+                v-model="tagForm.color" 
+                :predefine="predefineColors"
+                show-alpha
+              />
+              <span class="color-preview">{{ tagForm.color || '默认颜色' }}</span>
+            </div>
+          </el-form-item>
           
-          <PermissionCheck permission="user.manage.superadmin">
-            <el-form-item label="超级管理员">
-              <el-switch v-model="userForm.isSuperAdmin" />
-            </el-form-item>
-          </PermissionCheck>
+          <el-form-item label="排序">
+            <el-input-number
+              v-model="tagForm.sort"
+              :min="0"
+              :max="9999"
+              placeholder="排序值，数值越小越靠前"
+            />
+          </el-form-item>
         </div>
       </el-form>
       
@@ -285,36 +301,31 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { 
-  UserFilled, 
+  CollectionTag, 
   Plus, 
   Search, 
   Refresh, 
   Check, 
-  Key, 
+  Document, 
   Clock, 
-  Message, 
   Calendar, 
   Edit, 
-  Delete 
+  Delete,
+  Link
 } from '@element-plus/icons-vue'
-import { userApi, roleApi } from '../lib/api'
-import { useAuthStore } from '../lib/store'
-import PermissionCheck from '../components/PermissionCheck.vue'
-import type { User, Role } from '../lib/api'
-
-// 获取认证状态
-const authStore = useAuthStore()
+import { tagApi } from '../../lib/api'
+import PermissionCheck from '../../components/PermissionCheck.vue'
+import type { Tag } from '../../lib/api'
 
 // 数据状态
 const loading = ref(false)
 const submitting = ref(false)
-const users = ref<User[]>([])
-const roles = ref<Role[]>([])
+const tags = ref<Tag[]>([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const searchText = ref('')
-const roleFilter = ref('')
+const colorFilter = ref('')
 
 // 搜索防抖
 let searchTimeout: NodeJS.Timeout | null = null
@@ -322,49 +333,66 @@ let searchTimeout: NodeJS.Timeout | null = null
 // 对话框状态
 const dialogVisible = ref(false)
 const isEdit = ref(false)
-const userFormRef = ref<FormInstance>()
+const tagFormRef = ref<FormInstance>()
 
 // 表单数据
-const userForm = reactive({
+const tagForm = reactive({
   id: '',
   name: '',
-  mail: '',
-  password: '',
-  roleId: '',
-  isSuperAdmin: false
+  slug: '',
+  description: '',
+  color: '',
+  sort: 0
 })
+
+// 预定义颜色
+const predefineColors = [
+  '#ff4757',
+  '#ff6b81',
+  '#ff9ff3',
+  '#54a0ff',
+  '#5f27cd',
+  '#00d2d3',
+  '#ff9f43',
+  '#10ac84',
+  '#ee5a24',
+  '#0abde3',
+  '#3742fa',
+  '#2f3542'
+]
+
+// 标签颜色选项
+const tagColors = computed(() => [
+  { label: '红色', value: '#ff4757' },
+  { label: '粉色', value: '#ff6b81' },
+  { label: '紫色', value: '#5f27cd' },
+  { label: '蓝色', value: '#54a0ff' },
+  { label: '青色', value: '#0abde3' },
+  { label: '绿色', value: '#10ac84' },
+  { label: '橙色', value: '#ff9f43' },
+  { label: '灰色', value: '#6b7280' }
+])
 
 // 统计数据
 const stats = computed(() => ({
-  total: users.value.length,
-  active: users.value.filter(u => !u.isSuperAdmin).length,
-  admin: users.value.filter(u => u.isSuperAdmin).length,
-  newToday: users.value.filter(u => {
+  total: tags.value.length,
+  used: tags.value.filter(t => t.articleCount && t.articleCount > 0).length,
+  articles: tags.value.reduce((sum, t) => sum + (t.articleCount || 0), 0),
+  newToday: tags.value.filter(t => {
     const today = new Date().toDateString()
-    return new Date(u.createdAt).toDateString() === today
+    return new Date(t.createdAt).toDateString() === today
   }).length
 }))
 
 // 表单验证规则
-const userRules: FormRules = {
+const tagRules: FormRules = {
   name: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
+    { required: true, message: '请输入标签名称', trigger: 'blur' }
   ],
-  mail: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
-  ],
-  password: [
+  slug: [
     { 
-      validator: (rule, value, callback) => {
-        if (!isEdit.value && !value) {
-          callback(new Error('请输入密码'))
-        } else if (value && value.length < 6) {
-          callback(new Error('密码长度不能少于6位'))
-        } else {
-          callback()
-        }
-      }, 
+      pattern: /^[a-zA-Z0-9-_\u4e00-\u9fa5]*$/, 
+      message: '标签别名只能包含字母、数字、横线、下划线和中文', 
       trigger: 'blur' 
     }
   ]
@@ -372,39 +400,28 @@ const userRules: FormRules = {
 
 // 初始化
 onMounted(async () => {
-  await loadRoles()
-  await loadUsers()
+  await loadTags()
 })
 
-// 加载用户列表
-const loadUsers = async () => {
+// 加载标签列表
+const loadTags = async () => {
   loading.value = true
   try {
     const params = {
       page: currentPage.value,
       pageSize: pageSize.value,
       search: searchText.value || undefined,
-      roleId: roleFilter.value || undefined
+      color: colorFilter.value || undefined
     }
     
-    const data = await userApi.getList(params)
-    users.value = Array.isArray(data) ? data : data.data || []
-    total.value = typeof data === 'object' ? data.total || 0 : users.value.length
+    const data = await tagApi.getList(params)
+    tags.value = Array.isArray(data) ? data : data.data || []
+    total.value = typeof data === 'object' ? data.total || 0 : tags.value.length
   } catch (error) {
-    ElMessage.error('加载用户列表失败')
+    ElMessage.error('加载标签列表失败')
     console.error(error)
   } finally {
     loading.value = false
-  }
-}
-
-// 加载角色列表
-const loadRoles = async () => {
-  try {
-    const data = await roleApi.getList()
-    roles.value = Array.isArray(data) ? data : data.data || []
-  } catch (error) {
-    console.error('加载角色列表失败:', error)
   }
 }
 
@@ -415,28 +432,28 @@ const handleSearch = () => {
   }
   searchTimeout = setTimeout(() => {
     currentPage.value = 1
-    loadUsers()
+    loadTags()
   }, 300)
 }
 
 // 重置搜索
 const resetSearch = () => {
   searchText.value = ''
-  roleFilter.value = ''
+  colorFilter.value = ''
   currentPage.value = 1
-  loadUsers()
+  loadTags()
 }
 
 // 分页处理
 const handleCurrentChange = (page: number) => {
   currentPage.value = page
-  loadUsers()
+  loadTags()
 }
 
 const handleSizeChange = (size: number) => {
   pageSize.value = size
   currentPage.value = 1
-  loadUsers()
+  loadTags()
 }
 
 // 显示创建对话框
@@ -445,25 +462,30 @@ const showCreateDialog = () => {
   dialogVisible.value = true
 }
 
-// 编辑用户
-const editUser = (user: User) => {
+// 编辑标签
+const editTag = (tag: Tag) => {
   isEdit.value = true
-  Object.assign(userForm, {
-    id: user.id,
-    name: user.name,
-    mail: user.mail,
-    password: '',
-    roleId: user.roleId || '',
-    isSuperAdmin: user.isSuperAdmin || false
+  Object.assign(tagForm, {
+    id: tag.id,
+    name: tag.name,
+    slug: tag.slug,
+    description: tag.description || '',
+    color: tag.color || '',
+    sort: tag.sort || 0
   })
   dialogVisible.value = true
 }
 
-// 删除用户
-const deleteUser = async (user: User) => {
+// 删除标签
+const deleteTag = async (tag: Tag) => {
+  if (tag.articleCount > 0) {
+    ElMessage.warning('该标签下还有文章，无法删除')
+    return
+  }
+
   try {
     await ElMessageBox.confirm(
-      `确定要删除用户 "${user.name}" 吗？此操作不可恢复。`,
+      `确定要删除标签 "${tag.name}" 吗？此操作不可恢复。`,
       '删除确认',
       {
         confirmButtonText: '删除',
@@ -472,9 +494,9 @@ const deleteUser = async (user: User) => {
       }
     )
     
-    await userApi.delete(user.id)
+    await tagApi.delete(tag.id)
     ElMessage.success('删除成功')
-    loadUsers()
+    loadTags()
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
@@ -485,27 +507,24 @@ const deleteUser = async (user: User) => {
 
 // 提交表单
 const submitForm = async () => {
-  if (!userFormRef.value) return
+  if (!tagFormRef.value) return
   
   try {
-    await userFormRef.value.validate()
+    await tagFormRef.value.validate()
     submitting.value = true
     
-    const userData = { ...userForm }
-    if (isEdit.value && !userData.password) {
-      delete userData.password
-    }
+    const tagData = { ...tagForm }
     
     if (isEdit.value) {
-      await userApi.update(userData.id, userData)
+      await tagApi.update(tagData.id, tagData)
       ElMessage.success('更新成功')
     } else {
-      await userApi.create(userData)
+      await tagApi.create(tagData)
       ElMessage.success('创建成功')
     }
     
     dialogVisible.value = false
-    loadUsers()
+    loadTags()
   } catch (error) {
     ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
     console.error(error)
@@ -516,15 +535,15 @@ const submitForm = async () => {
 
 // 重置表单
 const resetForm = () => {
-  Object.assign(userForm, {
+  Object.assign(tagForm, {
     id: '',
     name: '',
-    mail: '',
-    password: '',
-    roleId: '',
-    isSuperAdmin: false
+    slug: '',
+    description: '',
+    color: '',
+    sort: 0
   })
-  userFormRef.value?.resetFields()
+  tagFormRef.value?.resetFields()
 }
 
 // 格式化日期
@@ -538,7 +557,7 @@ const formatDate = (date: string | Date) => {
 </script>
 
 <style scoped lang="scss">
-.modern-users-page {
+.modern-tags-page {
   padding: 24px;
   background: #f8fafc;
   min-height: 100vh;
@@ -561,7 +580,7 @@ const formatDate = (date: string | Date) => {
       color: #1e293b;
 
       .title-icon {
-        color: #3b82f6;
+        color: #06b6d4;
         font-size: 32px;
       }
     }
@@ -581,15 +600,15 @@ const formatDate = (date: string | Date) => {
       padding: 12px 24px;
       font-size: 16px;
       font-weight: 600;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
       border: none;
       border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
       transition: all 0.2s ease;
 
       &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 6px 16px rgba(6, 182, 212, 0.4);
       }
     }
   }
@@ -619,7 +638,7 @@ const formatDate = (date: string | Date) => {
           min-width: 200px;
 
           .search-input,
-          .role-filter {
+          .color-filter {
             width: 100%;
 
             :deep(.el-input__wrapper),
@@ -629,12 +648,12 @@ const formatDate = (date: string | Date) => {
               transition: all 0.2s ease;
 
               &:hover {
-                border-color: #3b82f6;
+                border-color: #06b6d4;
               }
 
               &.is-focus {
-                border-color: #3b82f6;
-                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                border-color: #06b6d4;
+                box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
               }
             }
           }
@@ -652,14 +671,27 @@ const formatDate = (date: string | Date) => {
             transition: all 0.2s ease;
 
             &:hover {
-              color: #3b82f6;
-              border-color: #3b82f6;
+              color: #06b6d4;
+              border-color: #06b6d4;
               background: #f8fafc;
             }
           }
         }
       }
     }
+  }
+}
+
+.color-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid #e2e8f0;
   }
 }
 
@@ -697,19 +729,19 @@ const formatDate = (date: string | Date) => {
         color: white;
 
         &.total {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
         }
 
-        &.active {
-          background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+        &.used {
+          background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
         }
 
-        &.admin {
-          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        &.articles {
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
         }
 
         &.new {
-          background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+          background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
         }
       }
 
@@ -762,8 +794,8 @@ const formatDate = (date: string | Date) => {
     }
   }
 
-  .user-list {
-    .user-item {
+  .tag-list {
+    .tag-item {
       display: flex;
       align-items: center;
       gap: 20px;
@@ -779,42 +811,51 @@ const formatDate = (date: string | Date) => {
         border-bottom: none;
       }
 
-      .user-avatar {
+      .tag-icon {
         flex-shrink: 0;
 
-        .avatar {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .tag-avatar {
+          width: 56px;
+          height: 56px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           color: white;
-          font-weight: 600;
-          font-size: 20px;
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+          font-size: 24px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
       }
 
-      .user-info {
+      .tag-info {
         flex: 1;
         min-width: 0;
 
-        .user-header {
+        .tag-header {
           display: flex;
           align-items: center;
           gap: 12px;
           margin-bottom: 8px;
 
-          .user-name {
+          .tag-name {
             font-size: 18px;
             font-weight: 600;
             color: #1e293b;
             margin: 0;
           }
 
-          .user-badges {
+          .tag-badges {
             display: flex;
             gap: 8px;
+
+            .color-tag {
+              color: white;
+              border: none;
+            }
           }
         }
 
-        .user-details {
+        .tag-details {
           display: flex;
           gap: 20px;
           flex-wrap: wrap;
@@ -834,7 +875,7 @@ const formatDate = (date: string | Date) => {
         }
       }
 
-      .user-actions {
+      .tag-actions {
         display: flex;
         gap: 8px;
         flex-shrink: 0;
@@ -842,6 +883,10 @@ const formatDate = (date: string | Date) => {
         .el-button {
           border-radius: 8px;
           font-weight: 500;
+
+          &:disabled {
+            opacity: 0.5;
+          }
         }
       }
     }
@@ -893,7 +938,7 @@ const formatDate = (date: string | Date) => {
   }
 }
 
-.user-dialog {
+.tag-dialog {
   :deep(.el-dialog) {
     border-radius: 16px;
   }
@@ -907,7 +952,7 @@ const formatDate = (date: string | Date) => {
     padding: 24px;
   }
 
-  .user-form {
+  .tag-form {
     .form-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -922,19 +967,32 @@ const formatDate = (date: string | Date) => {
       margin-bottom: 20px;
 
       .el-input__wrapper,
+      .el-textarea__inner,
       .el-select__wrapper {
         border-radius: 8px;
         border: 1px solid #e2e8f0;
         transition: all 0.2s ease;
 
         &:hover {
-          border-color: #3b82f6;
+          border-color: #06b6d4;
         }
 
+        &:focus,
         &.is-focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+          border-color: #06b6d4;
+          box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
         }
+      }
+    }
+
+    .color-picker-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .color-preview {
+        font-size: 14px;
+        color: #64748b;
       }
     }
   }
@@ -965,12 +1023,12 @@ const formatDate = (date: string | Date) => {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
 
-  .user-list .user-item {
+  .tag-list .tag-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
 
-    .user-actions {
+    .tag-actions {
       width: 100%;
       justify-content: flex-end;
     }
@@ -978,7 +1036,7 @@ const formatDate = (date: string | Date) => {
 }
 
 @media (max-width: 768px) {
-  .modern-users-page {
+  .modern-tags-page {
     padding: 16px;
   }
 

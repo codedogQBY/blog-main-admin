@@ -1,23 +1,23 @@
 <template>
-  <div class="modern-users-page">
+  <div class="modern-categories-page">
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">
-          <el-icon class="title-icon"><UserFilled /></el-icon>
-          用户管理
+          <el-icon class="title-icon"><FolderOpened /></el-icon>
+          分类管理
         </h1>
-        <p class="page-subtitle">管理系统用户和权限分配</p>
+        <p class="page-subtitle">管理文章分类和层级结构</p>
       </div>
       <div class="header-right">
-        <PermissionCheck permission="user.create">
+        <PermissionCheck permission="category.create">
           <el-button 
             type="primary" 
             @click="showCreateDialog"
             class="create-btn"
           >
             <el-icon><Plus /></el-icon>
-            新增用户
+            新增分类
           </el-button>
         </PermissionCheck>
       </div>
@@ -31,7 +31,7 @@
             <div class="search-item">
               <el-input
                 v-model="searchText"
-                placeholder="搜索用户名或邮箱..."
+                placeholder="搜索分类名称或描述..."
                 class="search-input"
                 clearable
                 @input="handleSearch"
@@ -44,18 +44,14 @@
             
             <div class="search-item">
               <el-select
-                v-model="roleFilter"
-                placeholder="选择角色"
+                v-model="statusFilter"
+                placeholder="选择状态"
                 clearable
                 @change="handleSearch"
-                class="role-filter"
+                class="status-filter"
               >
-                <el-option
-                  v-for="role in roles"
-                  :key="role.id"
-                  :label="role.name"
-                  :value="role.id"
-                />
+                <el-option label="启用" value="enabled" />
+                <el-option label="禁用" value="disabled" />
               </el-select>
             </div>
 
@@ -75,31 +71,31 @@
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-icon total">
-            <el-icon><UserFilled /></el-icon>
+            <el-icon><FolderOpened /></el-icon>
           </div>
           <div class="stat-content">
             <div class="stat-number">{{ stats.total }}</div>
-            <div class="stat-label">总用户数</div>
+            <div class="stat-label">总分类数</div>
           </div>
         </div>
         
         <div class="stat-card">
-          <div class="stat-icon active">
+          <div class="stat-icon enabled">
             <el-icon><Check /></el-icon>
           </div>
           <div class="stat-content">
-            <div class="stat-number">{{ stats.active }}</div>
-            <div class="stat-label">活跃用户</div>
+            <div class="stat-number">{{ stats.enabled }}</div>
+            <div class="stat-label">启用分类</div>
           </div>
         </div>
         
         <div class="stat-card">
-          <div class="stat-icon admin">
-            <el-icon><Key /></el-icon>
+          <div class="stat-icon articles">
+            <el-icon><Document /></el-icon>
           </div>
           <div class="stat-content">
-            <div class="stat-number">{{ stats.admin }}</div>
-            <div class="stat-label">管理员</div>
+            <div class="stat-number">{{ stats.articles }}</div>
+            <div class="stat-label">文章总数</div>
           </div>
         </div>
         
@@ -115,68 +111,74 @@
       </div>
     </div>
 
-    <!-- 用户列表 -->
+    <!-- 分类列表 -->
     <div class="list-section">
       <el-card class="list-card" shadow="never">
         <template #header>
           <div class="list-header">
             <div class="header-info">
-              <span class="result-count">共 {{ total }} 个用户</span>
+              <span class="result-count">共 {{ total }} 个分类</span>
             </div>
           </div>
         </template>
 
-        <div v-loading="loading" class="user-list">
+        <div v-loading="loading" class="category-list">
           <div 
-            v-for="user in users" 
-            :key="user.id" 
-            class="user-item"
+            v-for="category in categories" 
+            :key="category.id" 
+            class="category-item"
           >
-            <div class="user-avatar">
-              <el-avatar 
-                :size="56" 
-                :src="user.avatar"
-                class="avatar"
-              >
-                {{ user.name?.charAt(0) }}
-              </el-avatar>
+            <div class="category-icon">
+              <div class="category-avatar">
+                <el-icon><FolderOpened /></el-icon>
+              </div>
             </div>
             
-            <div class="user-info">
-              <div class="user-header">
-                <h3 class="user-name">{{ user.name }}</h3>
-                <div class="user-badges">
-                  <el-tag v-if="user.isSuperAdmin" type="danger" size="small">超级管理员</el-tag>
-                  <el-tag v-else-if="user.role" type="primary" size="small">{{ user.role.name }}</el-tag>
-                  <el-tag v-else type="info" size="small">无角色</el-tag>
+            <div class="category-info">
+              <div class="category-header">
+                <h3 class="category-name">{{ category.name }}</h3>
+                <div class="category-badges">
+                  <el-tag 
+                    :type="category.status === 'enabled' ? 'success' : 'danger'" 
+                    size="small"
+                  >
+                    {{ category.status === 'enabled' ? '启用' : '禁用' }}
+                  </el-tag>
+                  <el-tag type="info" size="small">
+                    {{ category.articleCount || 0 }} 篇文章
+                  </el-tag>
                 </div>
               </div>
               
-              <div class="user-details">
-                <div class="detail-item">
-                  <el-icon><Message /></el-icon>
-                  <span>{{ user.mail }}</span>
+              <div class="category-details">
+                <div class="detail-item" v-if="category.description">
+                  <el-icon><Document /></el-icon>
+                  <span>{{ category.description }}</span>
+                </div>
+                <div class="detail-item" v-if="category.parentCategory">
+                  <el-icon><Connection /></el-icon>
+                  <span>父分类：{{ category.parentCategory.name }}</span>
                 </div>
                 <div class="detail-item">
                   <el-icon><Calendar /></el-icon>
-                  <span>{{ formatDate(user.createdAt) }}</span>
+                  <span>{{ formatDate(category.createdAt) }}</span>
                 </div>
               </div>
             </div>
             
-            <div class="user-actions">
-              <PermissionCheck :permissions="['user.update', 'user.update.basic']">
-                <el-button type="primary" size="small" @click="editUser(user)">
+            <div class="category-actions">
+              <PermissionCheck permission="category.update">
+                <el-button type="primary" size="small" @click="editCategory(category)">
                   <el-icon><Edit /></el-icon>
                   编辑
                 </el-button>
               </PermissionCheck>
-              <PermissionCheck permission="user.delete">
+              <PermissionCheck permission="category.delete">
                 <el-button 
                   type="danger" 
                   size="small" 
-                  @click="deleteUser(user)" 
-                  :disabled="user.isSuperAdmin && !authStore.user?.isSuperAdmin"
+                  @click="deleteCategory(category)"
+                  :disabled="category.articleCount > 0"
                 >
                   <el-icon><Delete /></el-icon>
                   删除
@@ -187,18 +189,18 @@
         </div>
 
         <!-- 空状态 -->
-        <div v-if="!loading && users.length === 0" class="empty-state">
+        <div v-if="!loading && categories.length === 0" class="empty-state">
           <div class="empty-icon">
-            <el-icon><UserFilled /></el-icon>
+            <el-icon><FolderOpened /></el-icon>
           </div>
-          <h3 class="empty-title">暂无用户</h3>
+          <h3 class="empty-title">暂无分类</h3>
           <p class="empty-description">
-            {{ searchText ? '没有找到匹配的用户' : '还没有创建任何用户' }}
+            {{ searchText ? '没有找到匹配的分类' : '还没有创建任何分类' }}
           </p>
         </div>
 
         <!-- 分页 -->
-        <div v-if="users.length > 0" class="pagination-section">
+        <div v-if="categories.length > 0" class="pagination-section">
           <el-pagination
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
@@ -213,60 +215,76 @@
       </el-card>
     </div>
 
-    <!-- 创建/编辑用户对话框 -->
+    <!-- 创建/编辑分类对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="isEdit ? '编辑用户' : '新增用户'"
+      :title="isEdit ? '编辑分类' : '新增分类'"
       width="600px"
       @close="resetForm"
-      class="user-dialog"
+      class="category-dialog"
     >
       <el-form
-        ref="userFormRef"
-        :model="userForm"
-        :rules="userRules"
+        ref="categoryFormRef"
+        :model="categoryForm"
+        :rules="categoryRules"
         label-width="100px"
-        class="user-form"
+        class="category-form"
       >
         <div class="form-row">
-          <el-form-item label="用户名" prop="name">
-            <el-input v-model="userForm.name" placeholder="请输入用户名" />
+          <el-form-item label="分类名称" prop="name">
+            <el-input v-model="categoryForm.name" placeholder="请输入分类名称" />
           </el-form-item>
           
-          <el-form-item label="邮箱" prop="mail">
-            <el-input v-model="userForm.mail" placeholder="请输入邮箱" />
+          <el-form-item label="分类别名" prop="slug">
+            <el-input v-model="categoryForm.slug" placeholder="请输入分类别名，用于URL" />
           </el-form-item>
         </div>
         
-        <el-form-item label="密码" prop="password">
+        <el-form-item label="分类描述">
           <el-input
-            v-model="userForm.password"
-            type="password"
-            :placeholder="isEdit ? '留空则不修改密码' : '请输入密码'"
-            show-password
+            v-model="categoryForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入分类描述"
           />
         </el-form-item>
         
         <div class="form-row">
-          <PermissionCheck permission="user.manage.role">
-            <el-form-item label="角色">
-              <el-select v-model="userForm.roleId" placeholder="请选择角色" clearable>
-                <el-option
-                  v-for="role in roles"
-                  :key="role.id"
-                  :label="role.name"
-                  :value="role.id"
-                />
-              </el-select>
-            </el-form-item>
-          </PermissionCheck>
+          <el-form-item label="父分类">
+            <el-select
+              v-model="categoryForm.parentId"
+              placeholder="选择父分类（可选）"
+              clearable
+              class="parent-select"
+            >
+              <el-option
+                v-for="parent in availableParents"
+                :key="parent.id"
+                :label="parent.name"
+                :value="parent.id"
+              />
+            </el-select>
+          </el-form-item>
           
-          <PermissionCheck permission="user.manage.superadmin">
-            <el-form-item label="超级管理员">
-              <el-switch v-model="userForm.isSuperAdmin" />
-            </el-form-item>
-          </PermissionCheck>
+          <el-form-item label="状态">
+            <el-switch
+              v-model="categoryForm.status"
+              active-value="enabled"
+              inactive-value="disabled"
+              active-text="启用"
+              inactive-text="禁用"
+            />
+          </el-form-item>
         </div>
+        
+        <el-form-item label="排序">
+          <el-input-number
+            v-model="categoryForm.sort"
+            :min="0"
+            :max="9999"
+            placeholder="排序值，数值越小越靠前"
+          />
+        </el-form-item>
       </el-form>
       
       <template #footer>
@@ -285,36 +303,31 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { 
-  UserFilled, 
+  FolderOpened, 
   Plus, 
   Search, 
   Refresh, 
   Check, 
-  Key, 
+  Document, 
   Clock, 
-  Message, 
   Calendar, 
   Edit, 
-  Delete 
+  Delete,
+  Connection
 } from '@element-plus/icons-vue'
-import { userApi, roleApi } from '../lib/api'
-import { useAuthStore } from '../lib/store'
-import PermissionCheck from '../components/PermissionCheck.vue'
-import type { User, Role } from '../lib/api'
-
-// 获取认证状态
-const authStore = useAuthStore()
+import { categoryApi } from '../../lib/api'
+import PermissionCheck from '../../components/PermissionCheck.vue'
+import type { Category } from '../../lib/api'
 
 // 数据状态
 const loading = ref(false)
 const submitting = ref(false)
-const users = ref<User[]>([])
-const roles = ref<Role[]>([])
+const categories = ref<Category[]>([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const searchText = ref('')
-const roleFilter = ref('')
+const statusFilter = ref('')
 
 // 搜索防抖
 let searchTimeout: NodeJS.Timeout | null = null
@@ -322,49 +335,47 @@ let searchTimeout: NodeJS.Timeout | null = null
 // 对话框状态
 const dialogVisible = ref(false)
 const isEdit = ref(false)
-const userFormRef = ref<FormInstance>()
+const categoryFormRef = ref<FormInstance>()
 
 // 表单数据
-const userForm = reactive({
+const categoryForm = reactive({
   id: '',
   name: '',
-  mail: '',
-  password: '',
-  roleId: '',
-  isSuperAdmin: false
+  slug: '',
+  description: '',
+  parentId: '',
+  status: 'enabled',
+  sort: 0
+})
+
+// 可用的父分类
+const availableParents = computed(() => {
+  return categories.value.filter(cat => 
+    cat.id !== categoryForm.id && 
+    cat.status === 'enabled'
+  )
 })
 
 // 统计数据
 const stats = computed(() => ({
-  total: users.value.length,
-  active: users.value.filter(u => !u.isSuperAdmin).length,
-  admin: users.value.filter(u => u.isSuperAdmin).length,
-  newToday: users.value.filter(u => {
+  total: categories.value.length,
+  enabled: categories.value.filter(c => c.status === 'enabled').length,
+  articles: categories.value.reduce((sum, c) => sum + (c.articleCount || 0), 0),
+  newToday: categories.value.filter(c => {
     const today = new Date().toDateString()
-    return new Date(u.createdAt).toDateString() === today
+    return new Date(c.createdAt).toDateString() === today
   }).length
 }))
 
 // 表单验证规则
-const userRules: FormRules = {
+const categoryRules: FormRules = {
   name: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
+    { required: true, message: '请输入分类名称', trigger: 'blur' }
   ],
-  mail: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
-  ],
-  password: [
+  slug: [
     { 
-      validator: (rule, value, callback) => {
-        if (!isEdit.value && !value) {
-          callback(new Error('请输入密码'))
-        } else if (value && value.length < 6) {
-          callback(new Error('密码长度不能少于6位'))
-        } else {
-          callback()
-        }
-      }, 
+      pattern: /^[a-zA-Z0-9-_\u4e00-\u9fa5]*$/, 
+      message: '分类别名只能包含字母、数字、横线、下划线和中文', 
       trigger: 'blur' 
     }
   ]
@@ -372,39 +383,28 @@ const userRules: FormRules = {
 
 // 初始化
 onMounted(async () => {
-  await loadRoles()
-  await loadUsers()
+  await loadCategories()
 })
 
-// 加载用户列表
-const loadUsers = async () => {
+// 加载分类列表
+const loadCategories = async () => {
   loading.value = true
   try {
     const params = {
       page: currentPage.value,
       pageSize: pageSize.value,
       search: searchText.value || undefined,
-      roleId: roleFilter.value || undefined
+      status: statusFilter.value || undefined
     }
     
-    const data = await userApi.getList(params)
-    users.value = Array.isArray(data) ? data : data.data || []
-    total.value = typeof data === 'object' ? data.total || 0 : users.value.length
+    const data = await categoryApi.getList(params)
+    categories.value = Array.isArray(data) ? data : data.data || []
+    total.value = typeof data === 'object' ? data.total || 0 : categories.value.length
   } catch (error) {
-    ElMessage.error('加载用户列表失败')
+    ElMessage.error('加载分类列表失败')
     console.error(error)
   } finally {
     loading.value = false
-  }
-}
-
-// 加载角色列表
-const loadRoles = async () => {
-  try {
-    const data = await roleApi.getList()
-    roles.value = Array.isArray(data) ? data : data.data || []
-  } catch (error) {
-    console.error('加载角色列表失败:', error)
   }
 }
 
@@ -415,28 +415,28 @@ const handleSearch = () => {
   }
   searchTimeout = setTimeout(() => {
     currentPage.value = 1
-    loadUsers()
+    loadCategories()
   }, 300)
 }
 
 // 重置搜索
 const resetSearch = () => {
   searchText.value = ''
-  roleFilter.value = ''
+  statusFilter.value = ''
   currentPage.value = 1
-  loadUsers()
+  loadCategories()
 }
 
 // 分页处理
 const handleCurrentChange = (page: number) => {
   currentPage.value = page
-  loadUsers()
+  loadCategories()
 }
 
 const handleSizeChange = (size: number) => {
   pageSize.value = size
   currentPage.value = 1
-  loadUsers()
+  loadCategories()
 }
 
 // 显示创建对话框
@@ -445,25 +445,31 @@ const showCreateDialog = () => {
   dialogVisible.value = true
 }
 
-// 编辑用户
-const editUser = (user: User) => {
+// 编辑分类
+const editCategory = (category: Category) => {
   isEdit.value = true
-  Object.assign(userForm, {
-    id: user.id,
-    name: user.name,
-    mail: user.mail,
-    password: '',
-    roleId: user.roleId || '',
-    isSuperAdmin: user.isSuperAdmin || false
+  Object.assign(categoryForm, {
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+    description: category.description || '',
+    parentId: category.parentId || '',
+    status: category.status,
+    sort: category.sort || 0
   })
   dialogVisible.value = true
 }
 
-// 删除用户
-const deleteUser = async (user: User) => {
+// 删除分类
+const deleteCategory = async (category: Category) => {
+  if (category.articleCount > 0) {
+    ElMessage.warning('该分类下还有文章，无法删除')
+    return
+  }
+
   try {
     await ElMessageBox.confirm(
-      `确定要删除用户 "${user.name}" 吗？此操作不可恢复。`,
+      `确定要删除分类 "${category.name}" 吗？此操作不可恢复。`,
       '删除确认',
       {
         confirmButtonText: '删除',
@@ -472,9 +478,9 @@ const deleteUser = async (user: User) => {
       }
     )
     
-    await userApi.delete(user.id)
+    await categoryApi.delete(category.id)
     ElMessage.success('删除成功')
-    loadUsers()
+    loadCategories()
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
@@ -485,27 +491,29 @@ const deleteUser = async (user: User) => {
 
 // 提交表单
 const submitForm = async () => {
-  if (!userFormRef.value) return
+  if (!categoryFormRef.value) return
   
   try {
-    await userFormRef.value.validate()
+    await categoryFormRef.value.validate()
     submitting.value = true
     
-    const userData = { ...userForm }
-    if (isEdit.value && !userData.password) {
-      delete userData.password
+    const categoryData = { ...categoryForm }
+    
+    // 处理parentId：如果为空字符串，则设置为null
+    if (!categoryData.parentId || categoryData.parentId === '') {
+      categoryData.parentId = null
     }
     
     if (isEdit.value) {
-      await userApi.update(userData.id, userData)
+      await categoryApi.update(categoryData.id, categoryData)
       ElMessage.success('更新成功')
     } else {
-      await userApi.create(userData)
+      await categoryApi.create(categoryData)
       ElMessage.success('创建成功')
     }
     
     dialogVisible.value = false
-    loadUsers()
+    loadCategories()
   } catch (error) {
     ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
     console.error(error)
@@ -516,15 +524,16 @@ const submitForm = async () => {
 
 // 重置表单
 const resetForm = () => {
-  Object.assign(userForm, {
+  Object.assign(categoryForm, {
     id: '',
     name: '',
-    mail: '',
-    password: '',
-    roleId: '',
-    isSuperAdmin: false
+    slug: '',
+    description: '',
+    parentId: '',
+    status: 'enabled',
+    sort: 0
   })
-  userFormRef.value?.resetFields()
+  categoryFormRef.value?.resetFields()
 }
 
 // 格式化日期
@@ -538,7 +547,7 @@ const formatDate = (date: string | Date) => {
 </script>
 
 <style scoped lang="scss">
-.modern-users-page {
+.modern-categories-page {
   padding: 24px;
   background: #f8fafc;
   min-height: 100vh;
@@ -561,7 +570,7 @@ const formatDate = (date: string | Date) => {
       color: #1e293b;
 
       .title-icon {
-        color: #3b82f6;
+        color: #f59e0b;
         font-size: 32px;
       }
     }
@@ -581,15 +590,15 @@ const formatDate = (date: string | Date) => {
       padding: 12px 24px;
       font-size: 16px;
       font-weight: 600;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
       border: none;
       border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
       transition: all 0.2s ease;
 
       &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
       }
     }
   }
@@ -619,7 +628,7 @@ const formatDate = (date: string | Date) => {
           min-width: 200px;
 
           .search-input,
-          .role-filter {
+          .status-filter {
             width: 100%;
 
             :deep(.el-input__wrapper),
@@ -629,12 +638,12 @@ const formatDate = (date: string | Date) => {
               transition: all 0.2s ease;
 
               &:hover {
-                border-color: #3b82f6;
+                border-color: #f59e0b;
               }
 
               &.is-focus {
-                border-color: #3b82f6;
-                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                border-color: #f59e0b;
+                box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
               }
             }
           }
@@ -652,8 +661,8 @@ const formatDate = (date: string | Date) => {
             transition: all 0.2s ease;
 
             &:hover {
-              color: #3b82f6;
-              border-color: #3b82f6;
+              color: #f59e0b;
+              border-color: #f59e0b;
               background: #f8fafc;
             }
           }
@@ -697,19 +706,19 @@ const formatDate = (date: string | Date) => {
         color: white;
 
         &.total {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
-        &.active {
-          background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-        }
-
-        &.admin {
           background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         }
 
+        &.enabled {
+          background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        }
+
+        &.articles {
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
         &.new {
-          background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+          background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
         }
       }
 
@@ -762,8 +771,8 @@ const formatDate = (date: string | Date) => {
     }
   }
 
-  .user-list {
-    .user-item {
+  .category-list {
+    .category-item {
       display: flex;
       align-items: center;
       gap: 20px;
@@ -779,42 +788,47 @@ const formatDate = (date: string | Date) => {
         border-bottom: none;
       }
 
-      .user-avatar {
+      .category-icon {
         flex-shrink: 0;
 
-        .avatar {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .category-avatar {
+          width: 56px;
+          height: 56px;
+          border-radius: 16px;
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
           color: white;
-          font-weight: 600;
-          font-size: 20px;
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+          font-size: 24px;
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
         }
       }
 
-      .user-info {
+      .category-info {
         flex: 1;
         min-width: 0;
 
-        .user-header {
+        .category-header {
           display: flex;
           align-items: center;
           gap: 12px;
           margin-bottom: 8px;
 
-          .user-name {
+          .category-name {
             font-size: 18px;
             font-weight: 600;
             color: #1e293b;
             margin: 0;
           }
 
-          .user-badges {
+          .category-badges {
             display: flex;
             gap: 8px;
           }
         }
 
-        .user-details {
+        .category-details {
           display: flex;
           gap: 20px;
           flex-wrap: wrap;
@@ -834,7 +848,7 @@ const formatDate = (date: string | Date) => {
         }
       }
 
-      .user-actions {
+      .category-actions {
         display: flex;
         gap: 8px;
         flex-shrink: 0;
@@ -842,6 +856,10 @@ const formatDate = (date: string | Date) => {
         .el-button {
           border-radius: 8px;
           font-weight: 500;
+
+          &:disabled {
+            opacity: 0.5;
+          }
         }
       }
     }
@@ -893,7 +911,7 @@ const formatDate = (date: string | Date) => {
   }
 }
 
-.user-dialog {
+.category-dialog {
   :deep(.el-dialog) {
     border-radius: 16px;
   }
@@ -907,7 +925,7 @@ const formatDate = (date: string | Date) => {
     padding: 24px;
   }
 
-  .user-form {
+  .category-form {
     .form-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -922,20 +940,26 @@ const formatDate = (date: string | Date) => {
       margin-bottom: 20px;
 
       .el-input__wrapper,
+      .el-textarea__inner,
       .el-select__wrapper {
         border-radius: 8px;
         border: 1px solid #e2e8f0;
         transition: all 0.2s ease;
 
         &:hover {
-          border-color: #3b82f6;
+          border-color: #f59e0b;
         }
 
+        &:focus,
         &.is-focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+          border-color: #f59e0b;
+          box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
         }
       }
+    }
+
+    .parent-select {
+      width: 100%;
     }
   }
 
@@ -965,12 +989,12 @@ const formatDate = (date: string | Date) => {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
 
-  .user-list .user-item {
+  .category-list .category-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
 
-    .user-actions {
+    .category-actions {
       width: 100%;
       justify-content: flex-end;
     }
@@ -978,7 +1002,7 @@ const formatDate = (date: string | Date) => {
 }
 
 @media (max-width: 768px) {
-  .modern-users-page {
+  .modern-categories-page {
     padding: 16px;
   }
 

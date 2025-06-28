@@ -225,7 +225,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Edit, Check, User, Message, Lock, Key, Platform, ChatRound } from '@element-plus/icons-vue'
 import { useAuthStore } from '../lib/store'
-import { api } from '../lib/api'
+import { authApi } from '../lib/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -321,7 +321,7 @@ const handleSendCode = async () => {
 
   try {
     sendingCode.value = true
-    await api.post('/auth/send-code', { mail: registerForm.mail })
+    await authApi.sendCode(registerForm.mail)
     ElMessage.success('验证码已发送到您的邮箱')
     
     // 开始倒计时
@@ -349,7 +349,7 @@ const handleLogin = async () => {
       const success = await authStore.login(loginForm.mail, loginForm.password)
       if (success) {
         ElMessage.success('登录成功')
-        router.push('/')
+        router.push('/admin')
       } else {
         ElMessage.error('登录失败，请检查邮箱和密码')
       }
@@ -364,7 +364,7 @@ const handleRegister = async () => {
   await registerFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        await api.post('/auth/register', {
+        await authApi.register({
           name: registerForm.name,
           mail: registerForm.mail,
           password: registerForm.password,

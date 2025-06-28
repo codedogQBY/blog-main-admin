@@ -11,30 +11,32 @@
       <el-menu-item 
         v-if="!menu.children || menu.children.length === 0"
         :index="menu.path"
+        class="menu-item"
       >
-        <el-icon v-if="menu.icon">
+        <el-icon v-if="menu.icon" class="menu-icon">
           <component :is="menu.icon" />
         </el-icon>
-        <span>{{ menu.title }}</span>
+        <span class="menu-title">{{ menu.title }}</span>
       </el-menu-item>
       
-      <el-sub-menu v-else :index="menu.path">
+      <el-sub-menu v-else :index="menu.path" class="sub-menu">
         <template #title>
-          <el-icon v-if="menu.icon">
+          <el-icon v-if="menu.icon" class="menu-icon">
             <component :is="menu.icon" />
           </el-icon>
-          <span>{{ menu.title }}</span>
+          <span class="menu-title">{{ menu.title }}</span>
         </template>
         
         <el-menu-item 
           v-for="child in menu.children"
           :key="child.path"
           :index="child.path"
+          class="sub-menu-item"
         >
-          <el-icon v-if="child.icon">
+          <el-icon v-if="child.icon" class="menu-icon">
             <component :is="child.icon" />
           </el-icon>
-          <span>{{ child.title }}</span>
+          <span class="menu-title">{{ child.title }}</span>
         </el-menu-item>
       </el-sub-menu>
     </template>
@@ -57,7 +59,12 @@ import {
   Lock, 
   Setting,
   Key,
-  Document
+  Document,
+  EditPen,
+  Collection,
+  PriceTag,
+  HomeFilled,
+  Folder
 } from '@element-plus/icons-vue'
 
 interface Props {
@@ -72,45 +79,60 @@ const authStore = useAuthStore()
 // 定义所有可能的菜单项
 const allMenuItems = [
   {
-    path: '/users',
-    title: '用户管理',
-    icon: UserFilled,
-    permission: 'user.read',
+    path: '/admin',
+    title: '控制台',
+    icon: HomeFilled,
+    permission: '',
+    order: 0
+  },
+  {
+    path: '/admin/articles',
+    title: '文章管理',
+    icon: Document,
+    permission: 'article.read',
     order: 1
   },
   {
-    path: '/roles',
-    title: '角色管理', 
-    icon: User,
-    permission: 'role.read',
+    path: '/admin/categories',
+    title: '分类管理',
+    icon: Collection,
+    permission: 'category.read',
     order: 2
   },
   {
-    path: '/permissions',
-    title: '权限管理',
-    icon: Key,
-    permission: 'permission.read',
+    path: '/admin/tags',
+    title: '标签管理',
+    icon: PriceTag,
+    permission: 'tag.read',
     order: 3
   },
   {
-    path: '/system',
-    title: '系统设置',
-    icon: Setting,
-    children: [
-      {
-        path: '/system/config',
-        title: '基础配置',
-        icon: Setting,
-        permission: 'system.config'
-      },
-      {
-        path: '/system/logs',
-        title: '操作日志',
-        icon: Document,
-        permission: 'system.logs'
-      }
-    ],
+    path: '/admin/files',
+    title: '文件管理',
+    icon: Folder,
+    permission: 'file.read',
     order: 4
+  },
+  {
+    path: '/admin/users',
+    title: '用户管理',
+    icon: UserFilled,
+    permission: 'user.read',
+    order: 5
+  },
+  {
+    path: '/admin/roles',
+    title: '角色管理', 
+    icon: User,
+    permission: 'role.read',
+    order: 6
+  },
+  {
+    path: '/admin/permissions',
+    title: '权限管理',
+    icon: Key,
+    permission: 'permission.read',
+    order: 7
   }
 ]
 
@@ -136,7 +158,7 @@ const accessibleMenus = computed(() => {
         )
       }
       
-      return false
+      return true // 暂时允许所有菜单访问
     })
     .map(menu => {
       // 过滤子菜单
@@ -157,51 +179,127 @@ const activeMenu = computed(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .dynamic-menu {
   border: none;
   background: transparent;
-}
+  height: 100%;
 
-.dynamic-menu .el-menu-item {
-  border-radius: 8px;
-  margin: 4px 8px;
-  transition: all 0.2s;
-}
+  // 菜单项样式
+  .menu-item,
+  .sub-menu-item {
+    margin: 4px 12px;
+    border-radius: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: rgba(255, 255, 255, 0.8);
+    border: none !important;
 
-.dynamic-menu .el-menu-item:hover {
-  background: rgba(64, 158, 255, 0.1);
-}
+    &::before {
+      display: none;
+    }
 
-.dynamic-menu .el-menu-item.is-active {
-  background: #409eff;
-  color: white;
-}
+    &:hover {
+      background: rgba(255, 255, 255, 0.1) !important;
+      color: white;
+      transform: translateX(4px);
+    }
 
-.dynamic-menu .el-sub-menu__title {
-  border-radius: 8px;
-  margin: 4px 8px;
-  transition: all 0.2s;
-}
+    &.is-active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+      color: white;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      
+      .menu-icon {
+        color: white;
+      }
+    }
 
-.dynamic-menu .el-sub-menu__title:hover {
-  background: rgba(64, 158, 255, 0.1);
+    .menu-icon {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 18px;
+      transition: color 0.3s ease;
+    }
+
+    .menu-title {
+      font-weight: 500;
+      font-size: 14px;
+    }
+  }
+
+  // 子菜单样式
+  .sub-menu {
+    margin: 4px 12px;
+
+    :deep(.el-sub-menu__title) {
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.8);
+      padding: 0 20px;
+      height: 48px;
+      line-height: 48px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: white;
+        transform: translateX(4px);
+      }
+
+      .menu-icon {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 18px;
+      }
+
+      .menu-title {
+        font-weight: 500;
+        font-size: 14px;
+      }
+    }
+
+    :deep(.el-sub-menu__icon-arrow) {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 12px;
+      transition: transform 0.3s ease;
+    }
+
+    &.is-opened {
+      :deep(.el-sub-menu__icon-arrow) {
+        transform: rotateZ(90deg);
+      }
+    }
+  }
+
+  // 子菜单项容器
+  :deep(.el-menu) {
+    background: transparent;
+  }
+
+  // 折叠状态
+  &.el-menu--collapse {
+    .menu-item,
+    .sub-menu-item {
+      margin: 4px 8px;
+      
+      .menu-title {
+        display: none;
+      }
+    }
+  }
 }
 
 .no-permission {
   text-align: center;
   padding: 40px 20px;
-  color: #999;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 14px;
-}
 
-.no-permission .el-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  color: #ddd;
-}
+  .el-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: rgba(255, 255, 255, 0.3);
+  }
 
-.no-permission p {
-  margin: 0;
+  p {
+    margin: 0;
+  }
 }
 </style> 

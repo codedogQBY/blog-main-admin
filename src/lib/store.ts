@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { api } from './api'
+import { authApi } from './api'
 import type { User } from './api'
 
 export interface MenuConfig {
@@ -17,6 +17,7 @@ export interface AuthState {
   loading: boolean
   permissions: string[]
   menus: MenuConfig[]
+  tokenCheckInterval: number | null
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -25,7 +26,8 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: false,
     loading: false,
     permissions: [],
-    menus: []
+    menus: [],
+    tokenCheckInterval: null
   }),
 
   getters: {
@@ -57,9 +59,10 @@ export const useAuthStore = defineStore('auth', {
     async login(mail: string, password: string) {
       this.loading = true
       try {
-        const response = await api.login({ mail, password })
+        const response = await authApi.login({ mail, password })
         localStorage.setItem('accessToken', response.accessToken)
         await this.fetchProfile()
+        this.startTokenCheck()
         return true
       } catch (error) {
         console.error('登录失败:', error)
@@ -71,14 +74,17 @@ export const useAuthStore = defineStore('auth', {
 
     async fetchProfile() {
       try {
-        const profile = await api.getProfile()
+        const profile = await authApi.getProfile()
         this.user = profile
         this.isAuthenticated = true
         this.updatePermissions()
         this.generateMenus()
-      } catch (error) {
+      } catch (error: any) {
         console.error('获取用户信息失败:', error)
-        this.logout()
+        // 不要立即登出，让用户有机会重试
+        if (error?.response?.status === 401) {
+          this.logout()
+        }
       }
     },
 
@@ -144,12 +150,51 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = false
       this.permissions = []
       this.menus = []
+      this.stopTokenCheck()
     },
 
     async checkAuth() {
       const token = localStorage.getItem('accessToken')
       if (token) {
-        await this.fetchProfile()
+        try {
+          await this.fetchProfile()
+          this.startTokenCheck()
+        } catch (error: any) {
+          console.error('验证登录状态失败:', error)
+          // 如果 token 无效，清除它
+          if (error?.response?.status === 401) {
+            this.logout()
+          }
+        }
+      }
+    },
+
+    // 启动 token 有效性检查
+    startTokenCheck() {
+      // 清除之前的检查
+      this.stopTokenCheck()
+      
+      // 每 5 分钟检查一次 token 有效性
+      this.tokenCheckInterval = window.setInterval(async () => {
+        const token = localStorage.getItem('accessToken')
+        if (token && this.isAuthenticated) {
+          try {
+            await authApi.getProfile()
+          } catch (error: any) {
+            if (error?.response?.status === 401) {
+              console.warn('Token 已过期，请重新登录')
+              this.logout()
+            }
+          }
+        }
+      }, 5 * 60 * 1000) // 5 分钟
+    },
+
+    // 停止 token 检查
+    stopTokenCheck() {
+      if (this.tokenCheckInterval) {
+        clearInterval(this.tokenCheckInterval)
+        this.tokenCheckInterval = null
       }
     }
   }

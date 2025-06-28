@@ -9,16 +9,29 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.17",
-    "vue-router": "^4.2.5",
+    "@element-plus/icons-vue": "^2.3.1",
+    "@tiptap/core": "^2.23.0",
+    "@tiptap/extension-character-count": "^2.23.0",
+    "@tiptap/extension-code-block-lowlight": "^2.23.0",
+    "@tiptap/extension-image": "^2.23.0",
+    "@tiptap/extension-link": "^2.23.0",
+    "@tiptap/extension-placeholder": "^2.23.0",
+    "@tiptap/pm": "^2.23.0",
+    "@tiptap/starter-kit": "^2.23.0",
+    "@tiptap/vue-3": "^2.23.0",
     "axios": "^1.6.0",
     "element-plus": "^2.4.4",
+    "highlight.js": "^11.11.1",
+    "lowlight": "^3.3.0",
+    "lucide-vue-next": "^0.525.0",
     "pinia": "^2.1.7",
-    "@element-plus/icons-vue": "^2.3.1"
+    "vue": "^3.5.17",
+    "vue-router": "^4.2.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/tsconfig": "^0.7.0",
+    "sass-embedded": "^1.89.2",
     "typescript": "~5.8.3",
     "vite": "^5.0.0",
     "vue-tsc": "^2.2.10"

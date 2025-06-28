@@ -57,6 +57,129 @@ export interface RegisterRequest {
   code: string
 }
 
+// 博客相关接口
+export interface Article {
+  id: string
+  title: string
+  content: string
+  excerpt: string
+  slug: string
+  published: boolean
+  publishedAt?: string
+  views: number
+  readTime: number
+  createdAt: string
+  updatedAt: string
+  categoryId: string
+  authorId: string
+  category: {
+    id: string
+    name: string
+  }
+  author: {
+    id: string
+    name: string
+  }
+  tags: Array<{
+    id: string
+    name: string
+  }>
+  seoKeywords?: string
+  seoDescription?: string
+}
+
+export interface Category {
+  id: string
+  name: string
+  description?: string
+  slug: string
+  parentId?: string
+  status?: string
+  sort?: number
+  articleCount?: number
+  createdAt: string
+  updatedAt: string
+  parentCategory?: Category
+  _count?: {
+    articles: number
+  }
+}
+
+export interface Tag {
+  id: string
+  name: string
+  slug?: string
+  description?: string
+  color?: string
+  sort?: number
+  articleCount?: number
+  createdAt: string
+  updatedAt: string
+  _count?: {
+    articles: number
+  }
+}
+
+export interface ArticleListParams {
+  page?: number
+  pageSize?: number
+  title?: string
+  categoryId?: string
+  published?: boolean
+}
+
+export interface CategoryListParams {
+  page?: number
+  pageSize?: number
+  name?: string
+}
+
+export interface FileFolder {
+  id: string
+  name: string
+  path: string
+  parentId?: string
+  createdAt: string
+  updatedAt: string
+  parent?: FileFolder
+  children?: FileFolder[]
+  _count?: {
+    files: number
+  }
+}
+
+export interface FileItem {
+  id: string
+  name: string
+  filename: string
+  path: string
+  url: string
+  size: number
+  mimetype: string
+  extension: string
+  folderId?: string
+  uploadedBy: string
+  createdAt: string
+  updatedAt: string
+  folder?: FileFolder
+  uploader?: {
+    id: string
+    name: string
+    mail: string
+  }
+}
+
+export interface FileStats {
+  totalFiles: number
+  totalSize: number
+  filesByType: Array<{
+    extension: string
+    _count: {
+      extension: number
+    }
+  }>
+}
+
 class ApiClient {
   private client = axios.create({
     baseURL: API_BASE_URL,
@@ -78,16 +201,29 @@ class ApiClient {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem('accessToken')
-          window.location.href = '/login'
+          // 只有在不是登录页面时才清除 token 并跳转
+          if (!window.location.pathname.includes('/login')) {
+            localStorage.removeItem('accessToken')
+            // 使用 Vue Router 进行导航而不是直接修改 location
+            if (window.location.pathname !== '/login') {
+              console.warn('Token 已过期，正在跳转到登录页面')
+              // 延迟跳转，避免频繁跳转
+              setTimeout(() => {
+                window.location.href = '/login'
+              }, 100)
+            }
+          }
         } else if (error.response?.status === 403) {
           // 403权限不足错误处理
           const errorMessage = error.response?.data?.message || '您没有权限执行此操作'
           import('element-plus').then(({ ElMessage }) => {
             ElMessage.error(errorMessage)
           })
-          // 可以选择跳转到403页面或者只显示提示
-          // window.location.href = '/403'
+        } else if (error.response?.status >= 500) {
+          // 服务器错误
+          import('element-plus').then(({ ElMessage }) => {
+            ElMessage.error('服务器错误，请稍后重试')
+          })
         }
         return Promise.reject(error)
       }
@@ -206,8 +342,8 @@ class ApiClient {
   }
 
   // 权限管理
-  async getPermissions(): Promise<Permission[]> {
-    const response = await this.client.get<Permission[]>('/permissions')
+  async getPermissions(params?: { page?: number; pageSize?: number; search?: string; group?: string }): Promise<{ data?: Permission[]; total?: number } | Permission[]> {
+    const response = await this.client.get<{ data?: Permission[]; total?: number } | Permission[]>('/permissions', { params })
     return response.data
   }
 
@@ -234,13 +370,218 @@ class ApiClient {
     const response = await this.client.post<{ created: number; total: number }>('/permissions/sync')
     return response.data
   }
+
+  // 文章管理
+  async getArticles(params?: ArticleListParams): Promise<{ data: Article[]; total: number }> {
+    const response = await this.client.get<{ data: Article[]; total: number }>('/articles/admin/list', { params })
+    return response.data
+  }
+
+  async getAdminArticles(params?: any): Promise<{ data: Article[]; total: number }> {
+    const response = await this.client.get<{ data: Article[]; total: number }>('/articles/admin/list', { params })
+    return response.data
+  }
+
+  async getArticle(id: string): Promise<Article> {
+    const response = await this.client.get<Article>(`/articles/id/${id}`)
+    return response.data
+  }
+
+  async createArticle(data: Partial<Article>): Promise<Article> {
+    const response = await this.client.post<Article>('/articles', data)
+    return response.data
+  }
+
+  async updateArticle(id: string, data: Partial<Article>): Promise<Article> {
+    const response = await this.client.put<Article>(`/articles/${id}`, data)
+    return response.data
+  }
+
+  async deleteArticle(id: string): Promise<void> {
+    await this.client.delete(`/articles/${id}`)
+  }
+
+  // 分类管理
+  async getCategories(params?: { page?: number; pageSize?: number; search?: string; status?: string }): Promise<{ data?: Category[]; total?: number } | Category[]> {
+    const response = await this.client.get<{ data?: Category[]; total?: number } | Category[]>('/categories', { params })
+    return response.data
+  }
+
+  async getCategory(id: string): Promise<Category> {
+    const response = await this.client.get<Category>(`/categories/${id}`)
+    return response.data
+  }
+
+  async createCategory(data: Partial<Category>): Promise<Category> {
+    const response = await this.client.post<Category>('/categories', data)
+    return response.data
+  }
+
+  async updateCategory(id: string, data: Partial<Category>): Promise<Category> {
+    const response = await this.client.put<Category>(`/categories/${id}`, data)
+    return response.data
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    await this.client.delete(`/categories/${id}`)
+  }
+
+  // 标签管理
+  async getTags(params?: { page?: number; pageSize?: number; search?: string; color?: string }): Promise<{ data?: Tag[]; total?: number } | Tag[]> {
+    const response = await this.client.get<{ data?: Tag[]; total?: number } | Tag[]>('/tags', { params })
+    return response.data
+  }
+
+  async getTag(id: string): Promise<Tag> {
+    const response = await this.client.get<Tag>(`/tags/${id}`)
+    return response.data
+  }
+
+  async createTag(data: Partial<Tag>): Promise<Tag> {
+    const response = await this.client.post<Tag>('/tags', data)
+    return response.data
+  }
+
+  async updateTag(id: string, data: Partial<Tag>): Promise<Tag> {
+    const response = await this.client.put<Tag>(`/tags/${id}`, data)
+    return response.data
+  }
+
+  async deleteTag(id: string): Promise<void> {
+    await this.client.delete(`/tags/${id}`)
+  }
+
+  // 文件管理
+  async getFolders(parentId?: string): Promise<FileFolder[]> {
+    const params = parentId ? { parentId } : {}
+    const response = await this.client.get<FileFolder[]>('/files/folders', { params })
+    return response.data
+  }
+
+  async createFolder(data: { name: string; parentId?: string }): Promise<FileFolder> {
+    const response = await this.client.post<FileFolder>('/files/folders', data)
+    return response.data
+  }
+
+  async updateFolder(id: string, data: { name?: string; parentId?: string }): Promise<FileFolder> {
+    const response = await this.client.put<FileFolder>(`/files/folders/${id}`, data)
+    return response.data
+  }
+
+  async deleteFolder(id: string): Promise<void> {
+    await this.client.delete(`/files/folders/${id}`)
+  }
+
+  async getFiles(params?: { folderId?: string; search?: string; type?: string }): Promise<FileItem[]> {
+    const response = await this.client.get<FileItem[]>('/files', { params })
+    return response.data
+  }
+
+  async uploadFile(file: File, folderId?: string): Promise<FileItem> {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (folderId) {
+      formData.append('folderId', folderId)
+    }
+    
+    const response = await this.client.post<FileItem>('/files/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  }
+
+  async updateFile(id: string, data: { name?: string; folderId?: string }): Promise<FileItem> {
+    const response = await this.client.put<FileItem>(`/files/${id}`, data)
+    return response.data
+  }
+
+  async deleteFile(id: string): Promise<void> {
+    await this.client.delete(`/files/${id}`)
+  }
+
+  async getFileStats(): Promise<FileStats> {
+    const response = await this.client.get<FileStats>('/files/stats')
+    return response.data
+  }
 }
 
-// 创建实例
-export const api = new ApiClient()
+const apiClient = new ApiClient()
 
-// 为了兼容性，也导出为ApiService
-export const ApiService = api
+// 导出各个模块的API
+export const authApi = {
+  login: apiClient.login.bind(apiClient),
+  register: apiClient.register.bind(apiClient),
+  sendCode: apiClient.sendCode.bind(apiClient),
+  getProfile: apiClient.getProfile.bind(apiClient),
+}
 
-// 默认导出
-export default api 
+export const userApi = {
+  getList: apiClient.getUsers.bind(apiClient),
+  getById: apiClient.getUser.bind(apiClient),
+  create: apiClient.createUser.bind(apiClient),
+  update: apiClient.updateUser.bind(apiClient),
+  delete: apiClient.deleteUser.bind(apiClient),
+  assignRole: apiClient.assignRole.bind(apiClient),
+}
+
+export const roleApi = {
+  getList: apiClient.getRoles.bind(apiClient),
+  getById: apiClient.getRole.bind(apiClient),
+  create: apiClient.createRole.bind(apiClient),
+  update: apiClient.updateRole.bind(apiClient),
+  delete: apiClient.deleteRole.bind(apiClient),
+  setPermissions: apiClient.setRolePermissions.bind(apiClient),
+}
+
+export const permissionApi = {
+  getList: apiClient.getPermissions.bind(apiClient),
+  getById: apiClient.getPermission.bind(apiClient),
+  create: apiClient.createPermission.bind(apiClient),
+  update: apiClient.updatePermission.bind(apiClient),
+  delete: apiClient.deletePermission.bind(apiClient),
+  sync: apiClient.syncPermissions.bind(apiClient),
+}
+
+export const articleApi = {
+  getList: apiClient.getArticles.bind(apiClient),
+  getAdminList: apiClient.getAdminArticles.bind(apiClient),
+  getById: apiClient.getArticle.bind(apiClient),
+  create: apiClient.createArticle.bind(apiClient),
+  update: apiClient.updateArticle.bind(apiClient),
+  delete: apiClient.deleteArticle.bind(apiClient),
+}
+
+export const categoryApi = {
+  getList: apiClient.getCategories.bind(apiClient),
+  getById: apiClient.getCategory.bind(apiClient),
+  create: apiClient.createCategory.bind(apiClient),
+  update: apiClient.updateCategory.bind(apiClient),
+  delete: apiClient.deleteCategory.bind(apiClient),
+}
+
+export const tagApi = {
+  getList: apiClient.getTags.bind(apiClient),
+  getById: apiClient.getTag.bind(apiClient),
+  create: apiClient.createTag.bind(apiClient),
+  update: apiClient.updateTag.bind(apiClient),
+  delete: apiClient.deleteTag.bind(apiClient),
+}
+
+export const fileApi = {
+  getFolders: apiClient.getFolders.bind(apiClient),
+  createFolder: apiClient.createFolder.bind(apiClient),
+  updateFolder: apiClient.updateFolder.bind(apiClient),
+  deleteFolder: apiClient.deleteFolder.bind(apiClient),
+  getFiles: apiClient.getFiles.bind(apiClient),
+  uploadFile: apiClient.uploadFile.bind(apiClient),
+  updateFile: apiClient.updateFile.bind(apiClient),
+  deleteFile: apiClient.deleteFile.bind(apiClient),
+  getStats: apiClient.getFileStats.bind(apiClient),
+}
+
+// 为了向后兼容，也导出 filesApi
+export const filesApi = fileApi
+
+export default apiClient 
