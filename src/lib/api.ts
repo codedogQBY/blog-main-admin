@@ -16,13 +16,23 @@ export interface User {
 export interface Role {
   id: string
   name: string
+  description?: string
+  createdAt: string
+  updatedAt: string
   perms?: RolePermission[]
+  users?: User[]
+  permissions?: Permission[]
+  userCount?: number
 }
 
 export interface Permission {
   id: string
   name: string
   code: string
+  group?: string
+  description?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface RolePermission {
@@ -312,8 +322,8 @@ class ApiClient {
   }
 
   // 角色管理
-  async getRoles(): Promise<Role[]> {
-    const response = await this.client.get<Role[]>('/roles')
+  async getRoles(params?: { page?: number; pageSize?: number; search?: string }): Promise<Role[]> {
+    const response = await this.client.get<Role[]>('/roles', { params })
     return response.data
   }
 
@@ -322,13 +332,13 @@ class ApiClient {
     return response.data
   }
 
-  async createRole(name: string): Promise<Role> {
-    const response = await this.client.post<Role>('/roles', { name })
+  async createRole(data: { name: string; description?: string; permissionIds?: string[] }): Promise<Role> {
+    const response = await this.client.post<Role>('/roles', data)
     return response.data
   }
 
-  async updateRole(id: string, name: string): Promise<Role> {
-    const response = await this.client.put<Role>(`/roles/${id}`, { name })
+  async updateRole(id: string, data: { name?: string; description?: string; permissionIds?: string[] }): Promise<Role> {
+    const response = await this.client.put<Role>(`/roles/${id}`, data)
     return response.data
   }
 

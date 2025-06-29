@@ -129,7 +129,7 @@
                     {{ role.permissions?.length || 0 }} 个权限
                   </el-tag>
                   <el-tag type="info" size="small">
-                    {{ role.userCount || 0 }} 个用户
+                    {{ role.userCount ?? 0 }} 个用户
                   </el-tag>
                 </div>
               </div>
@@ -337,7 +337,7 @@ const pageSize = ref(10)
 const searchText = ref('')
 
 // 搜索防抖
-let searchTimeout: NodeJS.Timeout | null = null
+let searchTimeout: number | null = null
 
 // 对话框状态
 const dialogVisible = ref(false)
@@ -385,7 +385,7 @@ const permissionGroups = computed(() => {
 // 全选状态
 const allPermissionsSelected = computed({
   get: () => selectedPermissions.value.length === allPermissions.value.length,
-  set: (val: boolean) => {
+  set: (val) => {
     if (val) {
       selectedPermissions.value = allPermissions.value.map(p => p.id)
     } else {
@@ -424,8 +424,16 @@ const loadRoles = async () => {
     }
     
     const data = await roleApi.getList(params)
-    roles.value = Array.isArray(data) ? data : data.data || []
-    total.value = typeof data === 'object' ? data.total || 0 : roles.value.length
+    const rawRoles = Array.isArray(data) ? data : (data as any)?.data || []
+    
+    // 处理数据结构，将后端的 perms 和 users 转换为前端期望的格式
+    roles.value = rawRoles.map((role: any) => ({
+      ...role,
+      permissions: role.perms?.map((rp: any) => rp.permission) || [],
+      userCount: role.users?.length || 0
+    }))
+    
+    total.value = Array.isArray(data) ? roles.value.length : (data as any)?.total || 0
   } catch (error) {
     ElMessage.error('加载角色列表失败')
     console.error(error)
@@ -439,7 +447,7 @@ const loadPermissions = async () => {
   try {
     // 加载所有权限，不使用分页限制
     const data = await permissionApi.getList({ pageSize: 1000 })
-    allPermissions.value = Array.isArray(data) ? data : data.data || []
+    allPermissions.value = Array.isArray(data) ? data : (data as any)?.data || []
   } catch (error) {
     console.error('加载权限列表失败:', error)
   }
@@ -490,7 +498,7 @@ const editRole = (role: Role) => {
     name: role.name,
     description: role.description || ''
   })
-  selectedPermissions.value = role.permissions?.map(p => p.id) || []
+  selectedPermissions.value = role.permissions?.map((p: any) => p.id) || []
   dialogVisible.value = true
 }
 
