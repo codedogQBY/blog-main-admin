@@ -64,7 +64,8 @@ import {
   Collection,
   PriceTag,
   HomeFilled,
-  Folder
+  Folder,
+  ChatDotRound
 } from '@element-plus/icons-vue'
 
 interface Props {
@@ -107,32 +108,39 @@ const allMenuItems = [
     order: 3
   },
   {
+    path: '/admin/interactions',
+    title: '交互管理',
+    icon: ChatDotRound,
+    permission: 'interaction.read',
+    order: 4
+  },
+  {
     path: '/admin/files',
     title: '文件管理',
     icon: Folder,
     permission: 'file.read',
-    order: 4
+    order: 5
   },
   {
     path: '/admin/users',
     title: '用户管理',
     icon: UserFilled,
     permission: 'user.read',
-    order: 5
+    order: 6
   },
   {
     path: '/admin/roles',
     title: '角色管理', 
     icon: User,
     permission: 'role.read',
-    order: 6
+    order: 7
   },
   {
     path: '/admin/permissions',
     title: '权限管理',
     icon: Key,
     permission: 'permission.read',
-    order: 7
+    order: 8
   }
 ]
 

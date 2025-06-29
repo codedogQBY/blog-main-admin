@@ -397,7 +397,7 @@ const loadCategories = async () => {
       status: statusFilter.value || undefined
     }
     
-    const data = await categoryApi.getList(params)
+    const data = await categoryApi.getAdminList(params)
     categories.value = Array.isArray(data) ? data : data.data || []
     total.value = typeof data === 'object' ? data.total || 0 : categories.value.length
   } catch (error) {

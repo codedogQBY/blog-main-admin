@@ -407,6 +407,11 @@ class ApiClient {
     return response.data
   }
 
+  async getCategoriesForAdmin(params?: { page?: number; pageSize?: number; search?: string; status?: string }): Promise<{ data?: Category[]; total?: number } | Category[]> {
+    const response = await this.client.get<{ data?: Category[]; total?: number } | Category[]>('/categories/admin/list', { params })
+    return response.data
+  }
+
   async getCategory(id: string): Promise<Category> {
     const response = await this.client.get<Category>(`/categories/${id}`)
     return response.data
@@ -555,6 +560,7 @@ export const articleApi = {
 
 export const categoryApi = {
   getList: apiClient.getCategories.bind(apiClient),
+  getAdminList: apiClient.getCategoriesForAdmin.bind(apiClient),
   getById: apiClient.getCategory.bind(apiClient),
   create: apiClient.createCategory.bind(apiClient),
   update: apiClient.updateCategory.bind(apiClient),

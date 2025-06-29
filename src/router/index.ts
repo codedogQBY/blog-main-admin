@@ -72,6 +72,12 @@ const routes = [
         meta: { title: '标签管理' }
       },
       {
+        path: 'interactions',
+        name: 'Interactions',
+        component: () => import('../views/blog/InteractionList.vue'),
+        meta: { title: '交互管理' }
+      },
+      {
         path: 'files',
         name: 'Files',
         component: () => import('../views/Files.vue'),
