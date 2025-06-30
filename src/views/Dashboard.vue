@@ -38,7 +38,13 @@
                 <el-icon><HomeFilled /></el-icon>
                 控制台
               </el-breadcrumb-item>
-              <el-breadcrumb-item v-if="currentRoute">{{ currentRoute }}</el-breadcrumb-item>
+              <el-breadcrumb-item 
+                v-for="item in breadcrumbItems" 
+                :key="item.path"
+                :to="item.path"
+              >
+                {{ item.title }}
+              </el-breadcrumb-item>
             </el-breadcrumb>
           </div>
         </div>
@@ -130,8 +136,8 @@ import {
   HomeFilled,
   Plus
 } from '@element-plus/icons-vue'
-import DynamicMenu from '@/components/DynamicMenu.vue'
-import { useAuthStore } from '@/lib/store'
+import DynamicMenu from '../components/DynamicMenu.vue'
+import { useAuthStore } from '../lib/store'
 
 const route = useRoute()
 const router = useRouter()
@@ -142,6 +148,70 @@ const sidebarCollapsed = ref(false)
 // 当前路由标题
 const currentRoute = computed(() => {
   return route.meta?.title as string
+})
+
+// 面包屑项目
+const breadcrumbItems = computed(() => {
+  const items = []
+  const pathSegments = route.path.split('/').filter(Boolean)
+  
+  // 始终添加控制台作为根级面包屑
+  items.push({ title: '控制台', path: '/admin' })
+  
+  // 根据路径构建面包屑
+  if (pathSegments.length > 1) {
+    const segment = pathSegments[1] // admin之后的第一段
+    
+    // 添加主页面面包屑
+    if (segment === 'gallery') {
+      items.push({ title: '图库管理', path: '/admin/gallery' })
+      
+      // 如果是子页面，添加子页面面包屑
+      if (pathSegments[2] === 'create') {
+        items.push({ title: '创建图集', path: route.path })
+      } else if (pathSegments[2] === 'edit') {
+        items.push({ title: '编辑图集', path: route.path })
+      }
+    } else if (segment === 'gallery-categories') {
+      items.push({ title: '图库分类管理', path: '/admin/gallery-categories' })
+    } else if (segment === 'articles') {
+      items.push({ title: '文章管理', path: '/admin/articles' })
+      if (pathSegments[2] === 'create') {
+        items.push({ title: '创作文章', path: route.path })
+      } else if (pathSegments[2] === 'edit') {
+        items.push({ title: '编辑文章', path: route.path })
+      }
+    } else if (segment === 'sticky-notes') {
+      items.push({ title: '留言管理', path: '/admin/sticky-notes' })
+    } else if (segment === 'interactions') {
+      items.push({ title: '交互管理', path: '/admin/interactions' })
+    } else if (segment === 'comments') {
+      items.push({ title: '评论管理', path: '/admin/comments' })
+    } else if (segment === 'users') {
+      items.push({ title: '用户管理', path: '/admin/users' })
+    } else if (segment === 'roles') {
+      items.push({ title: '角色管理', path: '/admin/roles' })
+    } else if (segment === 'permissions') {
+      items.push({ title: '权限管理', path: '/admin/permissions' })
+    } else if (segment === 'files') {
+      items.push({ title: '文件管理', path: '/admin/files' })
+    } else if (segment === 'categories') {
+      items.push({ title: '分类管理', path: '/admin/categories' })
+    } else if (segment === 'tags') {
+      items.push({ title: '标签管理', path: '/admin/tags' })
+    } else if (segment === 'diary-notes') {
+      items.push({ title: '日记管理', path: '/admin/diary-notes' })
+    } else if (segment === 'diary-signatures') {
+      items.push({ title: '日记签名管理', path: '/admin/diary-signatures' })
+    } else {
+      // 其他页面直接使用 meta.title
+      if (route.meta?.title) {
+        items.push({ title: route.meta.title as string, path: route.path })
+      }
+    }
+  }
+  
+  return items
 })
 
 // 切换侧边栏

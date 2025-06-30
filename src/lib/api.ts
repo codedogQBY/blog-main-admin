@@ -190,6 +190,60 @@ export interface FileStats {
   }>
 }
 
+// 图库相关接口
+export interface GalleryImage {
+  id: string
+  title: string
+  description?: string
+  imageUrl: string
+  category?: string
+  tags?: string[]
+  status: 'published' | 'draft'
+  createdAt: string
+  updatedAt: string
+  fileId?: string
+}
+
+// 新增：图集中的单张图片接口
+export interface GalleryImageItem {
+  title: string
+  description?: string
+  imageUrl: string
+  sort: number
+}
+
+// 新增：图集接口
+export interface Gallery {
+  id: string
+  title: string
+  description?: string
+  category?: string
+  tags: string[]
+  coverImage?: string
+  images: GalleryImageItem[]
+  status: 'published' | 'draft'
+  sort: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GalleryCategory {
+  name: string
+  description?: string
+  isEnabled: boolean
+  sort?: number
+  imageCount?: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GalleryCategoryStats {
+  totalCategories: number
+  enabledCategories: number
+  totalImages: number
+  averageImagesPerCategory: number
+}
+
 class ApiClient {
   private client = axios.create({
     baseURL: API_BASE_URL,
@@ -569,6 +623,91 @@ class ApiClient {
     const response = await this.client.get('/sticky-notes/admin/stats')
     return response.data
   }
+
+  // 图库管理
+  async getGalleryItems(params?: { 
+    page?: number; 
+    limit?: number; 
+    title?: string; 
+    category?: string; 
+    status?: string 
+  }): Promise<{ data: Gallery[]; total: number }> {
+    const response = await this.client.get('/gallery/admin/list', { params })
+    return response.data
+  }
+
+  async getGalleryItem(id: string): Promise<Gallery> {
+    const response = await this.client.get(`/gallery/admin/${id}`)
+    return response.data
+  }
+
+  async createGalleryItem(data: Partial<Gallery>): Promise<Gallery> {
+    const response = await this.client.post('/gallery/admin', data)
+    return response.data
+  }
+
+  async updateGalleryItem(id: string, data: Partial<Gallery>): Promise<Gallery> {
+    const response = await this.client.patch(`/gallery/admin/${id}`, data)
+    return response.data
+  }
+
+  async deleteGalleryItem(id: string): Promise<void> {
+    await this.client.delete(`/gallery/admin/${id}`)
+  }
+
+  async batchDeleteGalleryItems(ids: string[]): Promise<void> {
+    await this.client.post('/gallery/admin/batch', {
+      action: 'delete',
+      ids
+    })
+  }
+
+  async batchUpdateGalleryItems(ids: string[], data: Partial<Gallery>): Promise<void> {
+    await this.client.post('/gallery/admin/batch', {
+      action: 'update',
+      ids,
+      data
+    })
+  }
+
+  async createGalleryFromFile(fileId: string, data: { title: string; description?: string; category?: string; tags?: string[] }): Promise<Gallery> {
+    const response = await this.client.post('/gallery/admin/from-file', {
+      fileId,
+      ...data
+    })
+    return response.data
+  }
+
+  async getGalleryTags(): Promise<string[]> {
+    const response = await this.client.get('/gallery/stats/tags')
+    return response.data
+  }
+
+  // 图库分类管理
+  async getGalleryCategories(params?: { name?: string; isEnabled?: boolean }): Promise<GalleryCategory[]> {
+    // 暂时使用公开接口，避免认证问题
+    const response = await this.client.get('/gallery-categories', { params })
+    return response.data
+  }
+
+  async createGalleryCategory(data: Partial<GalleryCategory>): Promise<GalleryCategory> {
+    const response = await this.client.post('/gallery-categories/admin', data)
+    return response.data
+  }
+
+  async updateGalleryCategory(name: string, data: Partial<GalleryCategory>): Promise<GalleryCategory> {
+    const response = await this.client.patch(`/gallery-categories/admin/${encodeURIComponent(name)}`, data)
+    return response.data
+  }
+
+  async deleteGalleryCategory(name: string): Promise<void> {
+    await this.client.delete(`/gallery-categories/admin/${encodeURIComponent(name)}`)
+  }
+
+  async getGalleryCategoryStats(): Promise<GalleryCategoryStats> {
+    const response = await this.client.get('/gallery-categories/admin/stats')
+    return response.data
+  }
 }
 
 const apiClient = new ApiClient()
@@ -659,6 +798,26 @@ export const stickyNoteApi = {
   getCategories: apiClient.getStickyNoteCategories.bind(apiClient),
   getStats: apiClient.getStickyNoteStats.bind(apiClient),
   getAdminStats: apiClient.getStickyNoteAdminStats.bind(apiClient),
+}
+
+export const galleryApi = {
+  getList: apiClient.getGalleryItems.bind(apiClient),
+  getById: apiClient.getGalleryItem.bind(apiClient),
+  create: apiClient.createGalleryItem.bind(apiClient),
+  update: apiClient.updateGalleryItem.bind(apiClient),
+  delete: apiClient.deleteGalleryItem.bind(apiClient),
+  batchDelete: apiClient.batchDeleteGalleryItems.bind(apiClient),
+  batchUpdate: apiClient.batchUpdateGalleryItems.bind(apiClient),
+  createFromFile: apiClient.createGalleryFromFile.bind(apiClient),
+  getTags: apiClient.getGalleryTags.bind(apiClient),
+}
+
+export const galleryCategoryApi = {
+  getList: apiClient.getGalleryCategories.bind(apiClient),
+  create: apiClient.createGalleryCategory.bind(apiClient),
+  update: apiClient.updateGalleryCategory.bind(apiClient),
+  delete: apiClient.deleteGalleryCategory.bind(apiClient),
+  getStats: apiClient.getGalleryCategoryStats.bind(apiClient),
 }
 
 // 为了向后兼容，导出 api 作为命名导出

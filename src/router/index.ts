@@ -78,6 +78,30 @@ const routes = [
         meta: { title: '交互管理' }
       },
       {
+        path: 'gallery',
+        name: 'Gallery',
+        component: () => import('../views/blog/GalleryList.vue'),
+        meta: { title: '图库管理' }
+      },
+      {
+        path: 'gallery/create',
+        name: 'GalleryCreate',
+        component: () => import('../views/blog/GalleryEditor.vue'),
+        meta: { title: '创建图集' }
+      },
+      {
+        path: 'gallery/edit/:id',
+        name: 'GalleryEdit',
+        component: () => import('../views/blog/GalleryEditor.vue'),
+        meta: { title: '编辑图集' }
+      },
+      {
+        path: 'gallery-categories',
+        name: 'GalleryCategories',
+        component: () => import('../views/blog/GalleryCategoryList.vue'),
+        meta: { title: '图库分类管理' }
+      },
+      {
         path: 'sticky-notes',
         name: 'StickyNotes',
         component: () => import('../views/StickyNotes.vue'),

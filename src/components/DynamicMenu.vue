@@ -70,7 +70,8 @@ import {
   Stamp,
   Management,
   Files,
-  Comment
+  Comment,
+  Picture
 } from '@element-plus/icons-vue'
 
 interface Props {
@@ -132,11 +133,25 @@ const allMenuItems: MenuItem[] = [
         order: 3
       },
       {
+        path: '/admin/gallery',
+        title: '图库管理',
+        icon: Picture,
+        permission: 'gallery.read',
+        order: 4
+      },
+      {
+        path: '/admin/gallery-categories',
+        title: '图库分类',
+        icon: Collection,
+        permission: 'gallery.category.read',
+        order: 5
+      },
+      {
         path: '/admin/diary-notes',
         title: '随记管理',
         icon: Notebook,
         permission: 'diary.read',
-        order: 4
+        order: 6
       }
     ]
   },
