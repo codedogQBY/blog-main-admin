@@ -234,7 +234,7 @@
               </div>
               
               <div class="article-actions">
-                <el-dropdown @command="handleCommand" trigger="click">
+                <el-dropdown @command="handleCommand" trigger="hover">
                   <el-button text class="action-btn">
                     <el-icon><MoreFilled /></el-icon>
                   </el-button>
@@ -248,17 +248,11 @@
                         <el-icon><CopyDocument /></el-icon>
                         复制
                       </el-dropdown-item>
-                      <el-dropdown-item 
-                        :command="`toggle:${article.id}`"
-                        :disabled="!article.published"
-                      >
+                      <el-dropdown-item :command="`toggle:${article.id}`">
                         <el-icon><Switch /></el-icon>
                         {{ article.published ? '取消发布' : '发布' }}
                       </el-dropdown-item>
-                      <el-dropdown-item 
-                        :command="`delete:${article.id}`"
-                        class="danger-item"
-                      >
+                      <el-dropdown-item :command="`delete:${article.id}`" class="danger-item">
                         <el-icon><Delete /></el-icon>
                         删除
                       </el-dropdown-item>
@@ -354,6 +348,10 @@
                         <el-dropdown-item :command="`copy:${article.id}`">
                           <el-icon><CopyDocument /></el-icon>
                           复制
+                        </el-dropdown-item>
+                        <el-dropdown-item :command="`toggle:${article.id}`">
+                          <el-icon><Switch /></el-icon>
+                          {{ article.published ? '取消发布' : '发布' }}
                         </el-dropdown-item>
                         <el-dropdown-item :command="`delete:${article.id}`" class="danger-item">
                           <el-icon><Delete /></el-icon>

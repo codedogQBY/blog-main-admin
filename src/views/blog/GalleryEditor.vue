@@ -563,10 +563,13 @@ const handleSave = async () => {
     if (isEditing.value) {
       await galleryApi.update(galleryId.value, formData)
       ElMessage.success('图集更新成功')
+      // 编辑成功后跳转到图库管理页面
+      router.push('/admin/gallery')
     } else {
-      const result = await galleryApi.create(formData)
+      await galleryApi.create(formData)
       ElMessage.success('图集创建成功')
-      router.push(`/admin/gallery/edit/${result.id}`)
+      // 创建成功后跳转到图库管理页面
+      router.push('/admin/gallery')
     }
   } catch (error) {
     console.error('保存失败:', error)

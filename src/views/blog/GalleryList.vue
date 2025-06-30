@@ -75,7 +75,7 @@
               :src="scope.row.coverImage || (scope.row.images?.[0]?.imageUrl)"
               fit="cover"
               class="preview-image"
-              :preview-src-list="scope.row.images?.map(img => img.imageUrl) || []"
+              :preview-src-list="scope.row.images?.map((img: any) => img.imageUrl) || []"
             >
               <template #error>
                 <div class="image-slot">
@@ -258,7 +258,7 @@ const loadGalleryItems = async () => {
     }
     
     const response = await api.getGalleryItems(params)
-    galleryItems.value = response.data
+    galleryItems.value = response.items || []
     pagination.total = response.total
   } catch (error) {
     console.error('加载图集失败:', error)
@@ -271,7 +271,7 @@ const loadGalleryItems = async () => {
 const loadCategories = async () => {
   try {
     const response = await api.getGalleryCategories()
-    categories.value = response.filter(cat => cat.enabled)
+    categories.value = response.filter(cat => cat.isEnabled)
   } catch (error) {
     console.error('加载分类失败:', error)
   }

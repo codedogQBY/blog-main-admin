@@ -638,7 +638,7 @@ class ApiClient {
     title?: string; 
     category?: string; 
     status?: string 
-  }): Promise<{ data: Gallery[]; total: number }> {
+  }): Promise<{ items: Gallery[]; total: number; page: number; limit: number; hasMore: boolean }> {
     const response = await this.client.get('/gallery/admin/list', { params })
     return response.data
   }
