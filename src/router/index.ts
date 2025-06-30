@@ -78,6 +78,12 @@ const routes = [
         meta: { title: '交互管理' }
       },
       {
+        path: 'sticky-notes',
+        name: 'StickyNotes',
+        component: () => import('../views/StickyNotes.vue'),
+        meta: { title: '留言管理' }
+      },
+      {
         path: 'files',
         name: 'Files',
         component: () => import('../views/Files.vue'),

@@ -115,11 +115,18 @@ const allMenuItems = [
     order: 4
   },
   {
+    path: '/admin/sticky-notes',
+    title: '留言管理',
+    icon: EditPen,
+    permission: 'sticky-note.read',
+    order: 5
+  },
+  {
     path: '/admin/files',
     title: '文件管理',
     icon: Folder,
     permission: 'file.read',
-    order: 5
+    order: 6
   },
   {
     path: '/admin/users',

@@ -253,6 +253,10 @@ class ApiClient {
     return this.client.put<T>(url, data, config)
   }
 
+  async patch<T = any>(url: string, data?: any, config?: any): Promise<AxiosResponse<T>> {
+    return this.client.patch<T>(url, data, config)
+  }
+
   async delete<T = any>(url: string, config?: any): Promise<AxiosResponse<T>> {
     return this.client.delete<T>(url, config)
   }
@@ -520,6 +524,51 @@ class ApiClient {
     const response = await this.client.get<FileStats>('/files/stats')
     return response.data
   }
+
+  // 留言管理
+  async getStickyNotes(params?: { page?: number; limit?: number; category?: string; search?: string }): Promise<any> {
+    const response = await this.client.get('/sticky-notes', { params })
+    return response.data
+  }
+
+  async getStickyNotesForAdmin(params?: { page?: number; limit?: number; category?: string; search?: string }): Promise<any> {
+    const response = await this.client.get('/sticky-notes/admin/list', { params })
+    return response.data
+  }
+
+  async getStickyNote(id: string): Promise<any> {
+    const response = await this.client.get(`/sticky-notes/${id}`)
+    return response.data
+  }
+
+  async createStickyNote(data: any): Promise<any> {
+    const response = await this.client.post('/sticky-notes', data)
+    return response.data
+  }
+
+  async updateStickyNote(id: string, data: any): Promise<any> {
+    const response = await this.client.patch(`/sticky-notes/${id}`, data)
+    return response.data
+  }
+
+  async deleteStickyNote(id: string): Promise<void> {
+    await this.client.delete(`/sticky-notes/${id}`)
+  }
+
+  async getStickyNoteCategories(): Promise<any> {
+    const response = await this.client.get('/sticky-notes/categories')
+    return response.data
+  }
+
+  async getStickyNoteStats(): Promise<any> {
+    const response = await this.client.get('/sticky-notes/stats')
+    return response.data
+  }
+
+  async getStickyNoteAdminStats(): Promise<any> {
+    const response = await this.client.get('/sticky-notes/admin/stats')
+    return response.data
+  }
 }
 
 const apiClient = new ApiClient()
@@ -599,5 +648,20 @@ export const fileApi = {
 
 // 为了向后兼容，也导出 filesApi
 export const filesApi = fileApi
+
+export const stickyNoteApi = {
+  getList: apiClient.getStickyNotes.bind(apiClient),
+  getAdminList: apiClient.getStickyNotesForAdmin.bind(apiClient),
+  getById: apiClient.getStickyNote.bind(apiClient),
+  create: apiClient.createStickyNote.bind(apiClient),
+  update: apiClient.updateStickyNote.bind(apiClient),
+  delete: apiClient.deleteStickyNote.bind(apiClient),
+  getCategories: apiClient.getStickyNoteCategories.bind(apiClient),
+  getStats: apiClient.getStickyNoteStats.bind(apiClient),
+  getAdminStats: apiClient.getStickyNoteAdminStats.bind(apiClient),
+}
+
+// 为了向后兼容，导出 api 作为命名导出
+export const api = apiClient
 
 export default apiClient 
