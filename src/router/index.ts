@@ -84,6 +84,18 @@ const routes = [
         meta: { title: '留言管理' }
       },
       {
+        path: 'diary-notes',
+        name: 'DiaryNotes',
+        component: () => import('../views/DiaryNotes.vue'),
+        meta: { title: '随记管理' }
+      },
+      {
+        path: 'diary-signatures',
+        name: 'DiarySignatures',
+        component: () => import('../views/DiarySignatures.vue'),
+        meta: { title: '签名管理' }
+      },
+      {
         path: 'files',
         name: 'Files',
         component: () => import('../views/Files.vue'),

@@ -7,7 +7,7 @@
     :unique-opened="true"
     router
   >
-    <template v-for="menu in accessibleMenus" :key="menu.path">
+    <div v-for="menu in accessibleMenus" :key="menu.path">
       <el-menu-item 
         v-if="!menu.children || menu.children.length === 0"
         :index="menu.path"
@@ -39,7 +39,7 @@
           <span class="menu-title">{{ child.title }}</span>
         </el-menu-item>
       </el-sub-menu>
-    </template>
+    </div>
     
     <!-- 没有权限的提示 -->
     <div v-if="accessibleMenus.length === 0" class="no-permission">
@@ -65,11 +65,22 @@ import {
   PriceTag,
   HomeFilled,
   Folder,
-  ChatDotRound
+  ChatDotRound,
+  Notebook,
+  Stamp
 } from '@element-plus/icons-vue'
 
 interface Props {
   isCollapse?: boolean
+}
+
+interface MenuItem {
+  path: string
+  title: string
+  icon: any
+  permission: string
+  order: number
+  children?: MenuItem[]
 }
 
 defineProps<Props>()
@@ -78,7 +89,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 // 定义所有可能的菜单项
-const allMenuItems = [
+const allMenuItems: MenuItem[] = [
   {
     path: '/admin',
     title: '控制台',
@@ -122,32 +133,46 @@ const allMenuItems = [
     order: 5
   },
   {
+    path: '/admin/diary-notes',
+    title: '随记管理',
+    icon: Notebook,
+    permission: 'diary.read',
+    order: 6
+  },
+  {
+    path: '/admin/diary-signatures',
+    title: '签名管理',
+    icon: Stamp,
+    permission: 'diary.signature.read',
+    order: 7
+  },
+  {
     path: '/admin/files',
     title: '文件管理',
     icon: Folder,
     permission: 'file.read',
-    order: 6
+    order: 8
   },
   {
     path: '/admin/users',
     title: '用户管理',
     icon: UserFilled,
     permission: 'user.read',
-    order: 6
+    order: 9
   },
   {
     path: '/admin/roles',
     title: '角色管理', 
     icon: User,
     permission: 'role.read',
-    order: 7
+    order: 10
   },
   {
     path: '/admin/permissions',
     title: '权限管理',
     icon: Key,
     permission: 'permission.read',
-    order: 8
+    order: 11
   }
 ]
 
