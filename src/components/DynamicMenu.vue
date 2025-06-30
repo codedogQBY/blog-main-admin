@@ -67,7 +67,10 @@ import {
   Folder,
   ChatDotRound,
   Notebook,
-  Stamp
+  Stamp,
+  Management,
+  Files,
+  Comment
 } from '@element-plus/icons-vue'
 
 interface Props {
@@ -88,91 +91,138 @@ defineProps<Props>()
 const route = useRoute()
 const authStore = useAuthStore()
 
-// 定义所有可能的菜单项
+// 定义所有可能的菜单项（重新组织后的结构）
 const allMenuItems: MenuItem[] = [
+  // 1. 控制台
   {
     path: '/admin',
     title: '控制台',
     icon: HomeFilled,
     permission: '',
-    order: 0
-  },
-  {
-    path: '/admin/articles',
-    title: '文章管理',
-    icon: Document,
-    permission: 'article.read',
     order: 1
   },
+  
+  // 2. 内容管理
   {
-    path: '/admin/categories',
-    title: '分类管理',
-    icon: Collection,
-    permission: 'category.read',
-    order: 2
+    path: '/admin/content',
+    title: '内容管理',
+    icon: Document,
+    permission: '',
+    order: 2,
+    children: [
+      {
+        path: '/admin/articles',
+        title: '文章管理',
+        icon: Document,
+        permission: 'article.read',
+        order: 1
+      },
+      {
+        path: '/admin/categories',
+        title: '分类管理',
+        icon: Collection,
+        permission: 'category.read',
+        order: 2
+      },
+      {
+        path: '/admin/tags',
+        title: '标签管理',
+        icon: PriceTag,
+        permission: 'tag.read',
+        order: 3
+      },
+      {
+        path: '/admin/diary-notes',
+        title: '随记管理',
+        icon: Notebook,
+        permission: 'diary.read',
+        order: 4
+      }
+    ]
   },
+  
+  // 3. 互动管理
   {
-    path: '/admin/tags',
-    title: '标签管理',
-    icon: PriceTag,
-    permission: 'tag.read',
-    order: 3
+    path: '/admin/interaction',
+    title: '互动管理',
+    icon: Comment,
+    permission: '',
+    order: 3,
+    children: [
+      {
+        path: '/admin/interactions',
+        title: '评论管理',
+        icon: ChatDotRound,
+        permission: 'interaction.read',
+        order: 1
+      },
+      {
+        path: '/admin/sticky-notes',
+        title: '留言管理',
+        icon: EditPen,
+        permission: 'sticky-note.read',
+        order: 2
+      }
+    ]
   },
+  
+  // 4. 个性化设置
   {
-    path: '/admin/interactions',
-    title: '交互管理',
-    icon: ChatDotRound,
-    permission: 'interaction.read',
-    order: 4
+    path: '/admin/customization',
+    title: '个性化',
+    icon: Setting,
+    permission: '',
+    order: 4,
+    children: [
+      {
+        path: '/admin/diary-signatures',
+        title: '签名管理',
+        icon: Stamp,
+        permission: 'diary.signature.read',
+        order: 1
+      }
+    ]
   },
-  {
-    path: '/admin/sticky-notes',
-    title: '留言管理',
-    icon: EditPen,
-    permission: 'sticky-note.read',
-    order: 5
-  },
-  {
-    path: '/admin/diary-notes',
-    title: '随记管理',
-    icon: Notebook,
-    permission: 'diary.read',
-    order: 6
-  },
-  {
-    path: '/admin/diary-signatures',
-    title: '签名管理',
-    icon: Stamp,
-    permission: 'diary.signature.read',
-    order: 7
-  },
+  
+  // 5. 文件管理
   {
     path: '/admin/files',
     title: '文件管理',
     icon: Folder,
     permission: 'file.read',
-    order: 8
+    order: 5
   },
+  
+  // 6. 系统管理
   {
-    path: '/admin/users',
-    title: '用户管理',
-    icon: UserFilled,
-    permission: 'user.read',
-    order: 9
-  },
-  {
-    path: '/admin/roles',
-    title: '角色管理', 
-    icon: User,
-    permission: 'role.read',
-    order: 10
-  },
-  {
-    path: '/admin/permissions',
-    title: '权限管理',
-    icon: Key,
-    permission: 'permission.read',
-    order: 11
+    path: '/admin/system',
+    title: '系统管理',
+    icon: Management,
+    permission: '',
+    order: 6,
+    children: [
+      {
+        path: '/admin/users',
+        title: '用户管理',
+        icon: UserFilled,
+        permission: 'user.read',
+        order: 1
+      },
+      {
+        path: '/admin/roles',
+        title: '角色管理', 
+        icon: User,
+        permission: 'role.read',
+        order: 2
+      },
+      {
+        path: '/admin/permissions',
+        title: '权限管理',
+        icon: Key,
+        permission: 'permission.read',
+        order: 3
+      }
+    ]
   }
 ]
 
@@ -198,18 +248,21 @@ const accessibleMenus = computed(() => {
         )
       }
       
-      return true // 暂时允许所有菜单访问
+      return true // 对于没有权限要求的菜单（如控制台），默认显示
     })
     .map(menu => {
       // 过滤子菜单
       if (menu.children && menu.children.length > 0) {
         const accessibleChildren = menu.children.filter(child =>
           isSuperAdmin || !child.permission || userPermissions.includes(child.permission)
-        )
-        return { ...menu, children: accessibleChildren }
+        ).sort((a, b) => (a.order || 999) - (b.order || 999))
+        
+        // 如果没有可访问的子菜单，则不显示父菜单
+        return accessibleChildren.length > 0 ? { ...menu, children: accessibleChildren } : null
       }
       return menu
     })
+    .filter(menu => menu !== null) // 移除为null的菜单项
     .sort((a, b) => (a.order || 999) - (b.order || 999))
 })
 
@@ -311,6 +364,22 @@ const activeMenu = computed(() => {
   // 子菜单项容器
   :deep(.el-menu) {
     background: transparent;
+  }
+
+  // 子菜单项特殊样式
+  .sub-menu-item {
+    margin: 2px 16px;
+    padding-left: 24px;
+    border-radius: 6px;
+    font-size: 13px;
+    
+    .menu-icon {
+      font-size: 16px;
+    }
+    
+    &:hover {
+      transform: translateX(2px);
+    }
   }
 
   // 折叠状态
