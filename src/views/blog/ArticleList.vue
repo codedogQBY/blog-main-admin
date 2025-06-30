@@ -220,11 +220,15 @@
                 <div class="article-stats">
                   <div class="stat-item">
                     <el-icon><View /></el-icon>
-                    <span>{{ article.viewCount || 0 }}</span>
+                    <span>{{ article.views || 0 }}</span>
                   </div>
                   <div class="stat-item">
                     <el-icon><ChatLineSquare /></el-icon>
-                    <span>{{ article.commentCount || 0 }}</span>
+                    <span>{{ article._count?.comments || 0 }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <el-icon><Star /></el-icon>
+                    <span>{{ article._count?.likes || 0 }}</span>
                   </div>
                 </div>
               </div>
@@ -325,11 +329,15 @@
                   <div class="card-stats">
                     <div class="stat-item">
                       <el-icon><View /></el-icon>
-                      <span>{{ article.viewCount || 0 }}</span>
+                      <span>{{ article.views || 0 }}</span>
                     </div>
                     <div class="stat-item">
                       <el-icon><ChatLineSquare /></el-icon>
-                      <span>{{ article.commentCount || 0 }}</span>
+                      <span>{{ article._count?.comments || 0 }}</span>
+                    </div>
+                    <div class="stat-item">
+                      <el-icon><Star /></el-icon>
+                      <span>{{ article._count?.likes || 0 }}</span>
                     </div>
                   </div>
                   
@@ -420,7 +428,8 @@ import {
   Edit,
   CopyDocument,
   Switch,
-  Delete
+  Delete,
+  Star
 } from '@element-plus/icons-vue'
 import { articleApi, categoryApi } from '@/lib/api'
 
@@ -516,7 +525,7 @@ const loadStats = async () => {
       total: articles.value.length,
       published: articles.value.filter(a => a.published).length,
       draft: articles.value.filter(a => !a.published).length,
-      totalViews: articles.value.reduce((sum, a) => sum + (a.viewCount || 0), 0)
+      totalViews: articles.value.reduce((sum, a) => sum + (a.views || 0), 0)
     }
   } catch (error) {
     console.error('加载统计数据失败:', error)

@@ -92,8 +92,15 @@ export interface Article {
   }
   tags: Array<{
     id: string
-    name: string
+    tag: {
+      id: string
+      name: string
+    }
   }>
+  _count?: {
+    comments: number
+    likes: number
+  }
   seoKeywords?: string
   seoDescription?: string
 }
