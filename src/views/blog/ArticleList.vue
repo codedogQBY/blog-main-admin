@@ -204,7 +204,7 @@
                     size="small"
                     class="tag-item"
                   >
-                    {{ tag.name }}
+                    {{ tag.tag.name }}
                   </el-tag>
                 </div>
               </div>

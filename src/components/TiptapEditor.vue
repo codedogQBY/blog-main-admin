@@ -7,7 +7,7 @@
           @click="editor.chain().focus().toggleBold().run()"
           :class="{ 'is-active': editor.isActive('bold') }"
           class="toolbar-button"
-          title="粗体"
+          title="粗体 (Ctrl+B)"
         >
           <el-icon><Bold /></el-icon>
         </button>
@@ -15,7 +15,7 @@
           @click="editor.chain().focus().toggleItalic().run()"
           :class="{ 'is-active': editor.isActive('italic') }"
           class="toolbar-button"
-          title="斜体"
+          title="斜体 (Ctrl+I)"
         >
           <el-icon><Italic /></el-icon>
         </button>
@@ -26,6 +26,14 @@
           title="删除线"
         >
           <el-icon><Strikethrough /></el-icon>
+        </button>
+        <button
+          @click="editor.chain().focus().toggleCode().run()"
+          :class="{ 'is-active': editor.isActive('code') }"
+          class="toolbar-button"
+          title="行内代码"
+        >
+          <span style="font-family: monospace; font-weight: bold;">`</span>
         </button>
       </div>
 
@@ -98,6 +106,32 @@
         >
           <el-icon><Code /></el-icon>
         </button>
+        <button
+          @click="editor.chain().focus().setHorizontalRule().run()"
+          class="toolbar-button"
+          title="水平分割线"
+        >
+          <span style="font-weight: bold;">---</span>
+        </button>
+        <el-select
+          v-if="editor.isActive('codeBlock')"
+          :model-value="getCurrentLanguage()"
+          @change="setCodeBlockLanguage"
+          size="small"
+          class="language-select"
+          placeholder="语言"
+        >
+          <el-option label="JavaScript" value="javascript" />
+          <el-option label="TypeScript" value="typescript" />
+          <el-option label="Python" value="python" />
+          <el-option label="Java" value="java" />
+          <el-option label="CSS" value="css" />
+          <el-option label="HTML" value="html" />
+          <el-option label="JSON" value="json" />
+          <el-option label="SQL" value="sql" />
+          <el-option label="Bash" value="bash" />
+          <el-option label="Plain Text" value="text" />
+        </el-select>
         <button
           @click="addImage"
           class="toolbar-button"
@@ -229,6 +263,16 @@ import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { createLowlight } from 'lowlight'
+// 导入常用语言支持
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import python from 'highlight.js/lib/languages/python'
+import java from 'highlight.js/lib/languages/java'
+import css from 'highlight.js/lib/languages/css'
+import html from 'highlight.js/lib/languages/xml'
+import json from 'highlight.js/lib/languages/json'
+import sql from 'highlight.js/lib/languages/sql'
+import bash from 'highlight.js/lib/languages/bash'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   List,
@@ -248,7 +292,7 @@ import {
   Refresh,
   Picture
 } from '@element-plus/icons-vue'
-import { fileApi } from '@/lib/api'
+import { fileApi } from '../lib/api'
 
 interface Props {
   modelValue?: string
@@ -276,11 +320,47 @@ const previewHtml = ref('')
 // 创建 lowlight 实例
 const lowlight = createLowlight()
 
+// 注册语言支持
+lowlight.register('javascript', javascript)
+lowlight.register('typescript', typescript)
+lowlight.register('python', python)
+lowlight.register('java', java)
+lowlight.register('css', css)
+lowlight.register('html', html)
+lowlight.register('json', json)
+lowlight.register('sql', sql)
+lowlight.register('bash', bash)
+
 const editor = useEditor({
   content: props.modelValue,
   editable: !props.readonly,
   extensions: [
-    StarterKit,
+    StarterKit.configure({
+      // 启用 Markdown 快捷键
+      heading: {
+        levels: [1, 2, 3, 4, 5, 6],
+      },
+      // 支持 Markdown 语法
+      blockquote: {},
+      bulletList: {
+        keepMarks: true,
+        keepAttributes: false,
+      },
+      orderedList: {
+        keepMarks: true,
+        keepAttributes: false,
+      },
+      listItem: {},
+      codeBlock: {
+        languageClassPrefix: 'language-',
+      },
+      code: {
+        HTMLAttributes: {
+          class: 'inline-code',
+        },
+      },
+      horizontalRule: {},
+    }),
     TiptapImage.configure({
       inline: true,
       allowBase64: true,
@@ -297,6 +377,7 @@ const editor = useEditor({
     CharacterCount,
     CodeBlockLowlight.configure({
       lowlight,
+      defaultLanguage: 'javascript',
     }),
   ],
   onUpdate: ({ editor }) => {
@@ -304,6 +385,43 @@ const editor = useEditor({
     emit('update:modelValue', html)
     emit('change', html)
     updatePreview(html)
+  },
+  // 添加键盘快捷键支持
+  editorProps: {
+    handleKeyDown: (view, event) => {
+      // 支持 Markdown 语法快捷输入
+      if (event.key === ' ') {
+        const { state } = view
+        const { selection } = state
+        const { $from } = selection
+        const textBefore = $from.parent.textContent.slice(0, $from.parentOffset)
+        
+        // 检查 Markdown 语法
+        if (textBefore === '#') {
+          editor.value?.chain().focus().toggleHeading({ level: 1 }).run()
+          return true
+        } else if (textBefore === '##') {
+          editor.value?.chain().focus().toggleHeading({ level: 2 }).run()
+          return true
+        } else if (textBefore === '###') {
+          editor.value?.chain().focus().toggleHeading({ level: 3 }).run()
+          return true
+        } else if (textBefore === '>') {
+          editor.value?.chain().focus().toggleBlockquote().run()
+          return true
+        } else if (textBefore === '-' || textBefore === '*') {
+          editor.value?.chain().focus().toggleBulletList().run()
+          return true
+        } else if (/^\d+\./.test(textBefore)) {
+          editor.value?.chain().focus().toggleOrderedList().run()
+          return true
+        } else if (textBefore === '```') {
+          editor.value?.chain().focus().toggleCodeBlock().run()
+          return true
+        }
+      }
+      return false
+    },
   },
 })
 
@@ -407,6 +525,21 @@ const closeImagePicker = () => {
   searchKeyword.value = ''
   imageList.value = []
   loadingImages.value = false
+}
+
+// 获取当前代码块的语言
+const getCurrentLanguage = () => {
+  if (editor.value && editor.value.isActive('codeBlock')) {
+    return editor.value.getAttributes('codeBlock').language || 'javascript'
+  }
+  return 'javascript'
+}
+
+// 设置代码块语言
+const setCodeBlockLanguage = (language: string) => {
+  if (editor.value && editor.value.isActive('codeBlock')) {
+    editor.value.chain().focus().updateAttributes('codeBlock', { language }).run()
+  }
 }
 
 const addImage = () => {
@@ -564,6 +697,10 @@ onBeforeUnmount(() => {
   background: #fafafa;
   flex-wrap: wrap;
   gap: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .toolbar-group {
@@ -622,8 +759,45 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
+.language-select {
+  width: 120px;
+  margin-left: 8px;
+}
+
+.language-select :deep(.el-input__wrapper) {
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid #dcdfe6;
+}
+
+.language-select :deep(.el-input__inner) {
+  font-size: 12px;
+}
+
 .editor-content {
   min-height: 300px;
+  max-height: 600px;
+  overflow-y: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 0 0 6px 6px;
+}
+
+.editor-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.editor-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.editor-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.editor-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .editor-preview {
@@ -634,6 +808,83 @@ onBeforeUnmount(() => {
 .preview-content {
   padding: 16px;
   min-height: 200px;
+}
+
+/* 编辑器内容样式 */
+.editor-content :deep(.ProseMirror) {
+  padding: 16px;
+  outline: none;
+  min-height: 300px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.editor-content :deep(.ProseMirror pre) {
+  background: #f6f8fa;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+  overflow-x: auto;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.editor-content :deep(.ProseMirror pre code) {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+.editor-content :deep(.ProseMirror blockquote) {
+  border-left: 4px solid #dfe2e5;
+  padding-left: 16px;
+  margin: 16px 0;
+  color: #6a737d;
+}
+
+.editor-content :deep(.ProseMirror h1),
+.editor-content :deep(.ProseMirror h2),
+.editor-content :deep(.ProseMirror h3) {
+  margin: 24px 0 16px 0;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.editor-content :deep(.ProseMirror h1) {
+  font-size: 32px;
+  border-bottom: 1px solid #eaecef;
+  padding-bottom: 8px;
+}
+
+.editor-content :deep(.ProseMirror h2) {
+  font-size: 24px;
+  border-bottom: 1px solid #eaecef;
+  padding-bottom: 8px;
+}
+
+.editor-content :deep(.ProseMirror h3) {
+  font-size: 20px;
+}
+
+.editor-content :deep(.ProseMirror img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin: 8px 0;
+}
+
+.editor-content :deep(.ProseMirror .editor-link) {
+  color: #0366d6;
+  text-decoration: none;
+}
+
+.editor-content :deep(.ProseMirror .editor-link:hover) {
+  text-decoration: underline;
 }
 
 /* 图片选择器样式 */
@@ -802,70 +1053,55 @@ onBeforeUnmount(() => {
 
       img {
         width: 100%;
-        height: 150px;
+        height: 120px;
         object-fit: cover;
         display: block;
-        transition: transform 0.3s ease;
       }
 
       .image-overlay {
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        top: 8px;
+        right: 8px;
         opacity: 0;
         transition: opacity 0.3s ease;
         z-index: 2;
-        
+
         .check-icon {
-          width: 40px;
-          height: 40px;
+          width: 24px;
+          height: 24px;
           background: #667eea;
+          color: white;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: white;
-          font-size: 20px;
+          font-size: 14px;
+          font-weight: bold;
           opacity: 0;
-          transform: scale(0.5);
-          transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+          transform: scale(0.8);
+          transition: all 0.3s ease;
         }
       }
 
       .image-info {
-        padding: 16px;
+        padding: 12px;
         background: white;
+        z-index: 2;
         position: relative;
-        z-index: 3;
-        
+
         .image-name {
           font-size: 14px;
-          color: #1e293b;
-          font-weight: 600;
-          margin-bottom: 6px;
-          white-space: nowrap;
+          font-weight: 500;
+          color: #1f2937;
+          margin-bottom: 4px;
           overflow: hidden;
           text-overflow: ellipsis;
-          line-height: 1.4;
+          white-space: nowrap;
         }
 
         .image-size {
           font-size: 12px;
-          color: #64748b;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          
-          &::before {
-            content: '📁';
-            font-size: 10px;
-          }
+          color: #6b7280;
         }
       }
     }
@@ -876,74 +1112,73 @@ onBeforeUnmount(() => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 24px;
-    color: #64748b;
-    background: #f8fafc;
+    padding: 60px 20px;
+    color: #6b7280;
 
     .empty-icon {
-      font-size: 64px;
+      font-size: 48px;
       margin-bottom: 16px;
-      opacity: 0.5;
-      color: #94a3b8;
+      color: #d1d5db;
     }
 
     p {
       margin: 0;
       font-size: 16px;
-      font-weight: 500;
     }
   }
+}
+
+:deep(.el-dialog__footer) {
+  padding: 20px 24px;
+  background: white;
+  border-top: 1px solid #e2e8f0;
 
   .dialog-footer {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    padding: 20px 24px;
-    background: white;
-    border-top: 1px solid #e2e8f0;
-    
+
     .el-button {
       border-radius: 8px;
-      padding: 10px 24px;
-      font-weight: 600;
-      
-      &.el-button--primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        
-        &:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
-        }
-      }
-      
-      &.el-button--default {
-        border: 1px solid #d1d5db;
-        color: #6b7280;
-        
-        &:hover {
-          border-color: #667eea;
-          color: #667eea;
-        }
-      }
+      padding: 8px 16px;
+      font-weight: 500;
     }
   }
 }
-</style>
 
-<style>
-/* ProseMirror 编辑器样式 */
-.ProseMirror {
-  padding: 16px;
-  outline: none;
-  min-height: 300px;
-  line-height: 1.6;
-  font-size: 14px;
-  color: #333;
+.editor-content :deep(.ProseMirror .inline-code) {
+  background: #f6f8fa;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.9em;
+  color: #e83e8c;
+  border: 1px solid #e1e4e8;
 }
 
-.ProseMirror p.is-editor-empty:first-child::before {
+.editor-content :deep(.ProseMirror hr) {
+  border: none;
+  border-top: 2px solid #e1e4e8;
+  margin: 24px 0;
+}
+
+.editor-content :deep(.ProseMirror ul),
+.editor-content :deep(.ProseMirror ol) {
+  padding-left: 24px;
+  margin: 16px 0;
+}
+
+.editor-content :deep(.ProseMirror li) {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.editor-content :deep(.ProseMirror p) {
+  margin: 12px 0;
+  line-height: 1.6;
+}
+
+.editor-content :deep(.ProseMirror p.is-editor-empty:first-child::before) {
   content: attr(data-placeholder);
   float: left;
   color: #adb5bd;
@@ -951,130 +1186,12 @@ onBeforeUnmount(() => {
   height: 0;
 }
 
-.ProseMirror h1,
-.ProseMirror h2,
-.ProseMirror h3,
-.ProseMirror h4,
-.ProseMirror h5,
-.ProseMirror h6 {
-  margin: 1.5em 0 0.5em;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.ProseMirror h1 {
-  font-size: 2em;
-  border-bottom: 2px solid #eee;
-  padding-bottom: 0.3em;
-}
-
-.ProseMirror h2 {
-  font-size: 1.5em;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 0.3em;
-}
-
-.ProseMirror h3 {
-  font-size: 1.25em;
-}
-
-.ProseMirror code {
-  background: #f6f8fa;
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
-  font-size: 0.9em;
-  color: #e83e8c;
-}
-
-.ProseMirror pre {
-  background: #f6f8fa;
-  border-radius: 6px;
-  padding: 12px 16px;
-  overflow-x: auto;
-  margin: 1em 0;
-}
-
-.ProseMirror pre code {
-  background: none;
-  padding: 0;
-  color: #333;
-}
-
-.ProseMirror blockquote {
-  border-left: 4px solid #dfe2e5;
-  margin: 1em 0;
-  padding-left: 16px;
-  color: #6a737d;
-}
-
-.ProseMirror ul,
-.ProseMirror ol {
-  padding-left: 1.5em;
-  margin: 1em 0;
-}
-
-.ProseMirror li {
-  margin: 0.5em 0;
-}
-
-.ProseMirror img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 4px;
-  margin: 1em 0;
-}
-
-.ProseMirror .editor-link {
-  color: #409eff;
+.editor-content :deep(.ProseMirror .editor-link) {
+  color: #0366d6;
   text-decoration: none;
 }
 
-.ProseMirror .editor-link:hover {
+.editor-content :deep(.ProseMirror .editor-link:hover) {
   text-decoration: underline;
-}
-
-/* 高亮语法 */
-.ProseMirror .hljs {
-  color: #333;
-}
-
-.ProseMirror .hljs-keyword,
-.ProseMirror .hljs-selector-tag,
-.ProseMirror .hljs-title,
-.ProseMirror .hljs-section,
-.ProseMirror .hljs-doctag,
-.ProseMirror .hljs-name,
-.ProseMirror .hljs-strong {
-  font-weight: bold;
-}
-
-.ProseMirror .hljs-comment {
-  color: #998;
-  font-style: italic;
-}
-
-.ProseMirror .hljs-string,
-.ProseMirror .hljs-title,
-.ProseMirror .hljs-section,
-.ProseMirror .hljs-built_in,
-.ProseMirror .hljs-literal,
-.ProseMirror .hljs-type,
-.ProseMirror .hljs-addition,
-.ProseMirror .hljs-tag,
-.ProseMirror .hljs-quote,
-.ProseMirror .hljs-name,
-.ProseMirror .hljs-selector-id,
-.ProseMirror .hljs-selector-class {
-  color: #d14;
-}
-
-.ProseMirror .hljs-number,
-.ProseMirror .hljs-symbol,
-.ProseMirror .hljs-bullet,
-.ProseMirror .hljs-link,
-.ProseMirror .hljs-meta,
-.ProseMirror .hljs-selector-attr,
-.ProseMirror .hljs-selector-pseudo {
-  color: #008080;
 }
 </style> 

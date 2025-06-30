@@ -468,7 +468,7 @@ const loadArticle = async () => {
       excerpt: article.excerpt,
       coverImage: article.coverImage,
       categoryId: article.categoryId,
-      tags: article.tags?.map(t => t.name) || [],
+      tags: article.tags?.map(t => t.tag.name) || [],
       seoKeywords: article.seoKeywords || '',
       seoDescription: article.seoDescription || '',
       published: article.published
