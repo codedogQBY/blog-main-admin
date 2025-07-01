@@ -71,7 +71,8 @@ import {
   Management,
   Files,
   Comment,
-  Picture
+  Picture,
+  FolderOpened
 } from '@element-plus/icons-vue'
 
 interface Props {
@@ -243,6 +244,13 @@ const allMenuItems: MenuItem[] = [
         icon: Key,
         permission: 'permission.read',
         order: 3
+      },
+      {
+        path: '/admin/permission-groups',
+        title: '权限组管理',
+        icon: FolderOpened,
+        permission: 'permission.group.read',
+        order: 4
       }
     ]
   }

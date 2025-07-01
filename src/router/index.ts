@@ -1,6 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../lib/store'
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    title?: string;
+    icon?: string;
+    permissions?: string[];
+  }
+}
+
 const routes = [
   {
     path: '/',
@@ -21,7 +29,11 @@ const routes = [
         path: '',
         name: 'DashboardHome',
         component: () => import('../views/DashboardHome.vue'),
-        meta: { title: '控制台' }
+        meta: {
+          title: '仪表盘',
+          icon: 'House',
+          permissions: ['dashboard.read']
+        }
       },
       {
         path: 'users',
@@ -39,7 +51,21 @@ const routes = [
         path: 'permissions',
         name: 'Permissions',
         component: () => import('../views/Permissions.vue'),
-        meta: { title: '权限管理' }
+        meta: {
+          title: '权限管理',
+          icon: 'Lock',
+          permissions: ['permission.read']
+        }
+      },
+      {
+        path: 'permission-groups',
+        name: 'PermissionGroups',
+        component: () => import('../views/PermissionGroups.vue'),
+        meta: {
+          title: '权限组管理',
+          icon: 'FolderOpened',
+          permissions: ['permission.group.read']
+        }
       },
       {
         path: 'articles',

@@ -63,9 +63,9 @@
               >
                 <el-option
                   v-for="group in permissionGroups"
-                  :key="group"
-                  :label="group"
-                  :value="group"
+                  :key="group.id"
+                  :label="group.name"
+                  :value="group.id"
                 />
               </el-select>
             </div>
@@ -154,7 +154,7 @@
                 <h3 class="permission-name">{{ permission.name }}</h3>
                 <div class="permission-badges">
                   <el-tag type="primary" size="small">
-                    {{ permission.group || '未分组' }}
+                    {{ permission.groupName || '未分组' }}
                   </el-tag>
                   <el-tag type="info" size="small" class="code-tag">
                     {{ permission.code }}
@@ -258,18 +258,16 @@
         
         <el-form-item label="权限分组">
           <el-select
-            v-model="permissionForm.group"
-            placeholder="选择或输入权限分组"
-            filterable
-            allow-create
-            default-first-option
+            v-model="permissionForm.groupId"
+            placeholder="选择权限组"
+            clearable
             class="group-select"
           >
             <el-option
               v-for="group in permissionGroups"
-              :key="group"
-              :label="group"
-              :value="group"
+              :key="group.id"
+              :label="group.name"
+              :value="group.id"
             />
           </el-select>
         </el-form-item>
@@ -280,6 +278,55 @@
           <el-button @click="dialogVisible = false">取消</el-button>
           <el-button type="primary" :loading="submitting" @click="submitForm">
             {{ isEdit ? '更新' : '创建' }}
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 权限组管理对话框 -->
+    <el-dialog
+      v-model="groupDialogVisible"
+      :title="isEditGroup ? '编辑权限组' : '新增权限组'"
+      width="600px"
+      @close="resetGroupForm"
+      class="permission-dialog"
+    >
+      <el-form
+        ref="groupFormRef"
+        :model="groupForm"
+        :rules="groupRules"
+        label-width="100px"
+        class="permission-form"
+      >
+        <div class="form-row">
+          <el-form-item label="组名称" prop="name">
+            <el-input v-model="groupForm.name" placeholder="请输入权限组名称" />
+          </el-form-item>
+          
+          <el-form-item label="组代码" prop="code">
+            <el-input v-model="groupForm.code" placeholder="请输入权限组代码" />
+          </el-form-item>
+        </div>
+        
+        <el-form-item label="组描述" prop="description">
+          <el-input
+            v-model="groupForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入权限组描述"
+          />
+        </el-form-item>
+        
+        <el-form-item label="排序" prop="sort">
+          <el-input-number v-model="groupForm.sort" :min="0" :max="999" />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="groupDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="submitting" @click="submitGroupForm">
+            {{ isEditGroup ? '更新' : '创建' }}
           </el-button>
         </div>
       </template>
@@ -303,16 +350,16 @@ import {
   Edit, 
   Delete 
 } from '@element-plus/icons-vue'
-import { permissionApi } from '../lib/api'
+import { permissionApi, permissionGroupApi } from '../lib/api'
 import PermissionCheck from '../components/PermissionCheck.vue'
-import type { Permission } from '../lib/api'
+import type { Permission, PermissionGroup } from '../lib/api'
 
 // 数据状态
 const loading = ref(false)
 const submitting = ref(false)
 const syncing = ref(false)
 const permissions = ref<Permission[]>([])
-const allPermissions = ref<Permission[]>([])
+const permissionGroups = ref<PermissionGroup[]>([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -320,12 +367,17 @@ const searchText = ref('')
 const groupFilter = ref('')
 
 // 搜索防抖
-let searchTimeout: NodeJS.Timeout | null = null
+let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 // 对话框状态
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const permissionFormRef = ref<FormInstance>()
+
+// 权限组对话框状态
+const groupDialogVisible = ref(false)
+const isEditGroup = ref(false)
+const groupFormRef = ref<FormInstance>()
 
 // 表单数据
 const permissionForm = reactive({
@@ -333,30 +385,17 @@ const permissionForm = reactive({
   name: '',
   code: '',
   description: '',
-  group: ''
+  groupId: ''
 })
 
-// 权限分组
-const permissionGroups = computed(() => {
-  const groups = new Set<string>()
-  allPermissions.value.forEach(permission => {
-    if (permission.group) {
-      groups.add(permission.group)
-    }
-  })
-  return Array.from(groups).sort()
+// 权限组表单数据
+const groupForm = reactive({
+  id: '',
+  name: '',
+  code: '',
+  description: '',
+  sort: 0
 })
-
-// 统计数据
-const stats = computed(() => ({
-  total: total.value,
-  groups: permissionGroups.value.length,
-  assigned: allPermissions.value.filter(p => p.roleCount && p.roleCount > 0).length,
-  newToday: allPermissions.value.filter(p => {
-    const today = new Date().toDateString()
-    return new Date(p.createdAt).toDateString() === today
-  }).length
-}))
 
 // 表单验证规则
 const permissionRules: FormRules = {
@@ -373,22 +412,48 @@ const permissionRules: FormRules = {
   ]
 }
 
+// 权限组表单验证规则
+const groupRules: FormRules = {
+  name: [
+    { required: true, message: '请输入权限组名称', trigger: 'blur' }
+  ],
+  code: [
+    { required: true, message: '请输入权限组代码', trigger: 'blur' },
+    { 
+      pattern: /^[a-zA-Z][a-zA-Z0-9._]*$/, 
+      message: '权限组代码只能包含字母、数字、点和下划线，且必须以字母开头', 
+      trigger: 'blur' 
+    }
+  ]
+}
+
+// 统计数据
+const stats = computed(() => ({
+  total: total.value,
+  groups: permissionGroups.value.length,
+  assigned: permissions.value.filter(p => p._count?.roles && p._count.roles > 0).length,
+  newToday: permissions.value.filter(p => {
+    const today = new Date().toDateString()
+    return new Date(p.createdAt).toDateString() === today
+  }).length
+}))
+
 // 初始化
 onMounted(async () => {
   await Promise.all([
     loadPermissions(),
-    loadAllPermissions() // 加载全部权限用于统计
+    loadPermissionGroups()
   ])
 })
 
-// 加载全部权限数据用于统计
-const loadAllPermissions = async () => {
+// 加载权限组列表
+const loadPermissionGroups = async () => {
   try {
-    // 获取全部权限数据，不分页
-    const data = await permissionApi.getList({ page: 1, pageSize: 1000 }) // 假设权限不会超过1000个
-    allPermissions.value = Array.isArray(data) ? data : data.data || []
+    const { items } = await permissionGroupApi.getList({ page: 1, pageSize: 1000 });
+    permissionGroups.value = items;
   } catch (error) {
-    console.error('加载全部权限数据失败:', error)
+    console.error('加载权限组列表失败:', error);
+    ElMessage.error('加载权限组列表失败');
   }
 }
 
@@ -400,12 +465,12 @@ const loadPermissions = async () => {
       page: currentPage.value,
       pageSize: pageSize.value,
       search: searchText.value || undefined,
-      group: groupFilter.value || undefined
+      groupId: groupFilter.value || undefined
     }
     
-    const data = await permissionApi.getList(params)
-    permissions.value = Array.isArray(data) ? data : data.data || []
-    total.value = typeof data === 'object' ? data.total || 0 : permissions.value.length
+    const { items, total: totalCount } = await permissionApi.getList(params)
+    permissions.value = items
+    total.value = totalCount
   } catch (error) {
     ElMessage.error('加载权限列表失败')
     console.error(error)
@@ -453,16 +518,16 @@ const showCreateDialog = () => {
 
 // 编辑权限
 const editPermission = (permission: Permission) => {
-  isEdit.value = true
+  isEdit.value = true;
   Object.assign(permissionForm, {
     id: permission.id,
     name: permission.name,
     code: permission.code,
     description: permission.description || '',
-    group: permission.group || ''
-  })
-  dialogVisible.value = true
-}
+    groupId: permission.groupId || ''
+  });
+  dialogVisible.value = true;
+};
 
 // 删除权限
 const deletePermission = async (permission: Permission) => {
@@ -490,31 +555,36 @@ const deletePermission = async (permission: Permission) => {
 
 // 提交表单
 const submitForm = async () => {
-  if (!permissionFormRef.value) return
+  if (!permissionFormRef.value) return;
   
   try {
-    await permissionFormRef.value.validate()
-    submitting.value = true
+    await permissionFormRef.value.validate();
+    submitting.value = true;
     
-    const permissionData = { ...permissionForm }
+    const permissionData = {
+      name: permissionForm.name,
+      code: permissionForm.code,
+      description: permissionForm.description,
+      groupId: permissionForm.groupId || undefined
+    };
     
     if (isEdit.value) {
-      await permissionApi.update(permissionData.id, permissionData)
-      ElMessage.success('更新成功')
+      await permissionApi.update(permissionForm.id, permissionData);
+      ElMessage.success('更新成功');
     } else {
-      await permissionApi.create(permissionData)
-      ElMessage.success('创建成功')
+      await permissionApi.create(permissionData);
+      ElMessage.success('创建成功');
     }
     
-    dialogVisible.value = false
-    loadPermissions()
+    dialogVisible.value = false;
+    loadPermissions();
   } catch (error) {
-    ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
-    console.error(error)
+    ElMessage.error(isEdit.value ? '更新失败' : '创建失败');
+    console.error(error);
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
-}
+};
 
 // 重置表单
 const resetForm = () => {
@@ -523,7 +593,7 @@ const resetForm = () => {
     name: '',
     code: '',
     description: '',
-    group: ''
+    groupId: ''
   })
   permissionFormRef.value?.resetFields()
 }
@@ -546,7 +616,7 @@ const syncPermissions = async () => {
     ElMessage.success(`同步完成！新增 ${result.created} 个权限，总计 ${result.total} 个权限`)
     await Promise.all([
       loadPermissions(),
-      loadAllPermissions() // 同步后也要更新全部权限数据
+      loadPermissionGroups()
     ])
   } catch (error: any) {
     if (error !== 'cancel') {
@@ -556,6 +626,95 @@ const syncPermissions = async () => {
   } finally {
     syncing.value = false
   }
+}
+
+// 显示创建权限组对话框
+const showCreateGroupDialog = () => {
+  isEditGroup.value = false
+  groupDialogVisible.value = true
+}
+
+// 编辑权限组
+const editGroup = (group: PermissionGroup) => {
+  isEditGroup.value = true
+  Object.assign(groupForm, {
+    id: group.id,
+    name: group.name,
+    code: group.code,
+    description: group.description || '',
+    sort: group.sort || 0
+  })
+  groupDialogVisible.value = true
+}
+
+// 删除权限组
+const deleteGroup = async (group: PermissionGroup) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除权限组 "${group.name}" 吗？此操作不可恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await permissionGroupApi.delete(group.id)
+    ElMessage.success('删除成功')
+    await Promise.all([
+      loadPermissions(),
+      loadPermissionGroups()
+    ])
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+      console.error(error)
+    }
+  }
+}
+
+// 提交权限组表单
+const submitGroupForm = async () => {
+  if (!groupFormRef.value) return
+  
+  try {
+    await groupFormRef.value.validate()
+    submitting.value = true
+    
+    const groupData = { ...groupForm }
+    
+    if (isEditGroup.value) {
+      await permissionGroupApi.update(groupData.id, groupData)
+      ElMessage.success('更新成功')
+    } else {
+      await permissionGroupApi.create(groupData)
+      ElMessage.success('创建成功')
+    }
+    
+    groupDialogVisible.value = false
+    await Promise.all([
+      loadPermissions(),
+      loadPermissionGroups()
+    ])
+  } catch (error) {
+    ElMessage.error(isEditGroup.value ? '更新失败' : '创建失败')
+    console.error(error)
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 重置权限组表单
+const resetGroupForm = () => {
+  Object.assign(groupForm, {
+    id: '',
+    name: '',
+    code: '',
+    description: '',
+    sort: 0
+  })
+  groupFormRef.value?.resetFields()
 }
 
 // 格式化日期

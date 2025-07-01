@@ -180,7 +180,7 @@
                   type="danger" 
                   size="small" 
                   @click="deleteRole(role)"
-                  :disabled="role.userCount > 0"
+                  :disabled="(role.userCount ?? 0) > 0"
                 >
                   <el-icon><Delete /></el-icon>
                   删除
@@ -253,7 +253,7 @@
               <el-checkbox 
                 v-model="allPermissionsSelected"
                 :indeterminate="isIndeterminate"
-                @change="handleCheckAllChange"
+                @change="(val: boolean) => handleCheckAllChange(val)"
               >
                 全选
               </el-checkbox>
@@ -272,7 +272,7 @@
                   <el-checkbox
                     :model-value="isGroupSelected(group)"
                     :indeterminate="isGroupIndeterminate(group)"
-                    @change="(val) => handleGroupChange(group, val)"
+                    @change="(val: boolean) => handleGroupChange(group, val)"
                   >
                     {{ group.name }}
                   </el-checkbox>
@@ -369,17 +369,19 @@ const stats = computed(() => ({
 const permissionGroups = computed(() => {
   const groups: { [key: string]: Permission[] } = {}
   allPermissions.value.forEach(permission => {
-    const groupName = permission.group || '其他'
+    const groupName = permission.groupName || '未分组'
     if (!groups[groupName]) {
       groups[groupName] = []
     }
     groups[groupName].push(permission)
   })
   
-  return Object.entries(groups).map(([name, permissions]) => ({
-    name,
-    permissions
-  }))
+  return Object.entries(groups)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, permissions]) => ({
+      name,
+      permissions: permissions.sort((a, b) => a.name.localeCompare(b.name))
+    }))
 })
 
 // 全选状态
@@ -447,9 +449,10 @@ const loadPermissions = async () => {
   try {
     // 加载所有权限，不使用分页限制
     const data = await permissionApi.getList({ pageSize: 1000 })
-    allPermissions.value = Array.isArray(data) ? data : (data as any)?.data || []
+    allPermissions.value = Array.isArray(data) ? data : (data as any)?.items || []
   } catch (error) {
     console.error('加载权限列表失败:', error)
+    ElMessage.error('加载权限列表失败')
   }
 }
 
@@ -498,7 +501,7 @@ const editRole = (role: Role) => {
     name: role.name,
     description: role.description || ''
   })
-  selectedPermissions.value = role.permissions?.map((p: any) => p.id) || []
+  selectedPermissions.value = role.permissions?.map(p => p.id) || []
   dialogVisible.value = true
 }
 
@@ -526,33 +529,30 @@ const deleteRole = async (role: Role) => {
   }
 }
 
-// 权限组选择处理
-const isGroupSelected = (group: { permissions: Permission[] }) => {
+// 检查权限组是否全选
+const isGroupSelected = (group: { name: string; permissions: Permission[] }) => {
   return group.permissions.every(p => selectedPermissions.value.includes(p.id))
 }
 
-const isGroupIndeterminate = (group: { permissions: Permission[] }) => {
-  const selectedInGroup = group.permissions.filter(p => selectedPermissions.value.includes(p.id))
-  return selectedInGroup.length > 0 && selectedInGroup.length < group.permissions.length
+// 检查权限组是否半选
+const isGroupIndeterminate = (group: { name: string; permissions: Permission[] }) => {
+  const selectedCount = group.permissions.filter(p => selectedPermissions.value.includes(p.id)).length
+  return selectedCount > 0 && selectedCount < group.permissions.length
 }
 
-const handleGroupChange = (group: { permissions: Permission[] }, checked: boolean) => {
+// 处理权限组全选/取消全选
+const handleGroupChange = (group: { name: string; permissions: Permission[] }, checked: boolean) => {
+  const permissionIds = group.permissions.map(p => p.id)
   if (checked) {
-    group.permissions.forEach(p => {
-      if (!selectedPermissions.value.includes(p.id)) {
-        selectedPermissions.value.push(p.id)
-      }
-    })
+    selectedPermissions.value = [...new Set([...selectedPermissions.value, ...permissionIds])]
   } else {
-    selectedPermissions.value = selectedPermissions.value.filter(id => 
-      !group.permissions.some(p => p.id === id)
-    )
+    selectedPermissions.value = selectedPermissions.value.filter(id => !permissionIds.includes(id))
   }
 }
 
-// 全选处理
+// 处理全选/取消全选
 const handleCheckAllChange = (checked: boolean) => {
-  allPermissionsSelected.value = checked
+  selectedPermissions.value = checked ? allPermissions.value.map(p => p.id) : []
 }
 
 // 提交表单

@@ -26,13 +26,17 @@ export interface Role {
 }
 
 export interface Permission {
-  id: string
-  name: string
-  code: string
-  group?: string
-  description?: string
-  createdAt: string
-  updatedAt: string
+  id: string;
+  name: string;
+  code: string;
+  groupId?: string;
+  groupName?: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    roles: number;
+  };
 }
 
 export interface RolePermission {
@@ -251,6 +255,27 @@ export interface GalleryCategoryStats {
   averageImagesPerCategory: number
 }
 
+export interface PermissionGroup {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+  sort: number;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    permissions: number;
+  };
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 class ApiClient {
   private client = axios.create({
     baseURL: API_BASE_URL,
@@ -417,33 +442,33 @@ class ApiClient {
   }
 
   // 权限管理
-  async getPermissions(params?: { page?: number; pageSize?: number; search?: string; group?: string }): Promise<{ data?: Permission[]; total?: number } | Permission[]> {
-    const response = await this.client.get<{ data?: Permission[]; total?: number } | Permission[]>('/permissions', { params })
-    return response.data
+  async getPermissions(params?: { page?: number; pageSize?: number; search?: string; groupId?: string }): Promise<PaginatedResponse<Permission>> {
+    const { data } = await this.get<PaginatedResponse<Permission>>('/admin/permission', { params });
+    return data;
   }
 
   async getPermission(id: string): Promise<Permission> {
-    const response = await this.client.get<Permission>(`/permissions/${id}`)
-    return response.data
+    const { data } = await this.get<Permission>(`/admin/permission/${id}`);
+    return data;
   }
 
-  async createPermission(code: string, name: string): Promise<Permission> {
-    const response = await this.client.post<Permission>('/permissions', { code, name })
-    return response.data
+  async createPermission(data: { code: string; name: string; description?: string; groupId?: string }): Promise<Permission> {
+    const { data: response } = await this.post<Permission>('/admin/permission', data);
+    return response;
   }
 
-  async updatePermission(id: string, data: { code?: string; name?: string }): Promise<Permission> {
-    const response = await this.client.put<Permission>(`/permissions/${id}`, data)
-    return response.data
+  async updatePermission(id: string, data: { code?: string; name?: string; description?: string; groupId?: string }): Promise<Permission> {
+    const { data: response } = await this.put<Permission>(`/admin/permission/${id}`, data);
+    return response;
   }
 
   async deletePermission(id: string): Promise<void> {
-    await this.client.delete(`/permissions/${id}`)
+    await this.delete(`/admin/permission/${id}`);
   }
 
   async syncPermissions(): Promise<{ created: number; total: number }> {
-    const response = await this.client.post<{ created: number; total: number }>('/permissions/sync')
-    return response.data
+    const { data } = await this.post<{ created: number; total: number }>('/admin/permission/sync');
+    return data;
   }
 
   // 文章管理
@@ -719,6 +744,45 @@ class ApiClient {
     const response = await this.client.get('/gallery-categories/admin/stats')
     return response.data
   }
+
+  // 权限组管理
+  async getPermissionGroups(params?: { page?: number; pageSize?: number; search?: string }): Promise<PaginatedResponse<PermissionGroup>> {
+    const { data } = await this.get<PaginatedResponse<PermissionGroup>>('/admin/permission-groups', { params });
+    return data;
+  }
+
+  async getPermissionGroup(id: string): Promise<PermissionGroup> {
+    const response = await this.client.get<PermissionGroup>(`/admin/permission-groups/${id}`)
+    return response.data
+  }
+
+  async createPermissionGroup(data: {
+    name: string;
+    code: string;
+    description?: string;
+    sort?: number;
+  }): Promise<PermissionGroup> {
+    const response = await this.client.post<PermissionGroup>('/admin/permission-groups', data)
+    return response.data
+  }
+
+  async updatePermissionGroup(id: string, data: {
+    name?: string;
+    code?: string;
+    description?: string;
+    sort?: number;
+  }): Promise<PermissionGroup> {
+    const response = await this.client.put<PermissionGroup>(`/admin/permission-groups/${id}`, data)
+    return response.data
+  }
+
+  async deletePermissionGroup(id: string): Promise<void> {
+    await this.client.delete(`/admin/permission-groups/${id}`)
+  }
+
+  async setPermissionGroupSort(items: { id: string; sort: number }[]): Promise<void> {
+    await this.client.post('/admin/permission-groups/sort', items)
+  }
 }
 
 const apiClient = new ApiClient()
@@ -830,6 +894,38 @@ export const galleryCategoryApi = {
   delete: apiClient.deleteGalleryCategory.bind(apiClient),
   getStats: apiClient.getGalleryCategoryStats.bind(apiClient),
 }
+
+export const permissionGroupApi = {
+  getList: async (params?: { page?: number; pageSize?: number; search?: string }) => {
+    const { page = 1, pageSize = 10, search = '' } = params || {};
+    const { data } = await apiClient.get(`/admin/permission-groups?page=${page}&pageSize=${pageSize}&search=${search}`);
+    return data;
+  },
+
+  get: async (id: string) => {
+    const { data } = await apiClient.get(`/admin/permission-groups/${id}`);
+    return data;
+  },
+
+  create: async (data: { name: string; code: string; description?: string; sort?: number }) => {
+    const response = await apiClient.post('/admin/permission-groups', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: { name?: string; code?: string; description?: string; sort?: number }) => {
+    const response = await apiClient.put(`/admin/permission-groups/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string) => {
+    await apiClient.delete(`/admin/permission-groups/${id}`);
+  },
+
+  updateSort: async (id: string, sort: number) => {
+    const response = await apiClient.put(`/admin/permission-groups/${id}/sort`, { sort });
+    return response.data;
+  }
+};
 
 // 为了向后兼容，导出 api 作为命名导出
 export const api = apiClient
