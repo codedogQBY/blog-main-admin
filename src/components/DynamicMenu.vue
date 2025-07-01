@@ -195,6 +195,13 @@ const allMenuItems: MenuItem[] = [
         icon: Stamp,
         permission: 'diary.signature.read',
         order: 1
+      },
+      {
+        path: '/admin/about',
+        title: '关于页面',
+        icon: UserFilled,
+        permission: 'about.read',
+        order: 2
       }
     ]
   },

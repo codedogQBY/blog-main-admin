@@ -124,6 +124,12 @@ const routes = [
         name: 'Files',
         component: () => import('../views/Files.vue'),
         meta: { title: '文件管理' }
+      },
+      {
+        path: 'about',
+        name: 'About',
+        component: () => import('../views/About.vue'),
+        meta: { title: '关于页面配置' }
       }
     ]
   }

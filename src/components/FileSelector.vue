@@ -166,7 +166,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, defineProps, defineEmits, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { 
   HomeFilled, 
@@ -184,8 +184,8 @@ import { filesApi } from '../api/files'
 // Props
 const props = defineProps({
   modelValue: {
-    type: Boolean,
-    default: false
+    type: String,
+    default: ''
   },
   title: {
     type: String,
@@ -202,17 +202,26 @@ const props = defineProps({
   maxFiles: {
     type: Number,
     default: 20
+  },
+  visible: {
+    type: Boolean,
+    default: false
   }
 })
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'select'])
+const emit = defineEmits(['update:modelValue', 'select', 'update:visible'])
+
+// 弹窗显示状态由外部visible控制
+const dialogVisible = ref(false)
+watch(() => props.visible, (val) => {
+  dialogVisible.value = val
+})
+watch(dialogVisible, (val) => {
+  emit('update:visible', val)
+})
 
 // 响应式数据
-const dialogVisible = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
-})
 const loading = ref(false)
 const folders = ref([])
 const files = ref([])
@@ -361,7 +370,10 @@ const handleConfirm = () => {
     ElMessage.warning('请至少选择一个文件')
     return
   }
-  emit('select', props.multiple ? selectedFiles.value : selectedFiles.value[0])
+  // 只返回url字符串
+  const file = props.multiple ? selectedFiles.value.map(f => f.url) : selectedFiles.value[0]?.url || ''
+  emit('update:modelValue', file)
+  emit('select', file)
   handleClose()
 }
 
