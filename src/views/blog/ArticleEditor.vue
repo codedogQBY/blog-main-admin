@@ -262,68 +262,14 @@
       </div>
     </el-dialog>
 
-    <!-- 封面图片选择器 -->
-    <el-dialog
+    <!-- 文件选择器 -->
+    <FileSelector
       v-model="coverImagePickerVisible"
       title="选择封面图片"
-      width="80%"
-      :close-on-click-modal="false"
-      class="cover-image-picker-dialog"
-    >
-      <div class="cover-image-picker-content">
-        <!-- 工具栏 -->
-        <div class="picker-toolbar">
-          <el-input
-            v-model="coverImageSearchTerm"
-            placeholder="搜索图片..."
-            clearable
-            style="width: 300px"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-          <el-button @click="refreshCoverImageList" :loading="coverImageLoading">
-            <el-icon><Refresh /></el-icon>
-            刷新
-          </el-button>
-        </div>
-        
-        <!-- 图片网格 -->
-        <div class="image-grid" v-loading="coverImageLoading">
-          <div
-            v-for="image in filteredCoverImages"
-            :key="image.id"
-            class="image-item"
-            :class="{ selected: selectedCoverImage === image.url }"
-            @click="selectCoverImageItem(image)"
-          >
-            <img :src="image.url" :alt="image.name" loading="lazy" />
-            <div class="image-overlay">
-              <div class="check-icon">✓</div>
-            </div>
-            <div class="image-info">
-              <div class="image-name">{{ image.name }}</div>
-              <div class="image-size">{{ formatFileSize(image.size) }}</div>
-            </div>
-          </div>
-          
-          <!-- 空状态 -->
-          <div v-if="filteredCoverImages.length === 0 && !coverImageLoading" class="empty-state">
-            <div class="empty-icon">🖼️</div>
-            <p>{{ coverImageSearchTerm ? '暂无匹配的图片' : '暂无图片文件' }}</p>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 底部操作栏 -->
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="cancelCoverImageSelection">取消</el-button>
-          <el-button type="primary" @click="confirmCoverImageSelection">确定</el-button>
-        </div>
-      </template>
-    </el-dialog>
+      :multiple="false"
+      fileType="image"
+      @select="handleCoverImageSelect"
+    />
   </div>
 </template>
 
@@ -353,6 +299,7 @@ import {
   Refresh
 } from '@element-plus/icons-vue'
 import TiptapEditor from '@/components/TiptapEditor.vue'
+import FileSelector from '@/components/FileSelector.vue'
 import { articleApi, categoryApi, tagApi, fileApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
 
@@ -501,9 +448,12 @@ const handleTagChange = (value: (string | number)[]) => {
   handleChange()
 }
 
-// 封面图片选择
+// 封面图片选择器状态
+const coverImagePickerVisible = ref(false)
+
+// 选择封面图片
 const selectCoverImage = () => {
-  // 提供两种选择方式，与TiptapEditor保持一致
+  // 提供两种选择方式
   ElMessageBox.confirm(
     '请选择封面图片的方式',
     '选择封面图片',
@@ -515,208 +465,66 @@ const selectCoverImage = () => {
     }
   ).then(() => {
     // 选择上传文件
-    uploadNewCoverImage()
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.multiple = false
+    
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      
+      // 检查文件大小 (5MB限制)
+      if (file.size > 5 * 1024 * 1024) {
+        ElMessage.error('图片大小不能超过5MB')
+        return
+      }
+      
+      // 检查文件类型
+      if (!file.type.startsWith('image/')) {
+        ElMessage.error('请选择图片文件')
+        return
+      }
+      
+      try {
+        // 显示上传中提示
+        const loadingMessage = ElMessage({
+          message: '正在上传封面图片...',
+          type: 'info',
+          duration: 0
+        })
+        
+        // 使用fileApi上传到文件系统
+        const uploadedFile = await fileApi.uploadFile(file)
+        
+        loadingMessage.close()
+        
+        if (uploadedFile && uploadedFile.url) {
+          form.coverImage = uploadedFile.url
+          handleChange()
+          ElMessage.success('封面图片上传成功')
+        }
+      } catch (error) {
+        ElMessage.error('上传失败')
+        console.error(error)
+      }
+    }
+    
+    input.click()
   }).catch((action) => {
     if (action === 'cancel') {
-      // 选择从文件库选择
-      showCoverImagePicker()
+      // 从文件库选择
+      coverImagePickerVisible.value = true
     }
-    // 如果是其他情况（如用户点击X关闭），不显示错误
   })
 }
 
-// 上传新的封面图片到文件系统
-const uploadNewCoverImage = () => {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*'
-  input.multiple = false
-  
-  input.onchange = async (e) => {
-    const file = (e.target as HTMLInputElement).files?.[0]
-    if (!file) return
-    
-    // 检查文件大小 (5MB限制)
-    if (file.size > 5 * 1024 * 1024) {
-      ElMessage.error('图片大小不能超过5MB')
-      return
-    }
-    
-    // 检查文件类型
-    if (!file.type.startsWith('image/')) {
-      ElMessage.error('请选择图片文件')
-      return
-    }
-    
-    try {
-      // 显示上传中提示
-      const loadingMessage = ElMessage({
-        message: '正在上传封面图片...',
-        type: 'info',
-        duration: 0
-      })
-      
-      // 使用fileApi上传到文件系统
-      const uploadedFile = await fileApi.uploadFile(file)
-      
-      loadingMessage.close()
-      
-      if (uploadedFile && uploadedFile.url) {
-        // 确保使用HTTP协议
-        const imageUrl = uploadedFile.url.replace('https://', 'http://')
-        form.coverImage = imageUrl
-        handleChange()
-        ElMessage.success('封面图片上传成功')
-      } else {
-        throw new Error('上传失败，未获得文件URL')
-      }
-    } catch (error) {
-      console.error('封面图片上传失败:', error)
-      ElMessage.error('封面图片上传失败: ' + (error.message || '未知错误'))
-    }
-  }
-  
-  input.click()
-}
-
-// 封面图片选择器状态
-const coverImagePickerVisible = ref(false)
-const coverImageList = ref<any[]>([])
-const coverImageSearchTerm = ref('')
-const coverImageLoading = ref(false)
-const selectedCoverImage = ref<string>('')
-
-// 显示封面图片选择器
-const showCoverImagePicker = async () => {
-  coverImagePickerVisible.value = true
-  await loadCoverImageList()
-}
-
-// 加载封面图片列表
-const loadCoverImageList = async () => {
-  coverImageLoading.value = true
-  try {
-    // 使用fileApi获取图片文件
-    const files = await fileApi.getFiles({ type: 'image' })
-    
-    if (!files || !Array.isArray(files)) {
-      ElMessage.warning('获取图片列表失败')
-      return
-    }
-    
-    // 过滤并转换数据格式
-    coverImageList.value = files
-      .filter(file => /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name))
-      .map(file => ({
-        id: file.id,
-        name: file.name,
-        size: file.size || 0,
-        url: file.url ? file.url.replace('https://', 'http://') : ''
-      }))
-
-    if (coverImageList.value.length === 0) {
-      ElMessage.warning('图片库中暂无图片，请先上传图片')
-    }
-  } catch (error) {
-    console.error('获取图片列表失败:', error)
-    ElMessage.error('获取图片列表失败: ' + (error.message || error))
-  } finally {
-    coverImageLoading.value = false
-  }
-}
-
-// 过滤后的封面图片列表
-const filteredCoverImages = computed(() => {
-  if (!coverImageSearchTerm.value) {
-    return coverImageList.value
-  }
-  return coverImageList.value.filter(image => 
-    image.name.toLowerCase().includes(coverImageSearchTerm.value.toLowerCase())
-  )
-})
-
-// 选择封面图片
-const selectCoverImageItem = (image: any) => {
-  // 如果点击的是已选中的图片，则取消选择
-  if (selectedCoverImage.value === image.url) {
-    selectedCoverImage.value = ''
-  } else {
-    selectedCoverImage.value = image.url
-  }
-}
-
-// 确认选择封面图片
-const confirmCoverImageSelection = () => {
-  if (!selectedCoverImage.value) {
-    ElMessage.warning('请选择一张图片')
-    return
-  }
-  
-  form.coverImage = selectedCoverImage.value
-  handleChange()
-  closeCoverImagePicker()
-  ElMessage.success('封面图片设置成功')
-}
-
-// 取消选择封面图片
-const cancelCoverImageSelection = () => {
-  closeCoverImagePicker()
-}
-
-// 关闭封面图片选择器并清空数据
-const closeCoverImagePicker = () => {
-  coverImagePickerVisible.value = false
-  selectedCoverImage.value = ''
-  coverImageSearchTerm.value = ''
-  coverImageList.value = []
-  coverImageLoading.value = false
-}
-
-// 刷新封面图片列表
-const refreshCoverImageList = async () => {
-  await loadCoverImageList()
-  ElMessage.success('图片列表已刷新')
-}
-
-// 格式化文件大小
-const formatFileSize = (bytes: number) => {
-  if (!bytes) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-// 保存草稿
-const saveDraft = async () => {
-  if (isSaving.value) return
-  
-  isSaving.value = true
-  try {
-    const articleData = {
-      ...form,
-      published: false
-    }
-    
-    if (isEditing.value && articleId.value) {
-      await articleApi.update(articleId.value, articleData)
-    } else {
-      const newArticle = await articleApi.create(articleData)
-      articleId.value = newArticle.id
-      isEditing.value = true
-      // 更新URL，但不触发路由跳转
-      history.replaceState(null, '', `/admin/articles/edit/${newArticle.id}`)
-    }
-    
-    lastSaved.value = new Date()
-    hasUnsavedChanges.value = false
-    clearDraft() // 清除本地缓存
-    ElMessage.success('草稿保存成功')
-  } catch (error) {
-    ElMessage.error('保存失败')
-    console.error(error)
-  } finally {
-    isSaving.value = false
+// 处理封面图片选择
+const handleCoverImageSelect = (file: any) => {
+  if (file?.url) {
+    form.coverImage = file.url
+    handleChange()
+    ElMessage.success('封面图片设置成功')
   }
 }
 
@@ -798,6 +606,39 @@ const startAutoSave = () => {
   }, AUTO_SAVE_INTERVAL)
 }
 
+// 保存草稿
+const saveDraft = async () => {
+  if (isSaving.value) return
+  
+  isSaving.value = true
+  try {
+    const articleData = {
+      ...form,
+      published: false
+    }
+    
+    if (isEditing.value && articleId.value) {
+      await articleApi.update(articleId.value, articleData)
+    } else {
+      const newArticle = await articleApi.create(articleData)
+      articleId.value = newArticle.id
+      isEditing.value = true
+      // 更新URL，但不触发路由跳转
+      history.replaceState(null, '', `/admin/articles/edit/${newArticle.id}`)
+    }
+    
+    lastSaved.value = new Date()
+    hasUnsavedChanges.value = false
+    clearDraft() // 清除本地缓存
+    ElMessage.success('草稿保存成功')
+  } catch (error) {
+    ElMessage.error('保存失败')
+    console.error(error)
+  } finally {
+    isSaving.value = false
+  }
+}
+
 // 保存到本地缓存
 const saveToDraft = () => {
   const draftData = {
@@ -809,41 +650,30 @@ const saveToDraft = () => {
 
 // 从本地缓存恢复
 const restoreDraft = () => {
+  const draftStr = localStorage.getItem(CACHE_KEY)
+  if (!draftStr) return
+
   try {
-    const draftData = localStorage.getItem(CACHE_KEY)
-    if (draftData) {
-      const parsed = JSON.parse(draftData)
-      const now = Date.now()
-      const draftAge = now - parsed.timestamp
-      
-      // 如果草稿不超过24小时
-      if (draftAge < 24 * 60 * 60 * 1000) {
-        ElMessageBox.confirm(
-          '发现未保存的草稿，是否恢复？',
-          '恢复草稿',
-          {
-            confirmButtonText: '恢复',
-            cancelButtonText: '放弃',
-            type: 'info'
-          }
-        ).then(() => {
-          Object.assign(form, parsed)
-          hasUnsavedChanges.value = true
-          ElMessage.success('草稿已恢复')
-        }).catch(() => {
-          clearDraft()
-        })
-      } else {
-        clearDraft()
-      }
+    const draftData = JSON.parse(draftStr)
+    const timestamp = draftData.timestamp
+    delete draftData.timestamp
+
+    // 如果草稿超过24小时，不恢复
+    if (Date.now() - timestamp > 24 * 60 * 60 * 1000) {
+      clearDraft()
+      return
     }
+
+    Object.assign(form, draftData)
+    hasUnsavedChanges.value = true
+    ElMessage.info('已恢复未保存的草稿')
   } catch (error) {
     console.error('恢复草稿失败:', error)
     clearDraft()
   }
 }
 
-// 清除草稿缓存
+// 清除本地缓存
 const clearDraft = () => {
   localStorage.removeItem(CACHE_KEY)
 }
@@ -1074,151 +904,169 @@ watch(form, () => {
 .settings-panel {
   width: 320px;
   flex-shrink: 0;
-  overflow-y: auto;
-  max-height: 100%;
 
   .panel-card {
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    border: none;
-    
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+    transition: all 0.2s ease;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+    }
+
     :deep(.el-card__header) {
-      padding: 20px 24px 16px;
-      border-bottom: 1px solid #f1f5f9;
+      padding: 16px 20px;
+      border-bottom: 1px solid #e2e8f0;
     }
 
     :deep(.el-card__body) {
-      padding: 24px;
+      padding: 20px;
+    }
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #1e293b;
+    font-weight: 600;
+    font-size: 16px;
+
+    .el-icon {
+      font-size: 18px;
+    }
+  }
+
+  .setting-group {
+    &:not(:last-child) {
+      margin-bottom: 24px;
     }
 
-    .panel-header {
+    .setting-label {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      color: #1e293b;
+      gap: 6px;
+      margin-bottom: 12px;
+      color: #64748b;
+      font-weight: 500;
+      font-size: 14px;
 
       .el-icon {
-        color: #3b82f6;
+        font-size: 16px;
       }
     }
 
-    .setting-group {
-      margin-bottom: 24px;
+    .cover-upload-area {
+      .cover-preview {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 8px;
 
-      &:last-child {
-        margin-bottom: 0;
-      }
-
-      .setting-label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 12px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #374151;
-
-        .el-icon {
-          color: #6b7280;
-          font-size: 16px;
-        }
-      }
-
-      .cover-upload-area {
-        .cover-preview {
-          position: relative;
+        .cover-image {
           width: 100%;
           height: 160px;
-          border-radius: 8px;
-          overflow: hidden;
-          cursor: pointer;
+          object-fit: cover;
+          display: block;
+        }
 
-          .cover-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+        .cover-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: opacity 0.2s ease;
+
+          .el-button {
+            transform: translateY(10px);
+            transition: transform 0.2s ease;
           }
+        }
 
+        &:hover {
           .cover-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            color: white;
-            font-size: 20px;
+            opacity: 1;
 
-            &:hover {
-              opacity: 1;
+            .el-button {
+              transform: translateY(0);
             }
           }
         }
+      }
 
-        .upload-area {
-          width: 100%;
-          height: 160px;
-          border: 2px dashed #d1d5db;
-          border-radius: 8px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          background: #f9fafb;
+      .upload-area {
+        border: 2px dashed #e2e8f0;
+        border-radius: 8px;
+        padding: 32px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
 
-          &:hover {
-            border-color: #3b82f6;
-            background: #f8fafc;
-          }
+        &:hover {
+          border-color: #3b82f6;
+          background: #f8fafc;
 
           .upload-icon {
-            font-size: 32px;
-            color: #9ca3af;
-            margin-bottom: 8px;
+            color: #3b82f6;
+            transform: scale(1.1);
           }
+        }
 
-          .upload-text {
-            font-size: 14px;
-            font-weight: 500;
-            color: #374151;
-            margin-bottom: 4px;
-          }
+        .upload-icon {
+          font-size: 32px;
+          color: #94a3b8;
+          margin-bottom: 12px;
+          transition: all 0.2s ease;
+        }
 
-          .upload-hint {
-            font-size: 12px;
-            color: #9ca3af;
-          }
+        .upload-text {
+          color: #64748b;
+          font-size: 14px;
+          font-weight: 500;
+          margin-bottom: 4px;
+        }
+
+        .upload-hint {
+          color: #94a3b8;
+          font-size: 12px;
         }
       }
 
       .remove-cover {
         margin-top: 8px;
         width: 100%;
-        color: #ef4444;
+        justify-content: center;
+      }
+    }
+
+    .excerpt-input {
+      :deep(.el-textarea__inner) {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
 
         &:hover {
-          background: #fef2f2;
+          border-color: #3b82f6;
+        }
+
+        &:focus {
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
       }
     }
 
-    .excerpt-input,
     .category-select,
-    .tag-select,
-    .seo-input {
+    .tag-select {
       width: 100%;
 
-      :deep(.el-input__wrapper),
-      :deep(.el-select__wrapper) {
+      :deep(.el-input__wrapper) {
         border-radius: 8px;
         border: 1px solid #e2e8f0;
         transition: all 0.2s ease;
@@ -1238,12 +1086,47 @@ watch(form, () => {
       display: flex;
       flex-direction: column;
       gap: 12px;
+
+      .seo-input {
+        :deep(.el-input__wrapper),
+        :deep(.el-textarea__inner) {
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+          transition: all 0.2s ease;
+
+          &:hover {
+            border-color: #3b82f6;
+          }
+
+          &:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+          }
+        }
+      }
     }
 
     .publish-switch {
+      :deep(.el-switch__core) {
+        border-radius: 12px;
+        height: 24px;
+        width: 48px;
+
+        .el-switch__action {
+          height: 20px;
+          width: 20px;
+          margin: 2px;
+        }
+      }
+
       :deep(.el-switch__label) {
         font-size: 14px;
         font-weight: 500;
+        color: #64748b;
+
+        &.is-active {
+          color: #3b82f6;
+        }
       }
     }
   }

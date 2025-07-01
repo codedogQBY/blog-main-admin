@@ -68,7 +68,7 @@
           class="filter-select"
           @change="navigateToFolder"
         >
-          <el-option label="全部文件" :value="null" />
+          <el-option label="全部文件" value="" />
           <el-option 
             v-for="folder in flatFolderList" 
             :key="folder.id" 
@@ -144,54 +144,56 @@
           <el-icon><Document /></el-icon>
           文件
         </h3>
-        <div class="file-list">
+        <div class="file-grid">
           <div 
             v-for="file in filteredFiles" 
             :key="file.id" 
-            class="file-item"
+            class="file-card"
+            :class="{ 'is-image': isImageFile(file.name) }"
           >
-            <div class="file-preview">
-              <img 
-                v-if="isImageFile(file.name)" 
-                :src="file.url" 
-                :alt="file.name"
-                class="file-thumbnail"
-              />
-              <div v-else class="file-icon-wrapper">
-                <el-icon v-if="isVideoFile(file.name)" class="file-icon video"><VideoPlay /></el-icon>
-                <el-icon v-else class="file-icon document"><Document /></el-icon>
+            <div class="card-content" @click="previewFileHandler(file)">
+              <div class="file-preview">
+                <img 
+                  v-if="isImageFile(file.name)" 
+                  :src="file.url" 
+                  :alt="file.name"
+                  class="file-thumbnail"
+                />
+                <div v-else class="file-icon">
+                  <el-icon v-if="isVideoFile(file.name)"><VideoPlay /></el-icon>
+                  <el-icon v-else><Document /></el-icon>
+                </div>
+              </div>
+              <div class="file-info">
+                <div class="file-name" :title="file.name">{{ file.name }}</div>
+                <div class="file-meta">
+                  <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                  <span class="file-date">{{ formatDate(file.createdAt) }}</span>
+                </div>
               </div>
             </div>
-            <div class="file-details">
-              <div class="file-name">{{ file.name }}</div>
-              <div class="file-meta">
-                <span class="meta-item">
-                  <el-icon><Calendar /></el-icon>
-                  {{ formatDate(file.createdAt) }}
-                </span>
-                <span class="meta-item">
-                  <el-icon><SetUp /></el-icon>
-                  {{ formatFileSize(file.size) }}
-                </span>
-                <span v-if="file.uploader" class="meta-item">
-                  <el-icon><User /></el-icon>
-                  {{ file.uploader.name }}
-                </span>
-              </div>
-            </div>
-            <div class="file-actions">
-              <el-button size="small" @click="previewFileHandler(file)" class="action-btn preview">
-                <el-icon><View /></el-icon>
-                预览
-              </el-button>
-              <el-button size="small" @click="downloadFile(file)" class="action-btn download">
-                <el-icon><Download /></el-icon>
-                下载
-              </el-button>
-              <el-button size="small" type="danger" @click="deleteFile(file.id)" class="action-btn delete">
-                <el-icon><Delete /></el-icon>
-                删除
-              </el-button>
+            <div class="card-actions">
+              <el-dropdown trigger="click">
+                <el-button text class="action-trigger">
+                  <el-icon><MoreFilled /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="previewFileHandler(file)">
+                      <el-icon><View /></el-icon>预览
+                    </el-dropdown-item>
+                    <el-dropdown-item @click="downloadFile(file)">
+                      <el-icon><Download /></el-icon>下载
+                    </el-dropdown-item>
+                    <el-dropdown-item @click="moveFile(file)">
+                      <el-icon><FolderOpened /></el-icon>移动
+                    </el-dropdown-item>
+                    <el-dropdown-item @click="deleteFile(file.id)" divided>
+                      <el-icon><Delete /></el-icon>删除
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </div>
         </div>
@@ -210,6 +212,19 @@
             上传第一个文件
           </el-button>
         </div>
+      </div>
+
+      <!-- 在文件列表底部添加分页 -->
+      <div class="pagination-container">
+        <el-pagination
+          v-model="pagination.page"
+          :page-size="pagination.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="pagination.total"
+          layout="total, sizes, prev, pager, next"
+          @size-change="handleSizeChange"
+          @current-change="handlePageChange"
+        />
       </div>
     </div>
 
@@ -329,66 +344,95 @@
     <el-dialog 
       v-model="showMoveFileDialog" 
       title="移动文件" 
-      width="400px" 
+      width="500px" 
       class="move-dialog"
-      @close="resetMoveFileForm"
+      @close="closeMoveFileDialog"
     >
-      <el-form :model="moveFileForm" label-width="80px">
-        <el-form-item label="目标文件夹">
-          <el-tree-select
-            v-model="moveFileForm.folderId"
-            :data="folderTree"
-            :props="{ label: 'name', value: 'id', children: 'children' }"
-            placeholder="选择目标文件夹（留空为根目录）"
-            clearable
-            check-strictly
-          />
-        </el-form-item>
-      </el-form>
+      <div class="move-file-form">
+        <p class="file-name">文件名：{{ moveFileForm.fileName }}</p>
+        <el-form label-width="100px">
+          <el-form-item label="目标文件夹">
+            <el-select
+              v-model="moveFileForm.targetFolderId"
+              placeholder="选择目标文件夹"
+              clearable
+              class="w-full"
+            >
+              <el-option label="根目录" value="" />
+              <el-option
+                v-for="folder in flatFolderList"
+                :key="folder.id"
+                :label="folder.fullPath"
+                :value="folder.id"
+              />
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </div>
       <template #footer>
-        <div class="dialog-footer">
+        <span class="dialog-footer">
           <el-button @click="closeMoveFileDialog">取消</el-button>
-          <el-button type="primary" @click="confirmMoveFile">确定</el-button>
-        </div>
+          <el-button type="primary" @click="confirmMoveFile">确认</el-button>
+        </span>
       </template>
     </el-dialog>
 
     <!-- 文件预览对话框 -->
-    <el-dialog 
-      v-model="showPreviewDialog" 
-      title="文件预览" 
-      width="80%" 
+    <el-dialog
+      v-model="showPreviewDialog"
+      :title="previewFile?.name"
       class="preview-dialog"
-      @close="resetPreviewData"
+      :close-on-click-modal="true"
+      :show-close="true"
+      @close="closePreviewDialog"
     >
       <div class="preview-content">
-        <img 
-          v-if="previewFileData.type === 'image'" 
-          :src="previewFileData.url" 
-          class="preview-image"
-        />
-        <video 
-          v-else-if="previewFileData.type === 'video'" 
-          :src="previewFileData.url" 
-          controls 
-          class="preview-video"
-        />
-        <div v-else class="unsupported-preview">
-          <el-icon class="unsupported-icon"><Document /></el-icon>
-          <h3>不支持预览此文件类型</h3>
-          <p>{{ previewFileData.name }}</p>
-          <el-button type="primary" @click="downloadFile(previewFileData)" class="download-btn">
-            <el-icon><Download /></el-icon>
-            下载文件
-          </el-button>
-        </div>
+        <!-- 图片预览 -->
+        <template v-if="isImageFile(previewFile?.name)">
+          <img
+            :src="previewFile?.url"
+            :alt="previewFile?.name"
+            class="preview-image"
+            @load="handleImageLoad"
+          />
+        </template>
+
+        <!-- 视频预览 -->
+        <template v-else-if="isVideoFile(previewFile?.name)">
+          <video
+            :src="previewFile?.url"
+            class="preview-video"
+            controls
+            autoplay
+          ></video>
+        </template>
+
+        <!-- 文本预览 -->
+        <template v-else-if="isTextFile(previewFile?.name)">
+          <pre class="preview-text">{{ previewFileContent }}</pre>
+        </template>
+
+        <!-- 不支持的文件类型 -->
+        <template v-else>
+          <div class="unsupported-preview">
+            <el-icon><Document /></el-icon>
+            <div class="unsupported-text">暂不支持预览此类型的文件</div>
+            <div class="file-info">
+              文件类型: {{ getFileExtension(previewFile?.name) || '未知' }}<br>
+              文件大小: {{ formatFileSize(previewFile?.size) }}
+            </div>
+            <el-button type="primary" @click="downloadFile(previewFile)">
+              下载文件
+            </el-button>
+          </div>
+        </template>
       </div>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Upload, 
@@ -411,12 +455,12 @@ import {
   FolderOpened
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/lib/store'
-import { fileApi } from '@/lib/api'
+import { filesApi as fileApi } from '@/api/files'
 
 // 状态管理
 const authStore = useAuthStore()
 const loading = ref(false)
-const files = ref([])
+const files = ref<any[]>([])
 const folders = ref([])
 const currentFolderId = ref<string | null>(null)
 const searchKeyword = ref('')
@@ -429,8 +473,20 @@ const uploadRef = ref()
 const uploading = ref(false)
 const selectedFiles = ref<File[]>([])
 const uploadTargetFolderId = ref<string | null>(null)
-const folderTree = ref([])
-const breadcrumbPath = ref([])
+const folderTree = ref<any[]>([])
+const breadcrumbPath = ref<any[]>([])
+const fileCurrentPage = ref(1)
+const folderCurrentPage = ref(1)
+const previewFile = ref<any>(null)
+const previewFileContent = ref('')
+
+// 分页相关
+const pagination = ref({
+  page: 1,
+  pageSize: 20,
+  total: 0,
+  totalPages: 0
+})
 
 // 表单数据
 const folderForm = reactive({
@@ -442,35 +498,14 @@ const editFolderForm = reactive({
   name: ''
 })
 
-const moveFileForm = reactive({
+const moveFileForm = ref({
   fileId: '',
-  folderId: null
-})
-
-const previewFileData = ref({
-  name: '',
-  url: '',
-  type: ''
+  fileName: '',
+  targetFolderId: null as string | null
 })
 
 // 计算属性 - 扁平化文件夹列表
-const flatFolderList = computed(() => {
-  const flatten = (folders: any[], prefix = '') => {
-    const result = []
-    for (const folder of folders) {
-      const fullPath = prefix ? `${prefix}/${folder.name}` : folder.name
-      result.push({
-        ...folder,
-        fullPath
-      })
-      if (folder.children && folder.children.length > 0) {
-        result.push(...flatten(folder.children, fullPath))
-      }
-    }
-    return result
-  }
-  return flatten(folderTree.value)
-})
+const flatFolderList = ref<any[]>([])
 
 // 计算属性 - 过滤后的文件列表
 const filteredFiles = computed(() => {
@@ -489,24 +524,39 @@ const filteredFolders = computed(() => {
 })
 
 // 工具函数
-const isImageFile = (filename: string) => {
-  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']
-  const extension = filename.split('.').pop()?.toLowerCase()
-  return extension && imageExtensions.includes(extension)
+const isImageFile = (filename?: string) => {
+  if (!filename) return false
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+  return imageExtensions.some(ext => filename.toLowerCase().endsWith(ext))
 }
 
-const isVideoFile = (filename: string) => {
-  const videoExtensions = ['mp4', 'webm', 'ogg', 'mov', 'avi']
-  const extension = filename.split('.').pop()?.toLowerCase()
-  return extension && videoExtensions.includes(extension)
+const isVideoFile = (filename?: string) => {
+  if (!filename) return false
+  const videoExtensions = ['.mp4', '.webm', '.ogg']
+  return videoExtensions.some(ext => filename.toLowerCase().endsWith(ext))
 }
 
-const formatFileSize = (bytes: number) => {
-  if (!bytes) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+const isTextFile = (filename?: string) => {
+  if (!filename) return false
+  const textExtensions = ['.txt', '.md', '.json', '.js', '.ts', '.html', '.css', '.scss', '.vue', '.jsx', '.tsx']
+  return textExtensions.some(ext => filename.toLowerCase().endsWith(ext))
+}
+
+const getFileExtension = (filename?: string) => {
+  if (!filename) return ''
+  const parts = filename.split('.')
+  return parts.length > 1 ? `.${parts[parts.length - 1]}` : ''
+}
+
+const formatFileSize = (size?: number) => {
+  if (!size) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let index = 0
+  while (size >= 1024 && index < units.length - 1) {
+    size /= 1024
+    index++
+  }
+  return `${size.toFixed(2)} ${units[index]}`
 }
 
 const formatDate = (dateString: string) => {
@@ -516,18 +566,35 @@ const formatDate = (dateString: string) => {
 
 // 数据获取
 const refreshFiles = async () => {
-  loading.value = true
   try {
-    const [filesResponse, foldersResponse] = await Promise.all([
-      fileApi.getFiles({ folderId: currentFolderId.value }),
-      fileApi.getFolders(currentFolderId.value)
-    ])
+    loading.value = true
+    const params = {
+      page: pagination.value.page,
+      pageSize: pagination.value.pageSize,
+      search: searchKeyword.value,
+      folderId: currentFolderId.value
+    }
     
-    files.value = filesResponse || []
-    folders.value = foldersResponse || []
+    const [filesResponse, foldersResponse] = await Promise.all([
+      fileApi.getFiles(params),
+      fileApi.getFolders({ ...params, parentId: currentFolderId.value })
+    ])
+
+    // 更新文件列表
+    files.value = filesResponse.data || []
+    pagination.value = {
+      page: filesResponse.page,
+      pageSize: filesResponse.pageSize,
+      total: filesResponse.total,
+      totalPages: filesResponse.totalPages
+    }
+
+    // 更新当前文件夹的子文件夹
+    folders.value = foldersResponse.data || []
   } catch (error) {
-    ElMessage.error('获取文件列表失败')
-    console.error(error)
+    console.error('加载文件列表失败:', error)
+    files.value = []
+    folders.value = []
   } finally {
     loading.value = false
   }
@@ -535,20 +602,31 @@ const refreshFiles = async () => {
 
 const loadFolderTree = async () => {
   try {
-    const allFolders = await fileApi.getFolders()
-    folderTree.value = buildFolderTree(allFolders)
+    const data = await fileApi.getFolderTree()
+    if (Array.isArray(data)) {
+      folderTree.value = data
+      // 构建扁平化的文件夹列表，用于选择器
+      const flattenFolders = (folders: any[], parentPath = '') => {
+        return folders.reduce((acc: any[], folder) => {
+          const fullPath = parentPath ? `${parentPath}/${folder.name}` : folder.name
+          acc.push({ ...folder, fullPath })
+          if (folder.children && folder.children.length > 0) {
+            acc.push(...flattenFolders(folder.children, fullPath))
+          }
+          return acc
+        }, [])
+      }
+      flatFolderList.value = flattenFolders(data)
+    } else {
+      console.error('获取到的文件夹数据格式不正确:', data)
+      folderTree.value = []
+      flatFolderList.value = []
+    }
   } catch (error) {
     console.error('加载文件夹树失败:', error)
+    folderTree.value = []
+    flatFolderList.value = []
   }
-}
-
-const buildFolderTree = (folders: any[], parentId: string | null = null): any[] => {
-  return folders
-    .filter(folder => folder.parentId === parentId)
-    .map(folder => ({
-      ...folder,
-      children: buildFolderTree(folders, folder.id)
-    }))
 }
 
 const loadBreadcrumbPath = async (folderId: string | null) => {
@@ -579,8 +657,8 @@ const loadBreadcrumbPath = async (folderId: string | null) => {
 
 // 导航
 const navigateToFolder = async (folderId: string | null) => {
-  currentFolderId.value = folderId
-  await loadBreadcrumbPath(folderId)
+  currentFolderId.value = folderId === '' ? null : folderId
+  await loadBreadcrumbPath(currentFolderId.value)
   refreshFiles()
 }
 
@@ -735,8 +813,11 @@ const closeEditFolderDialog = () => {
 
 // 重置移动文件表单
 const resetMoveFileForm = () => {
-  moveFileForm.fileId = ''
-  moveFileForm.folderId = null
+  moveFileForm.value = {
+    fileId: '',
+    fileName: '',
+    targetFolderId: null
+  }
 }
 
 // 关闭移动文件对话框
@@ -747,46 +828,53 @@ const closeMoveFileDialog = () => {
 
 // 重置预览数据
 const resetPreviewData = () => {
-  previewFileData.value = {
-    name: '',
-    url: '',
-    type: ''
-  }
+  previewFile.value = null
+  previewFileContent.value = ''
 }
 
 const moveFile = (file: any) => {
-  moveFileForm.fileId = file.id
-  moveFileForm.folderId = file.folderId
+  moveFileForm.value = {
+    fileId: file.id,
+    fileName: file.name,
+    targetFolderId: file.folderId
+  }
   showMoveFileDialog.value = true
 }
 
 const confirmMoveFile = async () => {
   try {
-    await fileApi.updateFile(moveFileForm.fileId, {
-      folderId: moveFileForm.folderId
+    await fileApi.updateFile(moveFileForm.value.fileId, {
+      folderId: moveFileForm.value.targetFolderId
     })
     ElMessage.success('文件移动成功')
-    closeMoveFileDialog()
+    showMoveFileDialog.value = false
     refreshFiles()
   } catch (error) {
+    console.error('移动文件失败:', error)
     ElMessage.error('移动文件失败')
-    console.error(error)
   }
 }
 
-const previewFileHandler = (file: any) => {
-  const extension = file.name.split('.').pop()?.toLowerCase()
-  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']
-  const videoExtensions = ['mp4', 'webm', 'ogg', 'mov']
-
-  previewFileData.value = {
-    ...file,
-    type: imageExtensions.includes(extension) ? 'image' 
-         : videoExtensions.includes(extension) ? 'video' 
-         : 'other'
-  }
-  
+const previewFileHandler = async (file: any) => {
+  previewFile.value = file
   showPreviewDialog.value = true
+
+  // 如果是文本文件，尝试获取内容
+  if (isTextFile(file.name)) {
+    try {
+      const response = await fetch(file.url)
+      previewFileContent.value = await response.text()
+    } catch (error) {
+      console.error('Failed to load text file:', error)
+      previewFileContent.value = '无法加载文件内容'
+    }
+  }
+}
+
+const closePreviewDialog = () => {
+  showPreviewDialog.value = false
+  previewFile.value = null
+  previewFileContent.value = ''
 }
 
 const downloadFile = (file: any) => {
@@ -834,854 +922,441 @@ const handleSearch = () => {
   // 可以添加防抖逻辑
 }
 
+// 处理分页变化
+const handlePageChange = (newPage: number) => {
+  pagination.value.page = newPage
+  refreshFiles()
+}
+
+const handleSizeChange = (newSize: number) => {
+  pagination.value.pageSize = newSize
+  pagination.value.page = 1
+  refreshFiles()
+}
+
+// 监听
+watch(() => [currentFolderId.value, searchKeyword.value], () => {
+  fileCurrentPage.value = 1
+  folderCurrentPage.value = 1
+  refreshFiles()
+})
+
 // 生命周期
 onMounted(() => {
-  refreshFiles()
+  navigateToFolder(null)
   loadFolderTree()
 })
+
+const handleImageLoad = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  if (img.naturalWidth < img.width || img.naturalHeight < img.height) {
+    img.style.boxShadow = 'none'
+    img.style.border = '1px solid #e4e7ed'
+  }
+}
 </script>
 
 <style scoped lang="scss">
 .modern-file-manager {
-  background: #f8fafc;
-  min-height: 100vh;
-  padding: 0;
+  padding: 20px;
+  background-color: #f5f7fa;
+  min-height: calc(100vh - 64px);
 }
 
 .page-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 32px 40px;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+  margin-bottom: 24px;
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
 
-  .header-content {
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left {
+  .page-title {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    max-width: 1400px;
-    margin: 0 auto;
-  }
+    gap: 8px;
+    margin-bottom: 4px;
 
-  .header-left {
-    .page-title {
-      display: flex;
-      align-items: center;
-      margin-bottom: 8px;
-
-      .title-icon {
-        font-size: 32px;
-        margin-right: 12px;
-        color: rgba(255, 255, 255, 0.9);
-      }
-
-      h1 {
-        margin: 0;
-        font-size: 32px;
-        font-weight: 700;
-        color: white;
-      }
-    }
-
-    .page-subtitle {
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 16px;
+    h1 {
+      font-size: 24px;
       margin: 0;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .title-icon {
+      font-size: 24px;
+      color: #409eff;
     }
   }
 
-  .header-actions {
+  .page-subtitle {
+    color: #666;
+    font-size: 14px;
+  }
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+
+  .action-btn {
     display: flex;
-    gap: 12px;
-
-    .action-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 20px;
-      border-radius: 10px;
-      font-weight: 600;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      background: rgba(255, 255, 255, 0.1);
-      color: white;
-      backdrop-filter: blur(10px);
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: rgba(255, 255, 255, 0.4);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-      }
-
-      &.primary {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: rgba(255, 255, 255, 0.3);
-
-        &:hover {
-          background: white;
-          color: #667eea;
-          border-color: white;
-        }
-      }
-    }
+    align-items: center;
+    gap: 6px;
   }
 }
 
 .navigation-section {
-  background: white;
-  padding: 20px 40px;
-  border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+  padding: 12px 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
 
-  .modern-breadcrumb {
-    max-width: 1400px;
-    margin: 0 auto;
+.toolbar-section {
+  margin-bottom: 16px;
+  padding: 12px 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
-    :deep(.el-breadcrumb__item) {
-      .breadcrumb-item {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        cursor: pointer;
-        color: #64748b;
-        transition: color 0.2s ease;
-
-        &:hover {
-          color: #667eea;
-        }
-
-        .el-icon {
-          font-size: 16px;
-        }
-      }
-
-      &:last-child .breadcrumb-item {
-        color: #1e293b;
-        font-weight: 600;
+.toolbar-left {
+  .view-stats {
+    display: flex;
+    gap: 16px;
+    
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #666;
+      
+      .el-icon {
+        color: #409eff;
       }
     }
   }
 }
 
-.toolbar-section {
-  background: white;
-  padding: 20px 40px;
-  border-bottom: 1px solid #e2e8f0;
+.toolbar-right {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  .toolbar-left {
-    .view-stats {
-      display: flex;
-      gap: 24px;
-
-      .stat-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #64748b;
-        font-size: 14px;
-        font-weight: 500;
-
-        .el-icon {
-          color: #94a3b8;
-          font-size: 16px;
-        }
-      }
-    }
+  gap: 12px;
+  
+  .filter-select {
+    width: 200px;
   }
-
-  .toolbar-right {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-
-    .filter-select,
-    .search-input {
-      width: 240px;
-
-      :deep(.el-input__wrapper),
-      :deep(.el-select__wrapper) {
-        border-radius: 10px;
-        border: 1px solid #e2e8f0;
-        transition: all 0.2s ease;
-
-        &:hover {
-          border-color: #667eea;
-        }
-
-        &.is-focus {
-          border-color: #667eea;
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-      }
-    }
+  
+  .search-input {
+    width: 240px;
   }
 }
 
 .content-area {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 40px;
-  background: transparent;
-  box-shadow: none;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+}
 
-  .section-title {
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #1a1a1a;
+
+  .el-icon {
+    color: #409eff;
+  }
+}
+
+.folder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.folder-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 1px solid #e4e7ed;
+
+  &:hover {
+    background: #f0f2f5;
+    transform: translateY(-2px);
+  }
+
+  .card-content {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin: 0 0 24px 0;
-    color: #1e293b;
-    font-size: 20px;
-    font-weight: 700;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
 
-    .el-icon {
-      color: #667eea;
+    .folder-icon {
       font-size: 24px;
+      color: #409eff;
+      flex-shrink: 0;
     }
-  }
 
-  .folders-section {
-    margin-bottom: 48px;
+    .folder-info {
+      min-width: 0;
 
-    .folder-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 24px;
+      .folder-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1a1a1a;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
 
-      .folder-card {
-        background: white;
-        border-radius: 16px;
-        padding: 24px;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        border: 2px solid transparent;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-
-        &::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-          border-radius: 16px;
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        }
-
-        &:hover {
-          transform: translateY(-8px);
-          border-color: #667eea;
-          box-shadow: 0 12px 32px rgba(102, 126, 234, 0.2);
-
-          &::before {
-            opacity: 1;
-          }
-
-          .card-actions {
-            opacity: 1;
-          }
-        }
-
-        .card-content {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-          position: relative;
-          z-index: 2;
-
-          .folder-icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 16px;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-
-            .el-icon {
-              font-size: 32px;
-              color: white;
-            }
-          }
-
-          .folder-info {
-            .folder-name {
-              font-size: 16px;
-              font-weight: 600;
-              color: #1e293b;
-              margin-bottom: 6px;
-              line-height: 1.4;
-            }
-
-            .folder-meta {
-              color: #64748b;
-              font-size: 14px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 4px;
-
-              &::before {
-                content: '📁';
-                font-size: 12px;
-              }
-            }
-          }
-        }
-
-        .card-actions {
-          position: absolute;
-          top: 16px;
-          right: 16px;
-          opacity: 0;
-          transition: opacity 0.3s ease;
-          z-index: 3;
-
-          .action-trigger {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid #e2e8f0;
-            color: #64748b;
-            backdrop-filter: blur(10px);
-
-            &:hover {
-              background: white;
-              color: #667eea;
-              border-color: #667eea;
-            }
-          }
-        }
+      .folder-meta {
+        font-size: 12px;
+        color: #666;
       }
     }
   }
+}
 
-  .files-section {
-    .file-list {
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.file-card {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+  overflow: hidden;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  &.is-image .file-preview {
+    height: 140px;
+    padding: 0;
+    background: #f5f7fa;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .card-content {
+    cursor: pointer;
+
+    .file-preview {
+      height: 100px;
       display: flex;
-      flex-direction: column;
-      gap: 16px;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #f8f9fa;
 
-      .file-item {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
+      .file-icon {
+        font-size: 32px;
+        color: #409eff;
+      }
+
+      img.file-thumbnail {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      }
+    }
+
+    .file-info {
+      padding: 12px;
+
+      .file-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1a1a1a;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .file-meta {
         display: flex;
-        align-items: center;
-        gap: 20px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: 2px solid transparent;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        position: relative;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #666;
 
-        &::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
-          border-radius: 16px;
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        }
-
-        &:hover {
-          transform: translateY(-4px);
-          border-color: #667eea;
-          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
-
-          &::before {
-            opacity: 1;
-          }
-
-          .file-actions {
-            opacity: 1;
-          }
-        }
-
-        .file-preview {
-          position: relative;
-          width: 80px;
-          height: 80px;
-          border-radius: 12px;
-          overflow: hidden;
-          flex-shrink: 0;
-          background: #f8fafc;
-          border: 2px solid #e2e8f0;
-
-          .file-thumbnail {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-          }
-
-          .file-icon-wrapper {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-
-            .file-icon {
-              font-size: 32px;
-
-              &.video {
-                color: #10b981;
-              }
-
-              &.document {
-                color: #6b7280;
-              }
-            }
-          }
-        }
-
-        .file-details {
-          flex: 1;
-          min-width: 0;
-          position: relative;
-          z-index: 2;
-
-          .file-name {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 8px;
-            word-break: break-all;
-            line-height: 1.4;
-          }
-
-          .file-meta {
-            display: flex;
-            gap: 20px;
-            font-size: 13px;
-            color: #64748b;
-            flex-wrap: wrap;
-
-            .meta-item {
-              display: flex;
-              align-items: center;
-              gap: 6px;
-
-              .el-icon {
-                font-size: 14px;
-                color: #94a3b8;
-              }
-            }
-          }
-        }
-
-        .file-actions {
-          display: flex;
-          gap: 8px;
-          opacity: 0;
-          transition: opacity 0.3s ease;
-          position: relative;
-          z-index: 3;
-
-          .action-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-
-            &.preview {
-              background: #667eea;
-              border-color: #667eea;
-              color: white;
-
-              &:hover {
-                background: #5a67d8;
-                transform: translateY(-1px);
-              }
-            }
-
-            &.download {
-              background: #10b981;
-              border-color: #10b981;
-              color: white;
-
-              &:hover {
-                background: #059669;
-                transform: translateY(-1px);
-              }
-            }
-
-            &.delete {
-              background: #ef4444;
-              border-color: #ef4444;
-              color: white;
-
-              &:hover {
-                background: #dc2626;
-                transform: translateY(-1px);
-              }
-            }
-          }
+        .file-size {
+          color: #409eff;
         }
       }
     }
   }
 
-  .empty-state {
+  .card-actions {
+    border-top: 1px solid #e4e7ed;
+    padding: 8px;
+    display: flex;
+    justify-content: flex-end;
+
+    .action-trigger {
+      padding: 4px 8px;
+    }
+  }
+}
+
+.pagination-container {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e4e7ed;
+  display: flex;
+  justify-content: center;
+}
+
+.move-file-form {
+  padding: 20px;
+}
+
+.file-name {
+  margin-bottom: 20px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.modern-breadcrumb {
+  :deep(.breadcrumb-item) {
+    cursor: pointer;
+    color: #409eff;
+    
+    &:hover {
+      color: #66b1ff;
+    }
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+
+  .el-icon {
+    font-size: 48px;
+    color: #c0c4cc;
+    margin-bottom: 16px;
+  }
+
+  .empty-text {
+    font-size: 14px;
+  }
+}
+
+.preview-dialog {
+  :deep(.el-dialog) {
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    margin: 0 !important;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  :deep(.el-dialog__body) {
+    flex: 1;
+    overflow: auto;
+    padding: 0;
+  }
+
+  .preview-content {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 80px 20px;
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-
-    .empty-content {
-      text-align: center;
-
-      .empty-icon {
-        font-size: 80px;
-        color: #94a3b8;
-        margin-bottom: 24px;
-        opacity: 0.6;
-      }
-
-      h3 {
-        margin: 0 0 12px 0;
-        font-size: 20px;
-        font-weight: 600;
-        color: #1e293b;
-      }
-
-      p {
-        margin: 0 0 32px 0;
-        font-size: 16px;
-        color: #64748b;
-        line-height: 1.6;
-      }
-
-      .empty-action {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        padding: 12px 24px;
-        border-radius: 10px;
-        font-weight: 600;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        transition: all 0.3s ease;
-
-        &:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        }
-      }
-    }
-  }
-}
-
-/* 对话框样式 */
-.upload-dialog,
-.create-dialog,
-.edit-dialog,
-.move-dialog,
-.preview-dialog {
-  :deep(.el-dialog) {
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  :deep(.el-dialog__header) {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 24px;
-    border-bottom: none;
-
-    .el-dialog__title {
-      color: white;
-      font-size: 18px;
-      font-weight: 600;
-    }
-
-    .el-dialog__headerbtn {
-      .el-dialog__close {
-        color: white;
-        font-size: 20px;
-
-        &:hover {
-          color: rgba(255, 255, 255, 0.8);
-        }
-      }
-    }
-  }
-
-  :deep(.el-dialog__body) {
-    padding: 32px;
-    background: #f8fafc;
-  }
-}
-
-.upload-dialog-content {
-  .upload-section {
-    margin-bottom: 24px;
-
-    .section-label {
-      display: block;
-      margin-bottom: 12px;
-      font-weight: 600;
-      color: #374151;
-      font-size: 15px;
-    }
-
-    .folder-select {
-      width: 100%;
-
-      :deep(.el-select__wrapper) {
-        border-radius: 10px;
-        border: 1px solid #d1d5db;
-        transition: all 0.2s ease;
-
-        &:hover {
-          border-color: #667eea;
-        }
-
-        &.is-focus {
-          border-color: #667eea;
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-      }
-    }
-
-    .upload-area {
-      border: 2px dashed #d1d5db;
-      border-radius: 12px;
-      padding: 48px;
-      text-align: center;
-      transition: all 0.3s ease;
-      background: white;
-
-      &:hover {
-        border-color: #667eea;
-        background: #f8fafc;
-      }
-
-      .upload-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-
-        .upload-icon {
-          font-size: 64px;
-          color: #94a3b8;
-          margin-bottom: 20px;
-        }
-
-        .upload-text {
-          font-size: 18px;
-          color: #374151;
-          margin-bottom: 8px;
-          font-weight: 500;
-
-          em {
-            color: #667eea;
-            font-style: normal;
-            font-weight: 600;
-          }
-        }
-
-        .upload-tip {
-          color: #6b7280;
-          font-size: 14px;
-        }
-      }
-    }
-  }
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 24px;
-  background: white;
-  border-top: 1px solid #e2e8f0;
-
-  .cancel-btn,
-  .confirm-btn {
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-weight: 600;
-    transition: all 0.2s ease;
-  }
-
-  .cancel-btn {
-    background: #f3f4f6;
-    border-color: #d1d5db;
-    color: #6b7280;
-
-    &:hover {
-      background: #e5e7eb;
-      border-color: #9ca3af;
-      color: #374151;
-    }
-  }
-
-  .confirm-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    color: white;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
-    }
-
-    &:disabled {
-      background: #d1d5db;
-      color: #9ca3af;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-  }
-}
-
-.preview-content {
-  text-align: center;
-  padding: 20px;
-  background: white;
-  border-radius: 12px;
-
-  .preview-image,
-  .preview-video {
-    max-width: 100%;
-    max-height: 500px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-
-  .unsupported-preview {
-    padding: 60px 20px;
-    color: #64748b;
-
-    .unsupported-icon {
-      font-size: 80px;
-      margin-bottom: 20px;
-      color: #94a3b8;
-      opacity: 0.6;
-    }
-
-    h3 {
-      margin: 0 0 12px 0;
-      font-size: 20px;
-      font-weight: 600;
-      color: #1e293b;
-    }
-
-    p {
-      margin: 0 0 24px 0;
-      font-size: 16px;
-      color: #64748b;
-    }
-
-    .download-btn {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border: none;
-      padding: 12px 24px;
-      border-radius: 10px;
-      font-weight: 600;
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-      }
-    }
-  }
-}
-
-/* 响应式设计 */
-@media (max-width: 1200px) {
-  .content-area {
-    padding: 32px;
-
-    .folders-section .folder-grid {
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 20px;
-    }
-  }
-}
-
-@media (max-width: 768px) {
-  .page-header {
-    padding: 24px 20px;
-
-    .header-content {
-      flex-direction: column;
-      gap: 20px;
-      text-align: center;
-    }
-
-    .header-actions {
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-  }
-
-  .navigation-section,
-  .toolbar-section {
-    padding: 16px 20px;
-  }
-
-  .toolbar-section {
-    flex-direction: column;
-    gap: 16px;
-
-    .toolbar-right {
-      width: 100%;
-      justify-content: center;
-      flex-wrap: wrap;
-
-      .filter-select,
-      .search-input {
-        width: 100%;
-        max-width: 300px;
-      }
-    }
-  }
-
-  .content-area {
+    min-height: 200px;
     padding: 20px;
+    background: #f8f9fa;
 
-    .folders-section .folder-grid {
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 16px;
+    .preview-image {
+      max-width: 100%;
+      max-height: calc(90vh - 120px);
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
     }
 
-    .files-section .file-list .file-item {
-      flex-direction: column;
-      text-align: center;
-      gap: 16px;
+    .preview-video {
+      max-width: 100%;
+      max-height: calc(90vh - 120px);
+      border-radius: 4px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    }
 
-      .file-actions {
-        opacity: 1;
-        justify-content: center;
-        flex-wrap: wrap;
+    .preview-text {
+      width: 100%;
+      max-height: calc(90vh - 120px);
+      overflow: auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 4px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .unsupported-preview {
+      text-align: center;
+      padding: 40px 20px;
+
+      .el-icon {
+        font-size: 48px;
+        color: #909399;
+        margin-bottom: 16px;
+      }
+
+      .unsupported-text {
+        color: #606266;
+        margin-bottom: 20px;
+      }
+
+      .file-info {
+        color: #909399;
+        font-size: 14px;
+        margin-bottom: 20px;
       }
     }
   }

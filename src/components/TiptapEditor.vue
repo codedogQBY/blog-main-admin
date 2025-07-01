@@ -186,75 +186,19 @@
       <div class="preview-content" v-html="previewHtml"></div>
     </div>
 
-    <!-- 图片选择器对话框 -->
-    <el-dialog
+    <!-- 文件选择器 -->
+    <FileSelector
       v-model="imagePickerVisible"
       title="选择图片"
-      width="80%"
-      :close-on-click-modal="false"
-      class="image-picker-dialog"
-    >
-      <div class="image-picker-content">
-        <div class="picker-toolbar">
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索图片..."
-            clearable
-            @input="handleSearch"
-            style="width: 300px"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-          <el-button @click="refreshImageList" :loading="loadingImages">
-            <el-icon><Refresh /></el-icon>
-            刷新
-          </el-button>
-        </div>
-        
-        <div class="image-grid" v-loading="loadingImages">
-          <div
-            v-for="image in filteredImages"
-            :key="image.name"
-            :class="['image-item', { 'selected': selectedImage?.name === image.name }]"
-            @click="selectImage(image)"
-          >
-            <img :src="image.url" :alt="image.name" />
-            <div class="image-overlay">
-              <div class="check-icon">✓</div>
-            </div>
-            <div class="image-info">
-              <div class="image-name">{{ image.name }}</div>
-              <div class="image-size">{{ formatFileSize(image.size) }}</div>
-            </div>
-          </div>
-        </div>
-        
-        <div v-if="filteredImages.length === 0 && !loadingImages" class="empty-state">
-          <el-icon class="empty-icon"><Picture /></el-icon>
-          <p>暂无图片文件</p>
-        </div>
-      </div>
-      
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="closeImagePicker">取消</el-button>
-          <el-button 
-            type="primary" 
-            @click="insertSelectedImage"
-            :disabled="!selectedImage"
-          >
-            插入图片
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
+      :multiple="false"
+      fileType="image"
+      @select="handleImageSelect"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, computed, reactive } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import TiptapImage from '@tiptap/extension-image'
@@ -293,6 +237,7 @@ import {
   Picture
 } from '@element-plus/icons-vue'
 import { fileApi } from '../lib/api'
+import FileSelector from './FileSelector.vue'
 
 interface Props {
   modelValue?: string
@@ -445,105 +390,10 @@ const updatePreview = (html: string) => {
 
 // 图片选择器相关
 const imagePickerVisible = ref(false)
-const loadingImages = ref(false)
-const imageList = ref<any[]>([])
-const selectedImage = ref<any>(null)
-const searchKeyword = ref('')
 
-// 过滤后的图片列表
-const filteredImages = computed(() => {
-  if (!searchKeyword.value) return imageList.value
-  return imageList.value.filter(image => 
-    image.name.toLowerCase().includes(searchKeyword.value.toLowerCase())
-  )
-})
-
-// 格式化文件大小
-const formatFileSize = (size: number) => {
-  if (size < 1024) return size + ' B'
-  if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB'
-  return (size / (1024 * 1024)).toFixed(1) + ' MB'
-}
-
-// 加载图片列表
-const loadImageList = async () => {
-  loadingImages.value = true
-  try {
-    // 获取所有文件，过滤出图片文件
-    const files = await fileApi.getFiles({ type: 'image' })
-    
-    if (files && Array.isArray(files)) {
-      imageList.value = files
-        .filter((file: any) => /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name))
-        .map((file: any) => ({
-          ...file,
-          // 确保使用HTTP协议
-          url: file.url ? file.url.replace('https://', 'http://') : `http://beal-blog-main.test.upcdn.net${file.path}`
-        }))
-    }
-  } catch (error) {
-    console.error('加载图片列表失败:', error)
-    ElMessage.error('加载图片列表失败')
-  } finally {
-    loadingImages.value = false
-  }
-}
-
-// 刷新图片列表
-const refreshImageList = () => {
-  loadImageList()
-}
-
-// 搜索处理
-const handleSearch = () => {
-  // 搜索是通过computed属性实现的，这里不需要额外处理
-}
-
-// 选择图片
-const selectImage = (image: any) => {
-  // 如果点击的是已选中的图片，则取消选择
-  if (selectedImage.value && selectedImage.value.name === image.name) {
-    selectedImage.value = null
-  } else {
-    selectedImage.value = image
-  }
-}
-
-// 插入选中的图片
-const insertSelectedImage = () => {
-  if (selectedImage.value && editor.value) {
-    editor.value.chain().focus().setImage({ src: selectedImage.value.url }).run()
-    closeImagePicker()
-    ElMessage.success('图片插入成功')
-  }
-}
-
-// 关闭图片选择器并清空数据
-const closeImagePicker = () => {
-  imagePickerVisible.value = false
-  selectedImage.value = null
-  searchKeyword.value = ''
-  imageList.value = []
-  loadingImages.value = false
-}
-
-// 获取当前代码块的语言
-const getCurrentLanguage = () => {
-  if (editor.value && editor.value.isActive('codeBlock')) {
-    return editor.value.getAttributes('codeBlock').language || 'javascript'
-  }
-  return 'javascript'
-}
-
-// 设置代码块语言
-const setCodeBlockLanguage = (language: string) => {
-  if (editor.value && editor.value.isActive('codeBlock')) {
-    editor.value.chain().focus().updateAttributes('codeBlock', { language }).run()
-  }
-}
-
+// 添加图片
 const addImage = () => {
-  // 提供三种选择方式
+  // 提供两种选择方式
   ElMessageBox.confirm(
     '请选择插入图片的方式',
     '插入图片',
@@ -585,63 +435,53 @@ const addImage = () => {
         })
         
         // 上传文件
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('folder', 'articles') // 指定文章图片文件夹
-        
-        const response = await fetch('/api/files/upyun/upload', {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-          }
-        })
+        const uploadedFile = await fileApi.uploadFile(file, null, 'articles')
         
         loadingMessage.close()
         
-        if (response.ok) {
-          const result = await response.json()
-          if (result.success && result.data?.url) {
-            // 确保使用HTTP协议
-            const imageUrl = result.data.url.replace('https://', 'http://')
-            // 插入图片到编辑器
-            editor.value?.chain().focus().setImage({ src: imageUrl }).run()
-            ElMessage.success('图片上传成功')
-          } else {
-            throw new Error(result.message || '上传失败')
-          }
+        if (uploadedFile && uploadedFile.url) {
+          // 插入图片到编辑器
+          editor.value?.chain().focus().setImage({ src: uploadedFile.url }).run()
+          ElMessage.success('图片上传成功')
         } else {
-          throw new Error('上传请求失败')
+          throw new Error('上传失败，未获得文件URL')
         }
       } catch (error) {
         console.error('图片上传失败:', error)
-        ElMessage.error('图片上传失败: ' + error.message)
+        ElMessage.error('图片上传失败: ' + (error.message || '未知错误'))
       }
     }
     
     input.click()
   }).catch((action) => {
     if (action === 'cancel') {
-      // 选择从文件库选择
+      // 从文件库选择
       imagePickerVisible.value = true
-      loadImageList()
-    } else if (action === 'close') {
-      // 输入URL选项
-      ElMessageBox.prompt('请输入图片URL', '插入图片', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        inputPattern: /^https?:\/\/.+/,
-        inputErrorMessage: '请输入有效的图片URL'
-      }).then(({ value }) => {
-        if (value && editor.value) {
-          editor.value.chain().focus().setImage({ src: value }).run()
-        }
-      }).catch(() => {
-        // 用户取消，不显示错误
-      })
     }
-    // 如果是其他情况（如用户点击X关闭），不显示错误
   })
+}
+
+// 处理图片选择
+const handleImageSelect = (file: any) => {
+  if (editor.value && file?.url) {
+    editor.value.chain().focus().setImage({ src: file.url }).run()
+    ElMessage.success('图片插入成功')
+  }
+}
+
+// 获取当前代码块的语言
+const getCurrentLanguage = () => {
+  if (editor.value && editor.value.isActive('codeBlock')) {
+    return editor.value.getAttributes('codeBlock').language || 'javascript'
+  }
+  return 'javascript'
+}
+
+// 设置代码块语言
+const setCodeBlockLanguage = (language: string) => {
+  if (editor.value && editor.value.isActive('codeBlock')) {
+    editor.value.chain().focus().updateAttributes('codeBlock', { language }).run()
+  }
 }
 
 const addLink = () => {

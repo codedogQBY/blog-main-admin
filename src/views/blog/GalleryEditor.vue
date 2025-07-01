@@ -99,39 +99,10 @@
                 <div class="section-header">
                   <span class="section-title">图片管理</span>
                   <div class="section-actions">
-                    <!-- 文件夹选择 -->
-                    <el-select 
-                      v-model="currentFolderId" 
-                      placeholder="选择上传文件夹"
-                      clearable
-                      style="width: 200px; margin-right: 8px;"
-                    >
-                      <el-option label="根目录" :value="null" />
-                      <el-option
-                        v-for="folder in allFolders"
-                        :key="folder.id"
-                        :label="folder.path || folder.name"
-                        :value="folder.id"
-                      />
-                    </el-select>
-                    
-                    <el-button type="primary" @click="openFileSelector">
-                      <el-icon><FolderOpened /></el-icon>
-                      从文件管理选择
+                    <el-button type="primary" @click="addImages">
+                      <el-icon><Plus /></el-icon>
+                      添加图片
                     </el-button>
-                    <el-upload
-                      ref="uploadRef"
-                      :auto-upload="false"
-                      :show-file-list="false"
-                      accept="image/*"
-                      multiple
-                      @change="handleFileChange"
-                    >
-                      <el-button>
-                        <el-icon><Upload /></el-icon>
-                        上传新图片
-                      </el-button>
-                    </el-upload>
                   </div>
                 </div>
               </template>
@@ -196,43 +167,10 @@
                 </div>
               </div>
               
-              <!-- 上传区域 -->
-              <div v-if="pendingFiles.length > 0" class="pending-files">
-                <h4>待添加的图片</h4>
-                <div class="pending-grid">
-                  <div
-                    v-for="(file, index) in pendingFiles"
-                    :key="index"
-                    class="pending-item"
-                  >
-                    <el-image
-                      :src="file.url"
-                      fit="cover"
-                      class="pending-preview"
-                    />
-                    <div class="pending-name">{{ file.name }}</div>
-                    <el-button
-                      size="small"
-                      type="danger"
-                      class="remove-btn"
-                      @click="removePendingFile(index)"
-                    >
-                      <el-icon><Close /></el-icon>
-                    </el-button>
-                  </div>
-                </div>
-                <div class="pending-actions">
-                  <el-button @click="pendingFiles = []">清空</el-button>
-                  <el-button type="primary" @click="confirmFileSelection">
-                    添加这 {{ pendingFiles.length }} 张图片
-                  </el-button>
-                </div>
-              </div>
-              
-              <div v-if="formData.images.length === 0 && pendingFiles.length === 0" class="empty-images">
+              <div v-else class="empty-images">
                 <el-icon class="empty-icon"><Picture /></el-icon>
                 <div class="empty-text">还没有添加任何图片</div>
-                <div class="empty-hint">您可以从文件管理选择已上传的图片，或上传新图片</div>
+                <div class="empty-hint">点击上方按钮添加图片</div>
               </div>
             </el-card>
           </div>
@@ -269,6 +207,25 @@
         </el-col>
       </el-row>
     </div>
+
+    <!-- 文件选择器 - 封面图片 -->
+    <FileSelector
+      v-model="coverImagePickerVisible"
+      title="选择封面图片"
+      :multiple="false"
+      fileType="image"
+      @select="handleCoverImageSelect"
+    />
+
+    <!-- 文件选择器 - 图集图片 -->
+    <FileSelector
+      v-model="imagePickerVisible"
+      title="选择图片"
+      :multiple="true"
+      fileType="image"
+      :maxFiles="20"
+      @select="handleImagesSelect"
+    />
 
     <!-- 文件选择对话框 -->
     <el-dialog
@@ -434,6 +391,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus, FolderOpened, Upload, HomeFilled, Search, Loading, Picture, Star, Edit, Delete, Close, Folder, Check } from '@element-plus/icons-vue'
 import { fileApi, galleryApi, galleryCategoryApi } from '../../lib/api'
+import FileSelector from '../../components/FileSelector.vue'
 
 // 路由和响应式数据
 const route = useRoute()
@@ -491,6 +449,10 @@ const fileSearchQuery = ref('')
 const allFolders = ref([])
 let fileSearchTimer = null
 
+// 文件选择器状态
+const coverImagePickerVisible = ref(false)
+const imagePickerVisible = ref(false)
+
 // 计算属性 - 只显示图片文件
 const imageFiles = computed(() => {
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp']
@@ -513,11 +475,14 @@ const formRules = {
 onMounted(async () => {
   await Promise.all([
     loadCategories(),
-    loadAllFolders()  // 加载所有文件夹
+    loadAllFolders()
   ])
   
   if (isEditing.value) {
     await loadGallery()
+  } else {
+    // 新建时初始化一个空的图片数组
+    formData.images = []
   }
 })
 
@@ -543,7 +508,27 @@ const loadCategories = async () => {
 const loadGallery = async () => {
   try {
     const gallery = await galleryApi.getById(galleryId.value)
-    Object.assign(formData, gallery)
+    // 更新表单数据
+    formData.title = gallery.title
+    formData.description = gallery.description
+    formData.category = gallery.category
+    formData.tags = gallery.tags || []
+    formData.status = gallery.status
+    formData.sort = gallery.sort || 0
+    formData.images = gallery.images?.map((img: any) => ({
+      title: img.title || '',
+      description: img.description || '',
+      imageUrl: img.url,
+      sort: img.sort || 0
+    })) || []
+    
+    // 设置封面图片索引
+    if (gallery.coverImage) {
+      const coverIndex = formData.images.findIndex(img => img.imageUrl === gallery.coverImage)
+      if (coverIndex !== -1) {
+        coverImageIndex.value = coverIndex
+      }
+    }
   } catch (error) {
     console.error('加载图集失败:', error)
     ElMessage.error('加载图集失败')
@@ -839,6 +824,189 @@ const openFileSelector = async () => {
     console.error('打开文件选择器失败:', error)
     ElMessage.error('打开文件选择器失败')
   }
+}
+
+// 选择封面图片
+const selectCoverImage = () => {
+  // 提供两种选择方式
+  ElMessageBox.confirm(
+    '请选择封面图片的方式',
+    '选择封面图片',
+    {
+      confirmButtonText: '上传新图片',
+      cancelButtonText: '从文件库选择',
+      distinguishCancelAndClose: true,
+      type: 'info'
+    }
+  ).then(() => {
+    // 选择上传文件
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.multiple = false
+    
+    input.onchange = async (e: Event) => {
+      const target = e.target as HTMLInputElement
+      const file = target.files?.[0]
+      if (!file) return
+      
+      // 检查文件大小 (5MB限制)
+      if (file.size > 5 * 1024 * 1024) {
+        ElMessage.error('图片大小不能超过5MB')
+        return
+      }
+      
+      // 检查文件类型
+      if (!file.type.startsWith('image/')) {
+        ElMessage.error('请选择图片文件')
+        return
+      }
+      
+      try {
+        // 显示上传中提示
+        const loadingMessage = ElMessage({
+          message: '正在上传封面图片...',
+          type: 'info',
+          duration: 0
+        })
+        
+        // 上传文件
+        const uploadedFile = await fileApi.uploadFile(file)
+        
+        loadingMessage.close()
+        
+        if (uploadedFile && uploadedFile.url) {
+          formData.images[coverImageIndex.value].imageUrl = uploadedFile.url
+          ElMessage.success('封面图片上传成功')
+        } else {
+          throw new Error('上传失败，未获得文件URL')
+        }
+      } catch (error) {
+        console.error('封面图片上传失败:', error)
+        ElMessage.error('封面图片上传失败: ' + ((error as Error).message || '未知错误'))
+      }
+    }
+    
+    input.click()
+  }).catch((action) => {
+    if (action === 'cancel') {
+      // 从文件库选择
+      coverImagePickerVisible.value = true
+    }
+  })
+}
+
+// 处理封面图片选择
+const handleCoverImageSelect = (file: any) => {
+  if (file?.url) {
+    formData.images[coverImageIndex.value].imageUrl = file.url
+    ElMessage.success('封面图片设置成功')
+  }
+  coverImagePickerVisible.value = false
+}
+
+// 添加图片
+const addImages = () => {
+  // 提供两种选择方式
+  ElMessageBox.confirm(
+    '请选择添加图片的方式',
+    '添加图片',
+    {
+      confirmButtonText: '上传新图片',
+      cancelButtonText: '从文件库选择',
+      distinguishCancelAndClose: true,
+      type: 'info'
+    }
+  ).then(() => {
+    // 选择上传文件
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.multiple = true
+    
+    input.onchange = async (e: Event) => {
+      const target = e.target as HTMLInputElement
+      const files = Array.from(target.files || [])
+      if (files.length === 0) return
+      
+      // 检查文件数量限制
+      if (files.length > 20) {
+        ElMessage.error('一次最多只能上传20张图片')
+        return
+      }
+      
+      // 检查每个文件
+      for (const file of files) {
+        // 检查文件大小 (5MB限制)
+        if (file.size > 5 * 1024 * 1024) {
+          ElMessage.error(`图片 ${file.name} 大小超过5MB`)
+          return
+        }
+        
+        // 检查文件类型
+        if (!file.type.startsWith('image/')) {
+          ElMessage.error(`文件 ${file.name} 不是图片格式`)
+          return
+        }
+      }
+      
+      try {
+        // 显示上传中提示
+        const loadingMessage = ElMessage({
+          message: '正在上传图片...',
+          type: 'info',
+          duration: 0
+        })
+        
+        // 上传所有文件
+        const uploadPromises = files.map(file => 
+          fileApi.uploadFile(file)
+        )
+        
+        const uploadedFiles = await Promise.all(uploadPromises)
+        
+        loadingMessage.close()
+        
+        // 添加到图片列表
+        const newImages = uploadedFiles
+          .filter(file => file && file.url)
+          .map((file, index) => ({
+            title: files[index].name.replace(/\.[^/.]+$/, ''), // 移除文件扩展名
+            description: '',
+            imageUrl: file.url,
+            sort: formData.images.length + index
+          }))
+        
+        formData.images.push(...newImages)
+        ElMessage.success(`成功上传 ${newImages.length} 张图片`)
+      } catch (error) {
+        console.error('图片上传失败:', error)
+        ElMessage.error('图片上传失败: ' + ((error as Error).message || '未知错误'))
+      }
+    }
+    
+    input.click()
+  }).catch((action) => {
+    if (action === 'cancel') {
+      // 从文件库选择
+      imagePickerVisible.value = true
+    }
+  })
+}
+
+// 处理图片选择
+const handleImagesSelect = (files: any[]) => {
+  if (Array.isArray(files) && files.length > 0) {
+    const newImages = files.map(file => ({
+      title: file.name.replace(/\.[^/.]+$/, ''), // 移除文件扩展名
+      description: '',
+      imageUrl: file.url,
+      sort: formData.images.length + files.indexOf(file)
+    }))
+    formData.images.push(...newImages)
+    ElMessage.success(`已添加 ${files.length} 张图片`)
+  }
+  imagePickerVisible.value = false
 }
 </script>
 

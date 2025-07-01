@@ -552,7 +552,11 @@ class ApiClient {
     await this.client.delete(`/files/folders/${id}`)
   }
 
-  async getFiles(params?: { folderId?: string; search?: string; type?: string }): Promise<FileItem[]> {
+  async getFiles(params?: {
+    folderId?: string;
+    search?: string;
+    type?: 'image' | 'video' | 'audio' | 'document' | 'other';
+  }): Promise<FileItem[]> {
     const response = await this.client.get<FileItem[]>('/files', { params })
     return response.data
   }
@@ -830,4 +834,4 @@ export const galleryCategoryApi = {
 // 为了向后兼容，导出 api 作为命名导出
 export const api = apiClient
 
-export default apiClient 
+export default apiClient
