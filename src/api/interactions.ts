@@ -1,20 +1,36 @@
-import api from '../lib/api'
+import request from '@/lib/api'
+
+export interface UserInfo {
+  userAgent?: string
+  deviceType?: string
+  ipAddress?: string
+  country?: string
+  region?: string
+  city?: string
+  latitude?: number
+  longitude?: number
+  timezone?: string
+  deviceModel?: string
+  osName?: string
+  osVersion?: string
+  browserName?: string
+  browserVersion?: string
+  screenWidth?: number
+  screenHeight?: number
+  language?: string
+  languages?: string
+  nickname?: string
+  email?: string
+}
 
 export interface Like {
   id: string
   targetType: string
   targetId: string
   fingerprint: string
+  userInfo: UserInfo
   createdAt: string
-  userInfo: {
-    nickname: string
-    location: string
-    country: string
-    deviceType: string
-    browser: string
-    ipAddress: string
-    joinedAt: string
-  } | null
+  deleting?: boolean
 }
 
 export interface Comment {
@@ -22,23 +38,44 @@ export interface Comment {
   content: string
   targetType: string
   targetId: string
-  author: string
-  email: string
   fingerprint: string
+  author?: string
+  email?: string
+  userInfo: UserInfo
   createdAt: string
-  parentId: string | null
-  isDeleted: boolean
-  userInfo: {
-    nickname: string
-    location: string
-    country: string
-    deviceType: string
-    browser: string
-    ipAddress: string
-    email: string
-    joinedAt: string
-  } | null
   repliesCount: number
+  isDeleted: boolean
+  deleting?: boolean
+}
+
+export interface CommentTypeStats {
+  type: string
+  count: number
+}
+
+export interface DailyTrendStats {
+  date: string
+  count: number
+}
+
+export interface TopCommenter {
+  fingerprint: string
+  author: string
+  count: number
+}
+
+export interface TopContent {
+  type: string
+  id: string
+  title: string
+  count: number
+}
+
+export interface CommentStats {
+  byType: CommentTypeStats[]
+  dailyTrend: DailyTrendStats[]
+  topCommenters: TopCommenter[]
+  topContent: TopContent[]
 }
 
 export interface InteractionStats {
@@ -61,6 +98,7 @@ export interface InteractionStats {
     timestamp: string
     fingerprint: string
   }>
+  commentStats: CommentStats
 }
 
 export interface PaginatedResponse<T> {
@@ -72,37 +110,26 @@ export interface PaginatedResponse<T> {
 }
 
 // 获取点赞列表
-export const getLikes = (params: {
-  page?: number
-  limit?: number
-  targetType?: string
-  targetId?: string
-}) => {
-  return api.get<{ likes: Like[] } & Omit<PaginatedResponse<Like>, 'data'>>('/interactions/admin/likes', { params })
+export function getLikes(params: { page?: number; limit?: number; targetType?: string }) {
+  return request.get<{ likes: Like[]; total: number }>('/interactions/admin/likes', { params })
 }
 
 // 获取评论列表
-export const getComments = (params: {
-  page?: number
-  limit?: number
-  targetType?: string
-  targetId?: string
-  search?: string
-}) => {
-  return api.get<{ comments: Comment[] } & Omit<PaginatedResponse<Comment>, 'data'>>('/interactions/admin/comments', { params })
+export function getComments(params: { page?: number; limit?: number; targetType?: string; search?: string }) {
+  return request.get<{ comments: Comment[]; total: number }>('/interactions/admin/comments', { params })
 }
 
 // 删除评论
-export const deleteComment = (id: string) => {
-  return api.delete(`/interactions/admin/comments/${id}`)
+export function deleteComment(id: string) {
+  return request.delete(`/interactions/admin/comments/${id}`)
 }
 
 // 删除点赞
-export const deleteLike = (id: string) => {
-  return api.delete(`/interactions/admin/likes/${id}`)
+export function deleteLike(id: string) {
+  return request.delete(`/interactions/admin/likes/${id}`)
 }
 
 // 获取统计信息
-export const getInteractionStats = () => {
-  return api.get<InteractionStats>('/interactions/admin/stats')
+export function getInteractionStats() {
+  return request.get<InteractionStats>('/interactions/admin/stats')
 } 
