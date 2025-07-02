@@ -128,15 +128,15 @@
     <!-- 分页 -->
     <div class="pagination-container">
       <el-pagination
-        :current-page="pagination.page"
-        :page-size="pagination.pageSize"
+        v-model:current-page="pagination.page"
+        v-model:page-size="pagination.pageSize"
         :page-sizes="[12, 24, 36, 48]"
         :total="pagination.total"
         layout="total, sizes, prev, pager, next"
         @size-change="handleSizeChange"
         @current-change="handlePageChange"
-        @update:current-page="(val) => pagination.page = val"
-        @update:page-size="(val) => pagination.pageSize = val"
+        @update:current-page="(val: number) => pagination.page = val"
+        @update:page-size="(val: number) => pagination.pageSize = val"
       />
     </div>
 
@@ -181,7 +181,7 @@ import {
 } from '@element-plus/icons-vue'
 import { filesApi } from '../api/files'
 
-interface FileType {
+export interface FileType {
   id: string
   name: string
   url: string
@@ -216,13 +216,11 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // Emits
-interface Emits {
-  (e: 'update:modelValue', value: string | string[]): void
-  (e: 'select', value: string | string[]): void
-  (e: 'update:visible', value: boolean): void
-}
-
-const emit = defineEmits<Emits>()
+const emit = defineEmits([
+  'update:modelValue',
+  'select',
+  'update:visible'
+])
 
 // 弹窗显示状态由外部visible控制
 const dialogVisible = computed({
@@ -379,12 +377,16 @@ const handleConfirm = () => {
     ElMessage.warning('请至少选择一个文件')
     return
   }
+
   // 根据是否多选返回不同格式
-  const result = props.multiple
+  const urls = props.multiple
     ? selectedFiles.value.map(f => f.url)
     : selectedFiles.value[0]?.url || ''
-  emit('update:modelValue', result)
-  emit('select', result)
+  
+  // 发送 URL 到 v-model，发送文件对象到 select 事件
+  emit('update:modelValue', urls)
+  emit('select', props.multiple ? selectedFiles.value : selectedFiles.value[0])
+  
   handleClose()
 }
 

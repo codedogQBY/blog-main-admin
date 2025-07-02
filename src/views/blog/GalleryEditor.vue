@@ -237,6 +237,34 @@
       fileType="image"
       @select="handleImageSelect"
     />
+
+    <!-- 图片编辑对话框 -->
+    <el-dialog
+      v-model="imageEditDialogVisible"
+      title="编辑图片"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="editingImage" label-width="80px">
+        <el-form-item label="标题">
+          <el-input v-model="editingImage.title" placeholder="请输入图片标题" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input
+            v-model="editingImage.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入图片描述"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="imageEditDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleImageEditConfirm">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -246,7 +274,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus, Picture, Star, Edit, Delete } from '@element-plus/icons-vue'
 import PermissionCheck from '../../components/PermissionCheck.vue'
-import FileSelector from '../../components/FileSelector.vue'
+import FileSelector, { type FileType } from '../../components/FileSelector.vue'
 import { galleryApi } from '../../api'
 import type { Gallery, GalleryImage, GalleryCategory } from '../../api'
 
@@ -441,12 +469,12 @@ const handleCoverImageSelect = (value: string | string[]) => {
 }
 
 // 处理图片选择
-const handleImageSelect = (value: string | string[]) => {
-  const imageUrls = Array.isArray(value) ? value : [value]
-  const newImages: EditorGalleryImage[] = imageUrls.map((url, index) => ({
-    title: '',
+const handleImageSelect = (files: FileType | FileType[]) => {
+  const fileList = Array.isArray(files) ? files : [files]
+  const newImages: EditorGalleryImage[] = fileList.map((file, index) => ({
+    title: file.name.replace(/\.[^/.]+$/, ''), // 移除文件扩展名
     description: '',
-    imageUrl: url,
+    imageUrl: file.url,
     sort: formData.images.length + index,
     id: `temp-${Date.now()}-${index}`, // 临时 ID，后端会替换
     createdAt: new Date().toISOString(),
@@ -474,31 +502,34 @@ const setCoverImage = (index: number) => {
   coverImageIndex.value = index
 }
 
+// 图片编辑相关
+const imageEditDialogVisible = ref(false)
+const editingImage = reactive<{
+  index: number;
+  title: string;
+  description: string;
+}>({
+  index: -1,
+  title: '',
+  description: ''
+})
+
 const editImage = (index: number) => {
   const image = formData.images[index]
-  ElMessageBox.prompt('请输入图片标题', '编辑图片', {
-    inputValue: image.title,
-    inputPlaceholder: '请输入图片标题',
-    confirmButtonText: '下一步',
-    cancelButtonText: '取消'
-  }).then(({ value: title }) => {
-    // 先更新标题
-    image.title = title
-    // 继续编辑描述
-    return ElMessageBox.prompt('请输入图片描述', '编辑图片', {
-      inputValue: image.description,
-      inputType: 'textarea',
-      inputPlaceholder: '请输入图片描述',
-      confirmButtonText: '确定',
-      cancelButtonText: '取消'
-    })
-  }).then(({ value: description }) => {
-    // 更新描述
-    image.description = description
+  editingImage.index = index
+  editingImage.title = image.title
+  editingImage.description = image.description || ''
+  imageEditDialogVisible.value = true
+}
+
+const handleImageEditConfirm = () => {
+  if (editingImage.index > -1) {
+    const image = formData.images[editingImage.index]
+    image.title = editingImage.title
+    image.description = editingImage.description
     ElMessage.success('编辑成功')
-  }).catch(() => {
-    // 用户取消操作，不做任何处理
-  })
+  }
+  imageEditDialogVisible.value = false
 }
 </script>
 
