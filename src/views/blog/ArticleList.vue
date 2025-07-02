@@ -243,7 +243,7 @@
                   <template #dropdown>
                     <el-dropdown-menu>
                       <PermissionCheck permission="article.update">
-                          <el-dropdown-item :command="`edit:${article.id}`">
+                        <el-dropdown-item :command="`edit:${article.id}`">
                           <el-icon><Edit /></el-icon>
                           编辑
                         </el-dropdown-item>
@@ -260,7 +260,7 @@
                           {{ article.published ? '取消发布' : '发布' }}
                         </el-dropdown-item>
                       </PermissionCheck>
-                      <PermissionCheck permission="article.delete"></PermissionCheck>
+                      <PermissionCheck permission="article.delete">
                         <el-dropdown-item :command="`delete:${article.id}`" class="danger-item">
                           <el-icon><Delete /></el-icon>
                           删除
@@ -354,9 +354,9 @@
                       <el-dropdown-menu>
                         <PermissionCheck permission="article.update">
                           <el-dropdown-item :command="`edit:${article.id}`">
-                          <el-icon><Edit /></el-icon>
-                          编辑
-                        </el-dropdown-item>
+                            <el-icon><Edit /></el-icon>
+                            编辑
+                          </el-dropdown-item>
                         </PermissionCheck>
                         <PermissionCheck permission="article.update">
                           <el-dropdown-item :command="`copy:${article.id}`">
@@ -364,7 +364,7 @@
                             复制
                           </el-dropdown-item>
                         </PermissionCheck>
-                        <PermissionCheck permission="article.update"></PermissionCheck>
+                        <PermissionCheck permission="article.update">
                           <el-dropdown-item :command="`toggle:${article.id}`">
                             <el-icon><Switch /></el-icon>
                             {{ article.published ? '取消发布' : '发布' }}
@@ -372,11 +372,10 @@
                         </PermissionCheck>
                         <PermissionCheck permission="article.delete">
                           <el-dropdown-item :command="`delete:${article.id}`" class="danger-item">
-                          <el-icon><Delete /></el-icon>
-                          删除
-                        </el-dropdown-item>
+                            <el-icon><Delete /></el-icon>
+                            删除
+                          </el-dropdown-item>
                         </PermissionCheck>
-                        
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
