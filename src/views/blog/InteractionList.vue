@@ -266,7 +266,6 @@ import {
   type Comment,
   type InteractionStats
 } from '../../api/interactions'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import PermissionCheck from '@/components/PermissionCheck.vue'
 
 // 响应式数据

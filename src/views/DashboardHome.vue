@@ -12,15 +12,17 @@
             <p class="welcome-subtitle">今天是个美好的一天，开始您的创作之旅吧</p>
           </div>
           <div class="welcome-actions">
-            <el-button 
-              type="primary" 
-              size="large"
-              @click="$router.push('/admin/articles/create')"
-              class="create-btn"
-            >
-              <el-icon><EditPen /></el-icon>
-              创作新文章
-            </el-button>
+            <PermissionCheck permission="article.create">
+              <el-button 
+                type="primary" 
+                size="large"
+                @click="$router.push('/admin/articles/create')"
+                class="create-btn"
+              >
+                <el-icon><EditPen /></el-icon>
+                创作新文章
+              </el-button>
+            </PermissionCheck>
           </div>
         </div>
       </el-card>
@@ -98,45 +100,53 @@
         </template>
         
         <div class="actions-grid">
-          <div class="action-item" @click="$router.push('/admin/articles/create')">
-            <div class="action-icon create">
-              <el-icon><EditPen /></el-icon>
+          <PermissionCheck permission="article.create">
+            <div class="action-item" @click="$router.push('/admin/articles/create')">
+              <div class="action-icon create">
+                <el-icon><EditPen /></el-icon>
+              </div>
+              <div class="action-content">
+                <h4>创作文章</h4>
+                <p>撰写新的博客文章</p>
+              </div>
             </div>
-            <div class="action-content">
-              <h4>创作文章</h4>
-              <p>撰写新的博客文章</p>
-            </div>
-          </div>
+          </PermissionCheck>
           
-          <div class="action-item" @click="$router.push('/admin/articles')">
-            <div class="action-icon manage">
-              <el-icon><Document /></el-icon>
+          <PermissionCheck permission="article.read">
+            <div class="action-item" @click="$router.push('/admin/articles')">
+              <div class="action-icon manage">
+                <el-icon><Document /></el-icon>
+              </div>
+              <div class="action-content">
+                <h4>文章管理</h4>
+                <p>管理已发布的文章</p>
+              </div>
             </div>
-            <div class="action-content">
-              <h4>文章管理</h4>
-              <p>管理已发布的文章</p>
-            </div>
-          </div>
+          </PermissionCheck>
           
-          <div class="action-item" @click="$router.push('/admin/categories')">
-            <div class="action-icon category">
-              <el-icon><FolderOpened /></el-icon>
+          <PermissionCheck permission="category.read">
+            <div class="action-item" @click="$router.push('/admin/categories')">
+              <div class="action-icon category">
+                <el-icon><FolderOpened /></el-icon>
+              </div>
+              <div class="action-content">
+                <h4>分类管理</h4>
+                <p>组织文章分类结构</p>
+              </div>
             </div>
-            <div class="action-content">
-              <h4>分类管理</h4>
-              <p>组织文章分类结构</p>
-            </div>
-          </div>
+          </PermissionCheck>
           
-          <div class="action-item" @click="$router.push('/admin/users')">
-            <div class="action-icon users">
-              <el-icon><UserFilled /></el-icon>
+          <PermissionCheck permission="user.read">
+            <div class="action-item" @click="$router.push('/admin/users')">
+              <div class="action-icon users">
+                <el-icon><UserFilled /></el-icon>
+              </div>
+              <div class="action-content">
+                <h4>用户管理</h4>
+                <p>管理系统用户权限</p>
+              </div>
             </div>
-            <div class="action-content">
-              <h4>用户管理</h4>
-              <p>管理系统用户权限</p>
-            </div>
-          </div>
+          </PermissionCheck>
         </div>
       </el-card>
     </div>
@@ -212,6 +222,7 @@ import {
   Edit
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../lib/store'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 
 const userStore = useAuthStore()
 
