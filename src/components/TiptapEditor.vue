@@ -188,7 +188,10 @@
 
     <!-- 文件选择器 -->
     <FileSelector
-      v-model="imagePickerVisible"
+      :model-value="selectedImage"
+      :visible="imagePickerVisible"
+      @update:model-value="selectedImage = $event"
+      @update:visible="imagePickerVisible = $event"
       title="选择图片"
       :multiple="false"
       fileType="image"
@@ -390,82 +393,17 @@ const updatePreview = (html: string) => {
 
 // 图片选择器相关
 const imagePickerVisible = ref(false)
+const selectedImage = ref('')
 
 // 添加图片
 const addImage = () => {
-  // 提供两种选择方式
-  ElMessageBox.confirm(
-    '请选择插入图片的方式',
-    '插入图片',
-    {
-      confirmButtonText: '上传新图片',
-      cancelButtonText: '从文件库选择',
-      distinguishCancelAndClose: true,
-      type: 'info'
-    }
-  ).then(() => {
-    // 选择上传文件
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.multiple = false
-    
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file) return
-      
-      // 检查文件大小 (5MB限制)
-      if (file.size > 5 * 1024 * 1024) {
-        ElMessage.error('图片大小不能超过5MB')
-        return
-      }
-      
-      // 检查文件类型
-      if (!file.type.startsWith('image/')) {
-        ElMessage.error('请选择图片文件')
-        return
-      }
-      
-      try {
-        // 显示上传中提示
-        const loadingMessage = ElMessage({
-          message: '正在上传图片...',
-          type: 'info',
-          duration: 0
-        })
-        
-        // 上传文件
-        const uploadedFile = await fileApi.uploadFile(file, null, 'articles')
-        
-        loadingMessage.close()
-        
-        if (uploadedFile && uploadedFile.url) {
-          // 插入图片到编辑器
-          editor.value?.chain().focus().setImage({ src: uploadedFile.url }).run()
-          ElMessage.success('图片上传成功')
-        } else {
-          throw new Error('上传失败，未获得文件URL')
-        }
-      } catch (error) {
-        console.error('图片上传失败:', error)
-        ElMessage.error('图片上传失败: ' + (error.message || '未知错误'))
-      }
-    }
-    
-    input.click()
-  }).catch((action) => {
-    if (action === 'cancel') {
-      // 从文件库选择
-      imagePickerVisible.value = true
-    }
-  })
+  imagePickerVisible.value = true
 }
 
 // 处理图片选择
-const handleImageSelect = (file: any) => {
-  if (editor.value && file?.url) {
-    editor.value.chain().focus().setImage({ src: file.url }).run()
-    ElMessage.success('图片插入成功')
+const handleImageSelect = (url: string) => {
+  if (url && editor.value) {
+    editor.value.chain().focus().setImage({ src: url }).run()
   }
 }
 

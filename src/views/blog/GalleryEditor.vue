@@ -144,7 +144,7 @@
                       <el-button-group>
                         <el-button 
                           size="small" 
-                          type="primary" 
+                          style="color: #409eff;"
                           :disabled="index === coverImageIndex"
                           @click="setCoverImage(index)"
                         >
@@ -156,7 +156,7 @@
                         <PermissionCheck permission="gallery.delete">
                           <el-button 
                             size="small" 
-                            type="danger"
+                            style="color: #f56c6c;"
                             @click="removeImage(index)"
                           >
                             <el-icon><Delete /></el-icon>
@@ -214,180 +214,29 @@
       </el-row>
     </div>
 
-    <!-- 文件选择器 - 封面图片 -->
+    <!-- 封面图片选择器 -->
     <FileSelector
-      v-model="coverImagePickerVisible"
+      v-model="selectedCoverImage"
+      :visible="coverImagePickerVisible"
+      @update:visible="coverImagePickerVisible = $event"
       title="选择封面图片"
       :multiple="false"
+      :max-files="1"
       fileType="image"
       @select="handleCoverImageSelect"
     />
 
-    <!-- 文件选择器 - 图集图片 -->
+    <!-- 图片选择器 -->
     <FileSelector
-      v-model="imagePickerVisible"
+      v-model="selectedImages"
+      :visible="imagePickerVisible"
+      @update:visible="imagePickerVisible = $event"
       title="选择图片"
       :multiple="true"
+      :max-files="20"
       fileType="image"
-      :maxFiles="20"
-      @select="handleImagesSelect"
+      @select="handleImageSelect"
     />
-
-    <!-- 文件选择对话框 -->
-    <el-dialog
-      v-model="showFileSelector"
-      title="选择图片文件"
-      width="80%"
-      max-height="80vh"
-      :close-on-click-modal="false"
-    >
-      <div class="file-selector-dialog">
-        <!-- 文件夹导航 -->
-        <div class="file-nav">
-          <el-breadcrumb separator="/">
-            <el-breadcrumb-item @click="navigateToFolder(null)">
-              <el-icon><HomeFilled /></el-icon>
-              根目录
-            </el-breadcrumb-item>
-            <el-breadcrumb-item
-              v-for="folder in breadcrumbPath"
-              :key="folder.id"
-              @click="navigateToFolder(folder.id)"
-              class="breadcrumb-link"
-            >
-              {{ folder.name }}
-            </el-breadcrumb-item>
-          </el-breadcrumb>
-          
-          <el-input
-            v-model="fileSearchQuery"
-            placeholder="搜索图片文件..."
-            clearable
-            style="width: 300px"
-            @input="handleFileSearch"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-        </div>
-
-        <!-- 文件夹列表 -->
-        <div v-if="fileFolders.length > 0" class="folders-section">
-          <h4>文件夹</h4>
-          <div class="folders-list">
-            <div
-              v-for="folder in fileFolders"
-              :key="folder.id"
-              class="folder-item"
-              @click="navigateToFolder(folder.id)"
-            >
-              <el-icon class="folder-icon"><Folder /></el-icon>
-              <span class="folder-name">{{ folder.name }}</span>
-              <span class="file-count">({{ folder._count?.files || 0 }})</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 图片文件网格 -->
-        <div class="files-section">
-          <div class="section-header">
-            <h4>图片文件</h4>
-            <div class="selection-info">
-              已选择 {{ selectedFiles.length }} 个文件
-              <el-button
-                v-if="selectedFiles.length > 0"
-                type="danger"
-                size="small"
-                @click="selectedFiles = []"
-              >
-                清空选择
-              </el-button>
-            </div>
-          </div>
-          
-          <div v-if="fileLoading" class="loading-container">
-            <el-icon class="is-loading"><Loading /></el-icon>
-            <span>加载中...</span>
-          </div>
-          <div v-else-if="imageFiles.length === 0" class="empty-container">
-            <el-icon><Picture /></el-icon>
-            <span>当前文件夹没有图片文件</span>
-          </div>
-          <div v-else class="files-grid">
-            <div
-              v-for="file in imageFiles"
-              :key="file.id"
-              class="file-item"
-              :class="{ selected: selectedFiles.some(f => f.id === file.id) }"
-              @click="toggleFileSelection(file)"
-            >
-              <div class="file-preview">
-                <el-image
-                  :src="file.url"
-                  fit="cover"
-                  class="file-image"
-                >
-                  <template #error>
-                    <div class="image-error">
-                      <el-icon><Picture /></el-icon>
-                    </div>
-                  </template>
-                </el-image>
-                
-                <!-- 选中标识 -->
-                <div v-if="selectedFiles.some(f => f.id === file.id)" class="selected-badge">
-                  <el-icon><Check /></el-icon>
-                </div>
-              </div>
-              <div class="file-info">
-                <div class="file-name" :title="file.name">{{ file.name }}</div>
-                <div class="file-meta">
-                  <span class="file-size">{{ formatFileSize(file.size) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="showFileSelector = false">取消</el-button>
-          <el-button 
-            type="primary" 
-            :disabled="selectedFiles.length === 0"
-            @click="confirmFileSystemSelection"
-          >
-            确认选择 ({{ selectedFiles.length }})
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
-
-    <!-- 图片编辑对话框 -->
-    <el-dialog
-      v-model="showImageEditor"
-      title="编辑图片信息"
-      width="500px"
-    >
-      <el-form :model="editingImage" ref="imageFormRef" label-width="80px" v-if="editingImage">
-        <el-form-item label="预览">
-          <img :src="editingImage.imageUrl" class="preview-image" />
-        </el-form-item>
-        <el-form-item label="标题">
-          <el-input v-model="editingImage.title" placeholder="图片标题" />
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="editingImage.description" type="textarea" placeholder="图片描述" />
-        </el-form-item>
-      </el-form>
-      
-      <template #footer>
-        <el-button @click="showImageEditor = false">取消</el-button>
-        <el-button type="primary" @click="saveImageEdit">确定</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -395,174 +244,159 @@
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, Plus, FolderOpened, Upload, HomeFilled, Search, Loading, Picture, Star, Edit, Delete, Close, Folder, Check } from '@element-plus/icons-vue'
-import { fileApi, galleryApi, galleryCategoryApi } from '../../lib/api'
+import { ArrowLeft, Plus, Picture, Star, Edit, Delete } from '@element-plus/icons-vue'
+import PermissionCheck from '../../components/PermissionCheck.vue'
 import FileSelector from '../../components/FileSelector.vue'
-import PermissionCheck from '@/components/PermissionCheck.vue'
+import { galleryApi } from '../../api'
+import type { Gallery, GalleryImage, GalleryCategory } from '../../api'
+
+// 编辑器中使用的图片类型
+interface EditorGalleryImage extends Partial<GalleryImage> {
+  title: string
+  description?: string
+  imageUrl: string
+  sort: number
+}
+
+interface GalleryForm {
+  title: string
+  description: string
+  category: string
+  tags: string[]
+  status: 'published' | 'draft'
+  sort: number
+  images: EditorGalleryImage[]
+}
 
 // 路由和响应式数据
 const route = useRoute()
 const router = useRouter()
 const formRef = ref()
-const imageFormRef = ref()
-const tagInputRef = ref()
-
-// 编辑状态
-const isEditing = computed(() => !!route.params.id)
-const galleryId = computed(() => route.params.id as string)
-
-// 表单数据
-const formData = reactive({
-  title: '',
-  description: '',
-  category: '',
-  tags: [] as string[],
-  status: 'published' as 'published' | 'draft',
-  sort: 0,
-  images: [] as Array<{
-    title: string
-    description?: string
-    imageUrl: string
-    sort: number
-  }>
-})
-
-// 其他状态
 const saving = ref(false)
-const categories = ref([])
-const coverImageIndex = ref(0)
-const pendingFiles = ref([] as Array<{ name: string; url: string }>)
-
-// 对话框状态
-const showFileSelector = ref(false)
-const showImageEditor = ref(false)
-
-// 标签输入
+const categories = ref<GalleryCategory[]>([])
 const tagInputVisible = ref(false)
 const tagInputValue = ref('')
-
-// 图片编辑
-const editingImage = ref(null)
-const editingImageIndex = ref(-1)
-
-// 文件管理系统相关
-const fileLoading = ref(false)
-const fileFolders = ref([])
-const filesList = ref([])
-const selectedFiles = ref([])
-const currentFolderId = ref(null)
-const breadcrumbPath = ref([])
-const fileSearchQuery = ref('')
-const allFolders = ref([])
-let fileSearchTimer = null
+const tagInputRef = ref()
+const coverImageIndex = ref(0)
 
 // 文件选择器状态
 const coverImagePickerVisible = ref(false)
+const selectedCoverImage = ref<string>('')
 const imagePickerVisible = ref(false)
+const selectedImages = ref<string[]>([])
 
-// 计算属性 - 只显示图片文件
-const imageFiles = computed(() => {
-  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp']
-  return filesList.value.filter(file => 
-    imageExtensions.some(ext => 
-      file.extension && file.extension.toLowerCase() === ext.toLowerCase() ||
-      file.name.toLowerCase().endsWith(ext)
-    )
-  )
+// 表单数据
+const formData = reactive<GalleryForm>({
+  title: '',
+  description: '',
+  category: '',
+  tags: [],
+  status: 'draft',
+  sort: 0,
+  images: []
 })
 
-// 表单验证规则
+// 表单校验规则
 const formRules = {
   title: [
-    { required: true, message: '请输入图集标题', trigger: 'blur' }
+    { required: true, message: '请输入图集标题', trigger: 'blur' },
+    { min: 2, max: 100, message: '标题长度应在2-100个字符之间', trigger: 'blur' }
+  ],
+  description: [
+    { max: 500, message: '描述不能超过500个字符', trigger: 'blur' }
   ]
 }
 
-// 生命周期
+// 编辑状态
+const isEditing = computed(() => Boolean(route.params.id))
+
+// 加载分类列表
+const loadCategories = async () => {
+  try {
+    const response = await galleryApi.getList()
+    if (response?.items) {
+      categories.value = response.items.map(item => ({
+        name: item.category || '',
+        description: item.description,
+        isEnabled: item.status === 'published',
+        sort: item.sort,
+        imageCount: item.images?.length,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt
+      }))
+    }
+  } catch (error) {
+    console.error('加载分类列表失败:', error)
+    ElMessage.error('加载分类列表失败')
+  }
+}
+
+// 初始化数据
+const initData = async () => {
+  const id = route.params.id
+  if (id) {
+    try {
+      const response = await galleryApi.getById(id as string)
+      if (response) {
+        formData.title = response.title || ''
+        formData.description = response.description || ''
+        formData.category = response.category || ''
+        formData.tags = response.tags || []
+        formData.status = response.status || 'draft'
+        formData.sort = response.sort || 0
+        formData.images = response.images?.map((img, index) => ({
+          ...img,
+          sort: img.sort || index
+        })) || []
+      }
+    } catch (error) {
+      console.error('获取图集详情失败:', error)
+      ElMessage.error('获取图集详情失败')
+    }
+  }
+}
+
+// 在组件挂载时初始化数据
 onMounted(async () => {
   await Promise.all([
     loadCategories(),
-    loadAllFolders()
+    initData()
   ])
-  
-  if (isEditing.value) {
-    await loadGallery()
-  } else {
-    // 新建时初始化一个空的图片数组
-    formData.images = []
-  }
 })
 
-// 方法定义
-const loadCategories = async () => {
-  try {
-    console.log('开始加载图库分类...')
-    const result = await galleryCategoryApi.getList()
-    console.log('分类加载结果:', result)
-    categories.value = result
-    if (categories.value.length === 0) {
-      console.warn('没有找到任何图库分类')
-      ElMessage.warning('暂无图库分类，请先创建分类')
-    } else {
-      console.log(`成功加载 ${categories.value.length} 个分类`)
-    }
-  } catch (error) {
-    console.error('加载分类失败:', error)
-    ElMessage.error('加载分类失败，请检查网络连接')
-  }
-}
-
-const loadGallery = async () => {
-  try {
-    const gallery = await galleryApi.getById(galleryId.value)
-    // 更新表单数据
-    formData.title = gallery.title
-    formData.description = gallery.description
-    formData.category = gallery.category
-    formData.tags = gallery.tags || []
-    formData.status = gallery.status
-    formData.sort = gallery.sort || 0
-    formData.images = gallery.images?.map((img: any) => ({
-      title: img.title || '',
-      description: img.description || '',
-      imageUrl: img.url,
-      sort: img.sort || 0
-    })) || []
-    
-    // 设置封面图片索引
-    if (gallery.coverImage) {
-      const coverIndex = formData.images.findIndex(img => img.imageUrl === gallery.coverImage)
-      if (coverIndex !== -1) {
-        coverImageIndex.value = coverIndex
-      }
-    }
-  } catch (error) {
-    console.error('加载图集失败:', error)
-    ElMessage.error('加载图集失败')
-  }
-}
-
+// 返回列表页
 const goBack = () => {
-  router.push('/admin/gallery')
+  router.push('/gallery')
 }
 
+// 预览
+const handlePreview = () => {
+  // TODO: 实现预览功能
+  ElMessage.info('预览功能开发中')
+}
+
+// 保存
 const handleSave = async () => {
+  if (!formRef.value) return
+  
   try {
-    await formRef.value?.validate()
+    await formRef.value.validate()
     
     saving.value = true
+    const data = {
+      ...formData,
+      coverImage: formData.images[coverImageIndex.value]?.imageUrl
+    }
     
     if (isEditing.value) {
-      await galleryApi.update(galleryId.value, formData)
-      ElMessage.success('图集更新成功')
-      // 编辑成功后跳转到图库管理页面
-      router.push('/admin/gallery')
+      await galleryApi.update(route.params.id as string, data)
+      ElMessage.success('更新成功')
     } else {
-      await galleryApi.create(formData)
-      ElMessage.success('图集创建成功')
-      // 创建成功后跳转到图库管理页面
-      router.push('/admin/gallery')
+      await galleryApi.create(data)
+      ElMessage.success('创建成功')
     }
+    
+    router.push('/admin/gallery')
   } catch (error) {
     console.error('保存失败:', error)
     ElMessage.error('保存失败')
@@ -571,12 +405,7 @@ const handleSave = async () => {
   }
 }
 
-const handlePreview = () => {
-  // 预览功能
-  console.log('预览图集:', formData)
-}
-
-// 标签管理
+// 标签相关方法
 const showTagInput = () => {
   tagInputVisible.value = true
   nextTick(() => {
@@ -589,83 +418,56 @@ const addTag = () => {
   if (tag && !formData.tags.includes(tag)) {
     formData.tags.push(tag)
   }
-  tagInputValue.value = ''
   tagInputVisible.value = false
+  tagInputValue.value = ''
 }
 
 const removeTag = (tag: string) => {
-  const index = formData.tags.indexOf(tag)
-  if (index > -1) {
-    formData.tags.splice(index, 1)
-  }
+  formData.tags = formData.tags.filter(t => t !== tag)
 }
 
-// 图片管理
-const handleFileChange = (uploadFile: any) => {
-  const file = uploadFile.raw
-  if (file && file.type.startsWith('image/')) {
-    uploadImageToFileSystem(file)
-  }
+// 图片相关方法
+const addImages = () => {
+  imagePickerVisible.value = true
 }
 
-// 上传图片到文件系统
-const uploadImageToFileSystem = async (file: File) => {
-  // 检查文件大小 (5MB限制)
-  if (file.size > 5 * 1024 * 1024) {
-    ElMessage.error('图片大小不能超过5MB')
-    return
+// 处理封面图片选择
+const handleCoverImageSelect = (value: string | string[]) => {
+  const imageUrl = Array.isArray(value) ? value[0] : value
+  if (imageUrl && formData.images[coverImageIndex.value]) {
+    formData.images[coverImageIndex.value].imageUrl = imageUrl
   }
-  
-  // 检查文件类型
-  if (!file.type.startsWith('image/')) {
-    ElMessage.error('请选择图片文件')
-    return
-  }
-  
-  try {
-    // 显示上传中提示
-    const loadingMessage = ElMessage({
-      message: `正在上传图片 ${file.name}...`,
-      type: 'info',
-      duration: 0
-    })
-    
-    // 使用fileApi上传到文件系统，可以指定文件夹
-    const uploadedFile = await fileApi.uploadFile(file, currentFolderId.value || undefined)
-    
-    loadingMessage.close()
-    
-    if (uploadedFile && uploadedFile.url) {
-      // 添加到待添加队列
-      pendingFiles.value.push({
-        name: file.name,
-        url: uploadedFile.url
-      })
-      ElMessage.success(`图片 ${file.name} 上传成功`)
-    } else {
-      throw new Error('上传失败，未获得文件URL')
-    }
-  } catch (error) {
-    console.error('图片上传失败:', error)
-    ElMessage.error(`图片上传失败: ${error.message || '未知错误'}`)
-  }
+  coverImagePickerVisible.value = false
 }
 
-const removePendingFile = (index: number) => {
-  pendingFiles.value.splice(index, 1)
-}
-
-const confirmFileSelection = () => {
-  const newImages = pendingFiles.value.map((file, index) => ({
-    title: file.name.replace(/\.[^/.]+$/, ''), // 移除文件扩展名
+// 处理图片选择
+const handleImageSelect = (value: string | string[]) => {
+  const imageUrls = Array.isArray(value) ? value : [value]
+  const newImages: EditorGalleryImage[] = imageUrls.map((url, index) => ({
+    title: '',
     description: '',
-    imageUrl: file.url,
-    sort: formData.images.length + index
+    imageUrl: url,
+    sort: formData.images.length + index,
+    id: `temp-${Date.now()}-${index}`, // 临时 ID，后端会替换
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    status: 'draft'
   }))
-  
   formData.images.push(...newImages)
-  pendingFiles.value = []
-  showFileSelector.value = false
+  imagePickerVisible.value = false
+}
+
+const removeImage = (index: number) => {
+  ElMessageBox.confirm('确定要删除这张图片吗？', '提示', {
+    type: 'warning'
+  }).then(() => {
+    formData.images.splice(index, 1)
+    if (index === coverImageIndex.value) {
+      coverImageIndex.value = 0
+    } else if (index < coverImageIndex.value) {
+      coverImageIndex.value--
+    }
+  })
 }
 
 const setCoverImage = (index: number) => {
@@ -673,347 +475,30 @@ const setCoverImage = (index: number) => {
 }
 
 const editImage = (index: number) => {
-  editingImageIndex.value = index
-  editingImage.value = { ...formData.images[index] }
-  showImageEditor.value = true
-}
-
-const saveImageEdit = () => {
-  if (editingImageIndex.value >= 0 && editingImage.value) {
-    Object.assign(formData.images[editingImageIndex.value], editingImage.value)
-    showImageEditor.value = false
-  }
-}
-
-const removeImage = async (index: number) => {
-  try {
-    await ElMessageBox.confirm('确定删除这张图片吗？', '提示', {
-      type: 'warning'
+  const image = formData.images[index]
+  ElMessageBox.prompt('请输入图片标题', '编辑图片', {
+    inputValue: image.title,
+    inputPlaceholder: '请输入图片标题',
+    confirmButtonText: '下一步',
+    cancelButtonText: '取消'
+  }).then(({ value: title }) => {
+    // 先更新标题
+    image.title = title
+    // 继续编辑描述
+    return ElMessageBox.prompt('请输入图片描述', '编辑图片', {
+      inputValue: image.description,
+      inputType: 'textarea',
+      inputPlaceholder: '请输入图片描述',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
     })
-    
-    formData.images.splice(index, 1)
-    
-    // 调整封面索引
-    if (coverImageIndex.value >= index && coverImageIndex.value > 0) {
-      coverImageIndex.value--
-    }
-  } catch (error) {
-    // 用户取消
-  }
-}
-
-// 文件管理系统相关方法
-const loadFolders = async (parentId = null) => {
-  try {
-    const response = await fileApi.getFolders(parentId)
-    fileFolders.value = response
-  } catch (error) {
-    console.error('加载文件夹失败:', error)
-    ElMessage.error('加载文件夹失败')
-  }
-}
-
-// 加载所有文件夹（用于下拉框）
-const loadAllFolders = async () => {
-  try {
-    const response = await fileApi.getFolders()
-    allFolders.value = response
-  } catch (error) {
-    console.error('加载文件夹列表失败:', error)
-  }
-}
-
-const loadFiles = async (folderId = null) => {
-  try {
-    fileLoading.value = true
-    const params = {
-      folderId,
-      search: fileSearchQuery.value || undefined
-    }
-    const response = await fileApi.getFiles(params)
-    filesList.value = response
-  } catch (error) {
-    console.error('加载文件失败:', error)
-    ElMessage.error('加载文件失败')
-  } finally {
-    fileLoading.value = false
-  }
-}
-
-const navigateToFolder = async (folderId) => {
-  currentFolderId.value = folderId
-  selectedFiles.value = []
-  
-  // 更新面包屑路径
-  if (folderId === null) {
-    breadcrumbPath.value = []
-  } else {
-    // 构建面包屑路径
-    await buildBreadcrumbPath(folderId)
-  }
-  
-  await Promise.all([
-    loadFolders(folderId),
-    loadFiles(folderId)
-  ])
-}
-
-const buildBreadcrumbPath = async (folderId) => {
-  try {
-    const path = []
-    let currentId = folderId
-    
-    // 从当前文件夹往上遍历到根目录
-    while (currentId) {
-      const folders = await fileApi.getFolders()
-      const folder = folders.find(f => f.id === currentId)
-      if (folder) {
-        path.unshift(folder)
-        currentId = folder.parentId
-      } else {
-        break
-      }
-    }
-    
-    breadcrumbPath.value = path
-  } catch (error) {
-    console.error('构建面包屑失败:', error)
-  }
-}
-
-const toggleFileSelection = (file) => {
-  const index = selectedFiles.value.findIndex(f => f.id === file.id)
-  if (index > -1) {
-    selectedFiles.value.splice(index, 1)
-  } else {
-    selectedFiles.value.push(file)
-  }
-}
-
-const handleFileSearch = () => {
-  if (fileSearchTimer) {
-    clearTimeout(fileSearchTimer)
-  }
-  fileSearchTimer = setTimeout(() => {
-    loadFiles(currentFolderId.value)
-  }, 300)
-}
-
-const confirmFileSystemSelection = () => {
-  const newImages = selectedFiles.value.map((file, index) => ({
-    title: file.name.replace(/\.[^/.]+$/, ''), // 移除文件扩展名
-    description: '',
-    imageUrl: file.url,
-    sort: formData.images.length + index
-  }))
-  
-  formData.images.push(...newImages)
-  selectedFiles.value = []
-  showFileSelector.value = false
-  ElMessage.success(`已添加 ${newImages.length} 张图片`)
-}
-
-const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-// 当打开文件选择器时，加载根目录
-const openFileSelector = async () => {
-  try {
-    showFileSelector.value = true
-    selectedFiles.value = []
-    await navigateToFolder(null)
-  } catch (error) {
-    console.error('打开文件选择器失败:', error)
-    ElMessage.error('打开文件选择器失败')
-  }
-}
-
-// 选择封面图片
-const selectCoverImage = () => {
-  // 提供两种选择方式
-  ElMessageBox.confirm(
-    '请选择封面图片的方式',
-    '选择封面图片',
-    {
-      confirmButtonText: '上传新图片',
-      cancelButtonText: '从文件库选择',
-      distinguishCancelAndClose: true,
-      type: 'info'
-    }
-  ).then(() => {
-    // 选择上传文件
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.multiple = false
-    
-    input.onchange = async (e: Event) => {
-      const target = e.target as HTMLInputElement
-      const file = target.files?.[0]
-      if (!file) return
-      
-      // 检查文件大小 (5MB限制)
-      if (file.size > 5 * 1024 * 1024) {
-        ElMessage.error('图片大小不能超过5MB')
-        return
-      }
-      
-      // 检查文件类型
-      if (!file.type.startsWith('image/')) {
-        ElMessage.error('请选择图片文件')
-        return
-      }
-      
-      try {
-        // 显示上传中提示
-        const loadingMessage = ElMessage({
-          message: '正在上传封面图片...',
-          type: 'info',
-          duration: 0
-        })
-        
-        // 上传文件
-        const uploadedFile = await fileApi.uploadFile(file)
-        
-        loadingMessage.close()
-        
-        if (uploadedFile && uploadedFile.url) {
-          formData.images[coverImageIndex.value].imageUrl = uploadedFile.url
-          ElMessage.success('封面图片上传成功')
-        } else {
-          throw new Error('上传失败，未获得文件URL')
-        }
-      } catch (error) {
-        console.error('封面图片上传失败:', error)
-        ElMessage.error('封面图片上传失败: ' + ((error as Error).message || '未知错误'))
-      }
-    }
-    
-    input.click()
-  }).catch((action) => {
-    if (action === 'cancel') {
-      // 从文件库选择
-      coverImagePickerVisible.value = true
-    }
+  }).then(({ value: description }) => {
+    // 更新描述
+    image.description = description
+    ElMessage.success('编辑成功')
+  }).catch(() => {
+    // 用户取消操作，不做任何处理
   })
-}
-
-// 处理封面图片选择
-const handleCoverImageSelect = (file: any) => {
-  if (file?.url) {
-    formData.images[coverImageIndex.value].imageUrl = file.url
-    ElMessage.success('封面图片设置成功')
-  }
-  coverImagePickerVisible.value = false
-}
-
-// 添加图片
-const addImages = () => {
-  // 提供两种选择方式
-  ElMessageBox.confirm(
-    '请选择添加图片的方式',
-    '添加图片',
-    {
-      confirmButtonText: '上传新图片',
-      cancelButtonText: '从文件库选择',
-      distinguishCancelAndClose: true,
-      type: 'info'
-    }
-  ).then(() => {
-    // 选择上传文件
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.multiple = true
-    
-    input.onchange = async (e: Event) => {
-      const target = e.target as HTMLInputElement
-      const files = Array.from(target.files || [])
-      if (files.length === 0) return
-      
-      // 检查文件数量限制
-      if (files.length > 20) {
-        ElMessage.error('一次最多只能上传20张图片')
-        return
-      }
-      
-      // 检查每个文件
-      for (const file of files) {
-        // 检查文件大小 (5MB限制)
-        if (file.size > 5 * 1024 * 1024) {
-          ElMessage.error(`图片 ${file.name} 大小超过5MB`)
-          return
-        }
-        
-        // 检查文件类型
-        if (!file.type.startsWith('image/')) {
-          ElMessage.error(`文件 ${file.name} 不是图片格式`)
-          return
-        }
-      }
-      
-      try {
-        // 显示上传中提示
-        const loadingMessage = ElMessage({
-          message: '正在上传图片...',
-          type: 'info',
-          duration: 0
-        })
-        
-        // 上传所有文件
-        const uploadPromises = files.map(file => 
-          fileApi.uploadFile(file)
-        )
-        
-        const uploadedFiles = await Promise.all(uploadPromises)
-        
-        loadingMessage.close()
-        
-        // 添加到图片列表
-        const newImages = uploadedFiles
-          .filter(file => file && file.url)
-          .map((file, index) => ({
-            title: files[index].name.replace(/\.[^/.]+$/, ''), // 移除文件扩展名
-            description: '',
-            imageUrl: file.url,
-            sort: formData.images.length + index
-          }))
-        
-        formData.images.push(...newImages)
-        ElMessage.success(`成功上传 ${newImages.length} 张图片`)
-      } catch (error) {
-        console.error('图片上传失败:', error)
-        ElMessage.error('图片上传失败: ' + ((error as Error).message || '未知错误'))
-      }
-    }
-    
-    input.click()
-  }).catch((action) => {
-    if (action === 'cancel') {
-      // 从文件库选择
-      imagePickerVisible.value = true
-    }
-  })
-}
-
-// 处理图片选择
-const handleImagesSelect = (files: any[]) => {
-  if (Array.isArray(files) && files.length > 0) {
-    const newImages = files.map(file => ({
-      title: file.name.replace(/\.[^/.]+$/, ''), // 移除文件扩展名
-      description: '',
-      imageUrl: file.url,
-      sort: formData.images.length + files.indexOf(file)
-    }))
-    formData.images.push(...newImages)
-    ElMessage.success(`已添加 ${files.length} 张图片`)
-  }
-  imagePickerVisible.value = false
 }
 </script>
 

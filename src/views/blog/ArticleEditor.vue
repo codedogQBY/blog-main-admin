@@ -268,7 +268,10 @@
 
     <!-- 文件选择器 -->
     <FileSelector
-      v-model="coverImagePickerVisible"
+      :model-value="selectedCoverImage"
+      :visible="coverImagePickerVisible"
+      @update:model-value="selectedCoverImage = $event"
+      @update:visible="coverImagePickerVisible = $event"
       title="选择封面图片"
       :multiple="false"
       fileType="image"
@@ -455,81 +458,17 @@ const handleTagChange = (value: (string | number)[]) => {
 
 // 封面图片选择器状态
 const coverImagePickerVisible = ref(false)
+const selectedCoverImage = ref('')
 
 // 选择封面图片
 const selectCoverImage = () => {
-  // 提供两种选择方式
-  ElMessageBox.confirm(
-    '请选择封面图片的方式',
-    '选择封面图片',
-    {
-      confirmButtonText: '上传新图片',
-      cancelButtonText: '从文件库选择',
-      distinguishCancelAndClose: true,
-      type: 'info'
-    }
-  ).then(() => {
-    // 选择上传文件
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.multiple = false
-    
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file) return
-      
-      // 检查文件大小 (5MB限制)
-      if (file.size > 5 * 1024 * 1024) {
-        ElMessage.error('图片大小不能超过5MB')
-        return
-      }
-      
-      // 检查文件类型
-      if (!file.type.startsWith('image/')) {
-        ElMessage.error('请选择图片文件')
-        return
-      }
-      
-      try {
-        // 显示上传中提示
-        const loadingMessage = ElMessage({
-          message: '正在上传封面图片...',
-          type: 'info',
-          duration: 0
-        })
-        
-        // 使用fileApi上传到文件系统
-        const uploadedFile = await fileApi.uploadFile(file)
-        
-        loadingMessage.close()
-        
-        if (uploadedFile && uploadedFile.url) {
-          form.coverImage = uploadedFile.url
-          handleChange()
-          ElMessage.success('封面图片上传成功')
-        }
-      } catch (error) {
-        ElMessage.error('上传失败')
-        console.error(error)
-      }
-    }
-    
-    input.click()
-  }).catch((action) => {
-    if (action === 'cancel') {
-      // 从文件库选择
-      coverImagePickerVisible.value = true
-    }
-  })
+  coverImagePickerVisible.value = true
 }
 
 // 处理封面图片选择
-const handleCoverImageSelect = (file: any) => {
-  if (file?.url) {
-    form.coverImage = file.url
-    handleChange()
-    ElMessage.success('封面图片设置成功')
+const handleCoverImageSelect = (url: string) => {
+  if (url) {
+    form.coverImage = url
   }
 }
 

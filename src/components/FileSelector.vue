@@ -166,7 +166,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, defineProps, defineEmits, onMounted } from 'vue'
+import { ref, computed, watch, defineProps, defineEmits, onMounted, withDefaults } from 'vue'
 import { ElMessage } from 'element-plus'
 import { 
   HomeFilled, 
@@ -181,53 +181,62 @@ import {
 } from '@element-plus/icons-vue'
 import { filesApi } from '../api/files'
 
+interface FileType {
+  id: string
+  name: string
+  url: string
+  size: number
+  extension?: string
+  createdAt: string
+}
+
+interface FolderType {
+  id: string
+  name: string
+  parentId: string | null
+}
+
 // Props
-const props = defineProps({
-  modelValue: {
-    type: String,
-    default: ''
-  },
-  title: {
-    type: String,
-    default: '选择文件'
-  },
-  multiple: {
-    type: Boolean,
-    default: false
-  },
-  fileType: {
-    type: String,
-    default: 'all'
-  },
-  maxFiles: {
-    type: Number,
-    default: 20
-  },
-  visible: {
-    type: Boolean,
-    default: false
-  }
+interface Props {
+  modelValue: string | string[]
+  visible: boolean
+  title: string
+  multiple: boolean
+  fileType: string
+  maxFiles: number
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => '',
+  visible: false,
+  title: '选择文件',
+  multiple: false,
+  fileType: 'all',
+  maxFiles: 20
 })
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'select', 'update:visible'])
+interface Emits {
+  (e: 'update:modelValue', value: string | string[]): void
+  (e: 'select', value: string | string[]): void
+  (e: 'update:visible', value: boolean): void
+}
+
+const emit = defineEmits<Emits>()
 
 // 弹窗显示状态由外部visible控制
-const dialogVisible = ref(false)
-watch(() => props.visible, (val) => {
-  dialogVisible.value = val
-})
-watch(dialogVisible, (val) => {
-  emit('update:visible', val)
+const dialogVisible = computed({
+  get: () => props.visible,
+  set: (val: boolean) => emit('update:visible', val)
 })
 
 // 响应式数据
 const loading = ref(false)
-const folders = ref([])
-const files = ref([])
-const selectedFiles = ref([])
-const currentFolderId = ref(null)
-const breadcrumbPath = ref([])
+const folders = ref<FolderType[]>([])
+const files = ref<FileType[]>([])
+const selectedFiles = ref<FileType[]>([])
+const currentFolderId = ref<string | null>(null)
+const breadcrumbPath = ref<FolderType[]>([])
 const searchQuery = ref('')
 const pagination = ref({
   page: 1,
@@ -252,7 +261,7 @@ const filteredFiles = computed(() => {
 })
 
 // 方法
-const isImage = (file: any) => {
+const isImage = (file: FileType) => {
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp']
   return imageExtensions.some(ext => 
     file.extension?.toLowerCase() === ext ||
@@ -268,7 +277,7 @@ const formatDate = (date: string) => {
   })
 }
 
-const loadFolders = async (parentId = null) => {
+const loadFolders = async (parentId: string | null = null) => {
   try {
     const response = await filesApi.getFolders({ parentId })
     folders.value = response.data || []
@@ -278,7 +287,7 @@ const loadFolders = async (parentId = null) => {
   }
 }
 
-const loadFiles = async (folderId = null) => {
+const loadFiles = async (folderId: string | null = null) => {
   try {
     loading.value = true
     const params = {
@@ -327,11 +336,11 @@ const navigateToFolder = async (folderId: string | null) => {
   ])
 }
 
-const isFileSelected = (file: any) => {
+const isFileSelected = (file: FileType) => {
   return selectedFiles.value.some(f => f.id === file.id)
 }
 
-const toggleFileSelection = (file: any) => {
+const toggleFileSelection = (file: FileType) => {
   if (!props.multiple) {
     selectedFiles.value = [file]
     return
@@ -370,10 +379,12 @@ const handleConfirm = () => {
     ElMessage.warning('请至少选择一个文件')
     return
   }
-  // 只返回url字符串
-  const file = props.multiple ? selectedFiles.value.map(f => f.url) : selectedFiles.value[0]?.url || ''
-  emit('update:modelValue', file)
-  emit('select', file)
+  // 根据是否多选返回不同格式
+  const result = props.multiple
+    ? selectedFiles.value.map(f => f.url)
+    : selectedFiles.value[0]?.url || ''
+  emit('update:modelValue', result)
+  emit('select', result)
   handleClose()
 }
 
@@ -413,7 +424,7 @@ const formatFileSize = (size: number) => {
   return `${size.toFixed(2)} ${units[index]}`
 }
 
-const previewImage = (file: any) => {
+const previewImage = (file: FileType) => {
   previewImageUrl.value = file.url
   previewVisible.value = true
 }

@@ -49,4 +49,10 @@ const hasPermission = computed(() => {
   
   return false
 })
+</script>
+
+<script lang="ts">
+export default {
+  name: 'PermissionCheck'
+}
 </script> 
