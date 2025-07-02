@@ -127,33 +127,39 @@
         <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button 
-                type="primary" 
-                size="small" 
-                @click="viewDetail(row)"
-                :icon="View"
-                link
-              >
-                查看
-              </el-button>
-              <el-button 
-                type="warning" 
-                size="small" 
-                @click="editStickyNote(row)"
-                :icon="Edit"
-                link
-              >
-                编辑
-              </el-button>
-              <el-button 
-                type="danger" 
-                size="small" 
-                @click="deleteStickyNote(row)"
-                :icon="Delete"
-                link
-              >
-                删除
-              </el-button>
+              <PermissionCheck permission="note.read">
+                <el-button 
+                  type="primary" 
+                  size="small" 
+                  @click="viewDetail(row)"
+                  :icon="View"
+                  link
+                >
+                  查看
+                </el-button>
+              </PermissionCheck>
+              <PermissionCheck permission="note.update">
+                <el-button 
+                  type="warning" 
+                  size="small" 
+                  @click="editStickyNote(row)"
+                  :icon="Edit"
+                  link
+                >
+                  编辑
+                </el-button>
+              </PermissionCheck>
+              <PermissionCheck permission="note.delete">
+                <el-button 
+                  type="danger" 
+                  size="small" 
+                  @click="deleteStickyNote(row)"
+                  :icon="Delete"
+                  link
+                >
+                  删除
+                </el-button>
+              </PermissionCheck>
             </div>
           </template>
         </el-table-column>
@@ -274,7 +280,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
@@ -286,6 +292,7 @@ import {
   StarFilled,
   ChatDotRound
 } from '@element-plus/icons-vue'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 import { stickyNoteApi } from '@/lib/api'
 
 // 响应式数据

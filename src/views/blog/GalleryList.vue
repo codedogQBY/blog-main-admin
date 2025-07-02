@@ -6,10 +6,12 @@
         <p class="subtitle">管理网站图集内容</p>
       </div>
       <div class="action-buttons">
-        <el-button type="primary" @click="createGallery">
-          <el-icon><Plus /></el-icon>
-          新建图集
-        </el-button>
+        <PermissionCheck permission="gallery.create">
+          <el-button type="primary" @click="createGallery">
+            <el-icon><Plus /></el-icon>
+            新建图集
+          </el-button>
+        </PermissionCheck>
       </div>
     </div>
 
@@ -150,15 +152,21 @@
 
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="scope">
-          <el-button link type="primary" @click="viewGallery(scope.row)">
-            预览
-          </el-button>
-          <el-button link type="primary" @click="editGallery(scope.row)">
-            编辑
-          </el-button>
-          <el-button link type="danger" @click="deleteGallery(scope.row)">
-            删除
-          </el-button>
+          <PermissionCheck permission="gallery.read">
+            <el-button link type="primary" @click="viewGallery(scope.row)">
+              预览
+            </el-button>
+          </PermissionCheck>
+          <PermissionCheck permission="gallery.update">
+            <el-button link type="primary" @click="editGallery(scope.row)">
+              编辑
+            </el-button>
+          </PermissionCheck>
+          <PermissionCheck permission="gallery.delete">
+            <el-button link type="danger" @click="deleteGallery(scope.row)">
+              删除
+            </el-button>
+          </PermissionCheck>
         </template>
       </el-table-column>
     </el-table>
@@ -220,6 +228,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Picture } from '@element-plus/icons-vue'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 import { api, type Gallery, type GalleryCategory } from '../../lib/api'
 
 const router = useRouter()

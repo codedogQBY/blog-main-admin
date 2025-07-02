@@ -11,14 +11,18 @@
           <div class="page-subtitle">管理您的文件和文件夹</div>
         </div>
         <div class="header-actions">
-          <el-button type="primary" @click="showUploadDialog = true" class="action-btn primary">
-            <el-icon><Upload /></el-icon>
-            上传文件
-          </el-button>
-          <el-button @click="showCreateFolderDialog = true" class="action-btn">
-            <el-icon><FolderAdd /></el-icon>
-            新建文件夹
-          </el-button>
+          <PermissionCheck permission="file.create">
+            <el-button type="primary" @click="showUploadDialog = true" class="action-btn primary">
+              <el-icon><Upload /></el-icon>
+              上传文件
+            </el-button>
+          </PermissionCheck>
+          <PermissionCheck permission="file.create">
+            <el-button @click="showCreateFolderDialog = true" class="action-btn">
+              <el-icon><FolderAdd /></el-icon>
+              新建文件夹
+            </el-button>
+          </PermissionCheck>
           <el-button @click="refreshFiles" class="action-btn">
             <el-icon><Refresh /></el-icon>
             刷新
@@ -124,12 +128,16 @@
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item :command="`edit-${folder.id}`">
-                      <el-icon><Edit /></el-icon>重命名
-                    </el-dropdown-item>
-                    <el-dropdown-item :command="`delete-${folder.id}`" divided>
-                      <el-icon><Delete /></el-icon>删除
-                    </el-dropdown-item>
+                    <PermissionCheck permission="file.update">
+                      <el-dropdown-item :command="`edit-${folder.id}`">
+                        <el-icon><Edit /></el-icon>重命名
+                      </el-dropdown-item>
+                    </PermissionCheck>
+                    <PermissionCheck permission="file.delete">
+                      <el-dropdown-item :command="`delete-${folder.id}`" divided>
+                        <el-icon><Delete /></el-icon>删除
+                      </el-dropdown-item>
+                    </PermissionCheck>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -179,18 +187,24 @@
                 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item @click="previewFileHandler(file)">
-                      <el-icon><View /></el-icon>预览
-                    </el-dropdown-item>
-                    <el-dropdown-item @click="downloadFile(file)">
-                      <el-icon><Download /></el-icon>下载
-                    </el-dropdown-item>
-                    <el-dropdown-item @click="moveFile(file)">
-                      <el-icon><FolderOpened /></el-icon>移动
-                    </el-dropdown-item>
-                    <el-dropdown-item @click="deleteFile(file.id)" divided>
-                      <el-icon><Delete /></el-icon>删除
-                    </el-dropdown-item>
+                    <PermissionCheck permission="file.read">
+                      <el-dropdown-item @click="previewFileHandler(file)">
+                        <el-icon><View /></el-icon>预览
+                      </el-dropdown-item>
+                      <el-dropdown-item @click="downloadFile(file)">
+                        <el-icon><Download /></el-icon>下载
+                      </el-dropdown-item>
+                    </PermissionCheck>
+                    <PermissionCheck permission="file.update">
+                      <el-dropdown-item @click="moveFile(file)">
+                        <el-icon><FolderOpened /></el-icon>移动
+                      </el-dropdown-item>
+                    </PermissionCheck>
+                    <PermissionCheck permission="file.delete">
+                      <el-dropdown-item @click="deleteFile(file.id)" divided>
+                        <el-icon><Delete /></el-icon>删除
+                      </el-dropdown-item>
+                    </PermissionCheck>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -456,6 +470,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/lib/store'
 import { filesApi as fileApi } from '@/api/files'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 
 // 状态管理
 const authStore = useAuthStore()
