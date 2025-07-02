@@ -304,119 +304,111 @@ const activeMenu = computed(() => {
 
 <style scoped lang="scss">
 .dynamic-menu {
-  border: none;
   background: transparent;
-  height: 100%;
-
-  // 菜单项样式
-  .menu-item,
-  .sub-menu-item {
-    margin: 4px 12px;
-    border-radius: 8px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    color: rgba(255, 255, 255, 0.8);
-    border: none !important;
-
-    &::before {
-      display: none;
-    }
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.1) !important;
-      color: white;
-      transform: translateX(4px);
-    }
-
-    &.is-active {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-      color: white;
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-      
-      .menu-icon {
-        color: white;
-      }
-    }
-
-    .menu-icon {
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 18px;
-      transition: color 0.3s ease;
-    }
-
-    .menu-title {
-      font-weight: 500;
-      font-size: 14px;
-    }
-  }
-
-  // 子菜单样式
-  .sub-menu {
-    margin: 4px 12px;
-
-    :deep(.el-sub-menu__title) {
-      border-radius: 8px;
-      color: rgba(255, 255, 255, 0.8);
-      padding: 0 20px;
-      height: 48px;
-      line-height: 48px;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.1) !important;
-        color: white;
-        transform: translateX(4px);
-      }
-
-      .menu-icon {
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 18px;
-      }
-
-      .menu-title {
-        font-weight: 500;
-        font-size: 14px;
-      }
-    }
-
-    :deep(.el-sub-menu__icon-arrow) {
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 12px;
-      transition: transform 0.3s ease;
-    }
-
-    &.is-opened {
-      :deep(.el-sub-menu__icon-arrow) {
-        transform: rotateZ(90deg);
-      }
-    }
-  }
-
-  // 子菜单项容器
+  border: none;
+  padding: 8px;
+  
   :deep(.el-menu) {
+    border: none;
     background: transparent;
   }
-
-  // 子菜单项特殊样式
-  .sub-menu-item {
-    margin: 2px 16px;
-    padding-left: 24px;
+  
+  .menu-item,
+  :deep(.el-sub-menu) {
+    height: 40px;
+    line-height: 40px;
+    margin: 4px 0;
     border-radius: 6px;
-    font-size: 13px;
+    color: #64748b;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      color: #1e293b;
+      background: #f3f4f6;
+    }
+    
+    &.is-active {
+      color: #1e293b;
+      background: #f3f4f6;
+      font-weight: 500;
+    }
     
     .menu-icon {
       font-size: 16px;
+      margin-right: 12px;
+      color: #64748b;
     }
     
-    &:hover {
-      transform: translateX(2px);
+    .menu-title {
+      font-size: 14px;
     }
   }
-
+  
+  :deep(.el-sub-menu) {
+    height: auto;
+    margin: 0;
+    
+    .el-sub-menu__title {
+      height: 40px;
+      line-height: 40px;
+      margin: 4px 0;
+      padding: 0 16px !important;
+      color: #64748b;
+      border-radius: 6px;
+      
+      &:hover {
+        color: #1e293b;
+        background: #f3f4f6;
+      }
+      
+      .menu-icon {
+        color: #64748b;
+      }
+    }
+    
+    &.is-opened {
+      > .el-sub-menu__title {
+        color: #1e293b;
+        background: #f3f4f6;
+        
+        .menu-icon {
+          color: #1e293b;
+        }
+      }
+      
+      > .el-menu {
+        padding: 0;
+        background: transparent;
+      }
+    }
+    
+    .el-menu {
+      padding: 0;
+      background: transparent;
+      
+      .el-menu-item {
+        height: 36px;
+        line-height: 36px;
+        padding-left: 48px !important;
+        margin: 2px 0;
+      }
+    }
+  }
+  
   // 折叠状态
   &.el-menu--collapse {
+    width: 64px;
+    padding: 8px 4px;
+    
     .menu-item,
-    .sub-menu-item {
-      margin: 4px 8px;
+    :deep(.el-sub-menu) {
+      .el-sub-menu__title {
+        padding: 0 20px !important;
+      }
+      
+      .menu-icon {
+        margin: 0;
+      }
       
       .menu-title {
         display: none;
@@ -425,16 +417,43 @@ const activeMenu = computed(() => {
   }
 }
 
+// 弹出的子菜单样式
+:deep(.el-menu--popup) {
+  min-width: 180px;
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  
+  .el-menu-item {
+    height: 36px;
+    line-height: 36px;
+    margin: 2px 0;
+    padding: 0 16px;
+    border-radius: 4px;
+    
+    &:hover {
+      color: #1e293b;
+      background: #f3f4f6;
+    }
+    
+    &.is-active {
+      color: #1e293b;
+      background: #f3f4f6;
+      font-weight: 500;
+    }
+  }
+}
+
 .no-permission {
   text-align: center;
   padding: 40px 20px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #64748b;
   font-size: 14px;
 
   .el-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    color: rgba(255, 255, 255, 0.3);
+    font-size: 32px;
+    margin-bottom: 12px;
+    color: #94a3b8;
   }
 
   p {

@@ -271,86 +271,87 @@ const handleUserCommand = async (command: string) => {
 }
 
 .sidebar {
-  width: 280px;
-  background: linear-gradient(180deg, #1e293b 0%, #334155 100%);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.1);
+  width: 240px;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  transition: all 0.3s ease;
   position: relative;
   z-index: 100;
   
   &.collapsed {
-    width: 72px;
+    width: 64px;
+
+    .logo {
+      padding: 0 12px;
+      justify-content: center;
+      
+      .logo-text {
+        display: none;
+      }
+    }
+
+    .sidebar-header {
+      .collapse-btn {
+        padding: 8px;
+      }
+    }
   }
 
   .sidebar-header {
-    height: 72px;
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0 16px;
+    border-bottom: 1px solid #e5e7eb;
 
     .logo {
       display: flex;
       align-items: center;
-      color: white;
-      font-weight: 600;
       gap: 12px;
+      color: #1e293b;
+      font-weight: 600;
 
       .logo-icon {
-        width: 40px;
-        height: 40px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px;
+        width: 32px;
+        height: 32px;
+        background: #f3f4f6;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 
         .el-icon {
-          font-size: 20px;
-          color: white;
+          font-size: 18px;
+          color: #1e293b;
         }
       }
 
       .logo-text {
-        font-size: 18px;
-        transition: opacity 0.3s ease;
+        font-size: 16px;
       }
     }
 
     .collapse-btn {
-      color: rgba(255, 255, 255, 0.7);
+      color: #64748b;
       padding: 8px;
-      border-radius: 8px;
+      border-radius: 6px;
+      cursor: pointer;
       
       &:hover {
-        color: white;
-        background: rgba(255, 255, 255, 0.1);
+        color: #1e293b;
+        background: #f3f4f6;
       }
     }
   }
 
   .sidebar-content {
-    height: calc(100vh - 72px);
+    height: calc(100vh - 64px);
     overflow-y: auto;
-    padding: 16px 0;
     
     &::-webkit-scrollbar {
-      width: 4px;
-    }
-    
-    &::-webkit-scrollbar-track {
+      width: 0;
       background: transparent;
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 2px;
-      
-      &:hover {
-        background: rgba(255, 255, 255, 0.3);
-      }
     }
   }
 }
