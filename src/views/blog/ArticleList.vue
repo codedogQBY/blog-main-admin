@@ -10,14 +10,16 @@
         <p class="page-subtitle">创建和管理您的博客文章</p>
       </div>
       <div class="header-right">
-        <el-button 
-          type="primary" 
-          @click="handleCreate"
-          class="create-btn"
-        >
-          <el-icon><EditPen /></el-icon>
-          创建文章
-        </el-button>
+        <PermissionCheck permission="article.create">
+            <el-button 
+            type="primary" 
+            @click="handleCreate"
+            class="create-btn"
+          >
+            <el-icon><EditPen /></el-icon>
+            创建文章
+          </el-button>
+        </PermissionCheck>
       </div>
     </div>
 
@@ -240,22 +242,30 @@
                   </el-button>
                   <template #dropdown>
                     <el-dropdown-menu>
-                      <el-dropdown-item :command="`edit:${article.id}`">
-                        <el-icon><Edit /></el-icon>
-                        编辑
-                      </el-dropdown-item>
-                      <el-dropdown-item :command="`copy:${article.id}`">
-                        <el-icon><CopyDocument /></el-icon>
-                        复制
-                      </el-dropdown-item>
-                      <el-dropdown-item :command="`toggle:${article.id}`">
-                        <el-icon><Switch /></el-icon>
-                        {{ article.published ? '取消发布' : '发布' }}
-                      </el-dropdown-item>
-                      <el-dropdown-item :command="`delete:${article.id}`" class="danger-item">
-                        <el-icon><Delete /></el-icon>
-                        删除
-                      </el-dropdown-item>
+                      <PermissionCheck permission="article.update">
+                          <el-dropdown-item :command="`edit:${article.id}`">
+                          <el-icon><Edit /></el-icon>
+                          编辑
+                        </el-dropdown-item>
+                      </PermissionCheck>
+                      <PermissionCheck permission="article.update">
+                        <el-dropdown-item :command="`copy:${article.id}`">
+                          <el-icon><CopyDocument /></el-icon>
+                          复制
+                        </el-dropdown-item>
+                      </PermissionCheck>
+                      <PermissionCheck permission="article.update">
+                        <el-dropdown-item :command="`toggle:${article.id}`">
+                          <el-icon><Switch /></el-icon>
+                          {{ article.published ? '取消发布' : '发布' }}
+                        </el-dropdown-item>
+                      </PermissionCheck>
+                      <PermissionCheck permission="article.delete"></PermissionCheck>
+                        <el-dropdown-item :command="`delete:${article.id}`" class="danger-item">
+                          <el-icon><Delete /></el-icon>
+                          删除
+                        </el-dropdown-item>
+                      </PermissionCheck>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
@@ -282,21 +292,22 @@
                 <div v-else class="cover-placeholder">
                   <el-icon><Picture /></el-icon>
                 </div>
-                
-                <div class="card-overlay">
-                  <el-button 
-                    type="primary" 
-                    @click="handleEdit(article.id)"
-                    class="edit-btn"
-                  >
-                    <el-icon><Edit /></el-icon>
-                    编辑
-                  </el-button>
-                </div>
+                <PermissionCheck permission="article.update">
+                    <div class="card-overlay">
+                    <el-button 
+                      type="primary" 
+                      @click="handleEdit(article.id)"
+                      class="edit-btn"
+                    >
+                      <el-icon><Edit /></el-icon>
+                      编辑
+                    </el-button>
+                  </div>
+                </PermissionCheck>
               </div>
               
               <div class="card-content">
-                <div class="card-header">
+                  <div class="card-header">
                   <h3 class="card-title">{{ article.title }}</h3>
                   <el-tag 
                     :type="article.published ? 'success' : 'warning'"
@@ -341,22 +352,31 @@
                     </el-button>
                     <template #dropdown>
                       <el-dropdown-menu>
-                        <el-dropdown-item :command="`edit:${article.id}`">
+                        <PermissionCheck permission="article.update">
+                          <el-dropdown-item :command="`edit:${article.id}`">
                           <el-icon><Edit /></el-icon>
                           编辑
                         </el-dropdown-item>
-                        <el-dropdown-item :command="`copy:${article.id}`">
-                          <el-icon><CopyDocument /></el-icon>
-                          复制
-                        </el-dropdown-item>
-                        <el-dropdown-item :command="`toggle:${article.id}`">
-                          <el-icon><Switch /></el-icon>
-                          {{ article.published ? '取消发布' : '发布' }}
-                        </el-dropdown-item>
-                        <el-dropdown-item :command="`delete:${article.id}`" class="danger-item">
+                        </PermissionCheck>
+                        <PermissionCheck permission="article.update">
+                          <el-dropdown-item :command="`copy:${article.id}`">
+                            <el-icon><CopyDocument /></el-icon>
+                            复制
+                          </el-dropdown-item>
+                        </PermissionCheck>
+                        <PermissionCheck permission="article.update"></PermissionCheck>
+                          <el-dropdown-item :command="`toggle:${article.id}`">
+                            <el-icon><Switch /></el-icon>
+                            {{ article.published ? '取消发布' : '发布' }}
+                          </el-dropdown-item>
+                        </PermissionCheck>
+                        <PermissionCheck permission="article.delete">
+                          <el-dropdown-item :command="`delete:${article.id}`" class="danger-item">
                           <el-icon><Delete /></el-icon>
                           删除
                         </el-dropdown-item>
+                        </PermissionCheck>
+                        
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -408,27 +428,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Document,
-  EditPen,
-  Search,
-  Refresh,
-  Check,
-  View,
-  List,
-  Grid,
-  Picture,
-  User,
-  Collection,
-  Calendar,
-  ChatLineSquare,
-  MoreFilled,
-  Edit,
-  CopyDocument,
-  Switch,
-  Delete,
-  Star
-} from '@element-plus/icons-vue'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 import { articleApi, categoryApi } from '@/lib/api'
 
 const router = useRouter()
