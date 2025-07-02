@@ -33,19 +33,23 @@
           <el-icon><View /></el-icon>
           预览
         </el-button>
-        <el-button @click="saveDraft" class="draft-btn">
-          <el-icon><Document /></el-icon>
-          保存草稿
-        </el-button>
-        <el-button 
-          type="primary" 
-          @click="handlePublish"
-          :loading="publishing"
-          class="publish-btn"
-        >
-          <el-icon><Upload /></el-icon>
-          {{ form.published ? '更新文章' : '发布文章' }}
-        </el-button>
+        <PermissionCheck permission="article.update">
+          <el-button @click="saveDraft" class="draft-btn">
+            <el-icon><Document /></el-icon>
+            保存草稿
+          </el-button>
+        </PermissionCheck>
+        <PermissionCheck :permission="form.published ? 'article.update' : 'article.create'">
+          <el-button 
+            type="primary" 
+            @click="handlePublish"
+            :loading="publishing"
+            class="publish-btn"
+          >
+            <el-icon><Upload /></el-icon>
+            {{ form.published ? '更新文章' : '发布文章' }}
+          </el-button>
+        </PermissionCheck>
       </div>
     </div>
 
@@ -302,6 +306,7 @@ import TiptapEditor from '@/components/TiptapEditor.vue'
 import FileSelector from '@/components/FileSelector.vue'
 import { articleApi, categoryApi, tagApi, fileApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 
 const route = useRoute()
 const router = useRouter()

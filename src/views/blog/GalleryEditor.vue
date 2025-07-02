@@ -8,9 +8,11 @@
       </div>
       <div class="header-right">
         <el-button @click="handlePreview" :disabled="!formData.title">预览</el-button>
-        <el-button type="primary" @click="handleSave" :loading="saving">
-          {{ isEditing ? '更新' : '发布' }}
-        </el-button>
+        <PermissionCheck :permission="isEditing ? 'gallery.update' : 'gallery.create'">
+          <el-button type="primary" @click="handleSave" :loading="saving">
+            {{ isEditing ? '更新' : '发布' }}
+          </el-button>
+        </PermissionCheck>
       </div>
     </div>
 
@@ -99,10 +101,12 @@
                 <div class="section-header">
                   <span class="section-title">图片管理</span>
                   <div class="section-actions">
-                    <el-button type="primary" @click="addImages">
-                      <el-icon><Plus /></el-icon>
-                      添加图片
-                    </el-button>
+                    <PermissionCheck permission="gallery.update">
+                      <el-button type="primary" @click="addImages">
+                        <el-icon><Plus /></el-icon>
+                        添加图片
+                      </el-button>
+                    </PermissionCheck>
                   </div>
                 </div>
               </template>
@@ -149,13 +153,15 @@
                         <el-button size="small" @click="editImage(index)">
                           <el-icon><Edit /></el-icon>
                         </el-button>
-                        <el-button 
-                          size="small" 
-                          type="danger"
-                          @click="removeImage(index)"
-                        >
-                          <el-icon><Delete /></el-icon>
-                        </el-button>
+                        <PermissionCheck permission="gallery.delete">
+                          <el-button 
+                            size="small" 
+                            type="danger"
+                            @click="removeImage(index)"
+                          >
+                            <el-icon><Delete /></el-icon>
+                          </el-button>
+                        </PermissionCheck>
                       </el-button-group>
                     </div>
                   </div>
@@ -392,6 +398,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Plus, FolderOpened, Upload, HomeFilled, Search, Loading, Picture, Star, Edit, Delete, Close, Folder, Check } from '@element-plus/icons-vue'
 import { fileApi, galleryApi, galleryCategoryApi } from '../../lib/api'
 import FileSelector from '../../components/FileSelector.vue'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 
 // 路由和响应式数据
 const route = useRoute()

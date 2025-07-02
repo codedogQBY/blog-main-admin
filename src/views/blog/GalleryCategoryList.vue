@@ -6,10 +6,12 @@
         <p class="subtitle">管理图库分类配置</p>
       </div>
       <div class="action-buttons">
-        <el-button type="primary" @click="showCreateDialog = true">
-          <el-icon><Plus /></el-icon>
-          新增分类
-        </el-button>
+        <PermissionCheck permission="gallery.category.create">
+          <el-button type="primary" @click="showCreateDialog = true">
+            <el-icon><Plus /></el-icon>
+            新增分类
+          </el-button>
+        </PermissionCheck>
       </div>
     </div>
 
@@ -100,17 +102,21 @@
 
       <el-table-column label="操作" width="150" fixed="right">
         <template #default="scope">
-          <el-button link type="primary" @click="editCategory(scope.row)">
-            编辑
-          </el-button>
-          <el-button 
-            link 
-            type="danger" 
-            @click="deleteCategory(scope.row)"
-            :disabled="scope.row.imageCount > 0"
-          >
-            删除
-          </el-button>
+          <PermissionCheck permission="gallery.category.update">
+            <el-button link type="primary" @click="editCategory(scope.row)">
+              编辑
+            </el-button>
+          </PermissionCheck>
+          <PermissionCheck permission="gallery.category.delete">
+            <el-button 
+              link 
+              type="danger" 
+              @click="deleteCategory(scope.row)"
+              :disabled="scope.row.imageCount > 0"
+            >
+              删除
+            </el-button>
+          </PermissionCheck>
         </template>
       </el-table-column>
     </el-table>
@@ -179,6 +185,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Warning } from '@element-plus/icons-vue'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 import { api } from '../../lib/api'
 
 // 响应式数据
