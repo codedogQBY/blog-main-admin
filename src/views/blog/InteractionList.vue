@@ -101,13 +101,15 @@
               <td>{{ formatDate(comment.createdAt) }}</td>
               <td>{{ comment.repliesCount }}</td>
               <td>
-                <button 
-                  class="delete-btn"
-                  @click="deleteCommentHandler(comment.id)"
-                  :disabled="loading"
-                >
-                  删除
-                </button>
+                <PermissionCheck permission="interaction.delete">
+                  <button 
+                    class="delete-btn"
+                    @click="deleteCommentHandler(comment.id)"
+                    :disabled="loading"
+                  >
+                    删除
+                  </button>
+                </PermissionCheck>
               </td>
             </tr>
           </tbody>
@@ -172,13 +174,15 @@
               <td class="ip-address">{{ like.userInfo?.ipAddress || '-' }}</td>
               <td>{{ formatDate(like.createdAt) }}</td>
               <td>
-                <button 
-                  class="delete-btn"
-                  @click="deleteLikeHandler(like.id)"
-                  :disabled="loading"
-                >
-                  删除
-                </button>
+                <PermissionCheck permission="interaction.delete">
+                  <button 
+                    class="delete-btn"
+                    @click="deleteLikeHandler(like.id)"
+                    :disabled="loading"
+                  >
+                    删除
+                  </button>
+                </PermissionCheck>
               </td>
             </tr>
           </tbody>
@@ -262,6 +266,8 @@ import {
   type Comment,
   type InteractionStats
 } from '../../api/interactions'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 
 // 响应式数据
 const activeTab = ref('comments')

@@ -3,10 +3,12 @@
     <!-- 页面头部 -->
     <div class="page-header">
       <h1>签名管理</h1>
-      <el-button type="primary" @click="handleCreate">
-        <i class="fas fa-plus"></i>
-        新建签名
-      </el-button>
+      <PermissionCheck permission="diary.signature.create">
+        <el-button type="primary" @click="handleCreate">
+          <i class="fas fa-plus"></i>
+          新建签名
+        </el-button>
+      </PermissionCheck>
     </div>
 
     <!-- 签名列表 -->
@@ -44,16 +46,20 @@
           
           <div class="signature-actions">
             <el-tag v-if="signature.isActive" type="success" size="small">激活中</el-tag>
-            <el-button
-              v-if="!signature.isActive"
-              size="small"
-              type="success"
-              @click="handleActivate(signature)"
-            >
-              激活
-            </el-button>
-            <el-button size="small" @click="handleEdit(signature)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(signature)">删除</el-button>
+            <PermissionCheck permission="diary.signature.update">
+              <el-button
+                v-if="!signature.isActive"
+                size="small"
+                type="success"
+                @click="handleActivate(signature)"
+              >
+                激活
+              </el-button>
+              <el-button size="small" @click="handleEdit(signature)">编辑</el-button>
+            </PermissionCheck>
+            <PermissionCheck permission="diary.signature.delete">
+              <el-button size="small" type="danger" @click="handleDelete(signature)">删除</el-button>
+            </PermissionCheck>
           </div>
         </div>
       </div>
@@ -61,7 +67,9 @@
       <div v-if="signatures.length === 0" class="empty-state">
         <div class="empty-icon">✍️</div>
         <p>还没有签名</p>
-        <el-button type="primary" @click="handleCreate">创建第一个签名</el-button>
+        <PermissionCheck permission="diary.signature.create">
+          <el-button type="primary" @click="handleCreate">创建第一个签名</el-button>
+        </PermissionCheck>
       </div>
     </div>
 
@@ -157,6 +165,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 import { api } from '../lib/api'
 
 // 响应式数据

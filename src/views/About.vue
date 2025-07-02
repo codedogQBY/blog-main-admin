@@ -11,15 +11,17 @@
           <p class="page-description">配置网站的关于页面内容，包括个人信息、标签和章节内容</p>
         </div>
         <div class="header-actions">
-          <el-button 
-            type="primary" 
-            size="large"
-            :loading="saving"
-            @click="saveConfig"
-          >
-            <el-icon class="el-icon--left"><Check /></el-icon>
-            保存配置
-          </el-button>
+          <PermissionCheck permission="about.update">
+            <el-button 
+              type="primary" 
+              size="large"
+              :loading="saving"
+              @click="saveConfig"
+            >
+              <el-icon class="el-icon--left"><Check /></el-icon>
+              保存配置
+            </el-button>
+          </PermissionCheck>
         </div>
       </div>
     </div>
@@ -650,6 +652,7 @@ import {
   type AboutSection,
   type AboutImage
 } from '../api/about'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 
 const loading = ref(false)
 const saving = ref(false)

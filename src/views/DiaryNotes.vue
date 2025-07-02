@@ -3,10 +3,12 @@
     <!-- 页面头部 -->
     <div class="page-header">
       <h1>随记管理</h1>
-      <el-button type="primary" @click="handleCreate">
-        <i class="fas fa-plus"></i>
-        新建随记
-      </el-button>
+      <PermissionCheck permission="diary.create">
+        <el-button type="primary" @click="handleCreate">
+          <i class="fas fa-plus"></i>
+          新建随记
+        </el-button>
+      </PermissionCheck>
     </div>
 
     <!-- 统计卡片 -->
@@ -107,9 +109,15 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button size="small" @click="handleView(row)">查看</el-button>
-              <el-button size="small" type="primary" @click="handleEdit(row)">编辑</el-button>
-              <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+              <PermissionCheck permission="diary.read">
+                <el-button size="small" @click="handleView(row)">查看</el-button>
+              </PermissionCheck>
+              <PermissionCheck permission="diary.update">
+                <el-button size="small" type="primary" @click="handleEdit(row)">编辑</el-button>
+              </PermissionCheck>
+              <PermissionCheck permission="diary.delete">
+                <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+              </PermissionCheck>
             </div>
           </template>
         </el-table-column>
@@ -221,6 +229,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 import { api } from '../lib/api'
 
 // 响应式数据
