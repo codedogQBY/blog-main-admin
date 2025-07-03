@@ -18,6 +18,8 @@ export interface AuthState {
   permissions: string[]
   menus: MenuConfig[]
   tokenCheckInterval: number | null
+  permissionsLoaded: boolean
+  currentAuthCheck: Promise<boolean> | null
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -27,13 +29,22 @@ export const useAuthStore = defineStore('auth', {
     loading: false,
     permissions: [],
     menus: [],
-    tokenCheckInterval: null
+    tokenCheckInterval: null,
+    permissionsLoaded: false,
+    currentAuthCheck: null as Promise<boolean> | null
   }),
 
   getters: {
     // 检查是否有指定权限
     hasPermission: (state) => (permission: string): boolean => {
-      if (!state.user) return false
+      console.log('[Permission Check]', {
+        permission,
+        user: state.user,
+        permissionsLoaded: state.permissionsLoaded,
+        permissions: state.permissions
+      })
+      
+      if (!state.user || !state.permissionsLoaded) return false
       // 超级管理员拥有所有权限
       if (state.user.isSuperAdmin) return true
       return state.permissions.includes(permission) || state.permissions.includes('*')
@@ -41,15 +52,17 @@ export const useAuthStore = defineStore('auth', {
 
     // 获取用户权限列表
     userPermissions: (state) => {
+      if (!state.permissionsLoaded || !state.user) return []
       return state.permissions
     },
 
     // 获取可访问的菜单
     accessibleMenus: (state) => {
+      if (!state.user || !state.permissionsLoaded) return []
+      
       return state.menus.filter(menu => {
-        if (!state.user) return false
         // 超级管理员可以访问所有菜单
-        if (state.user.isSuperAdmin) return true
+        if (state.user?.isSuperAdmin) return true
         return state.permissions.includes(menu.permission) || state.permissions.includes('*')
       })
     }
@@ -77,7 +90,7 @@ export const useAuthStore = defineStore('auth', {
         const profile = await authApi.getProfile()
         this.user = profile
         this.isAuthenticated = true
-        this.updatePermissions()
+        await this.updatePermissions()
         this.generateMenus()
       } catch (error: any) {
         if (error?.response?.status === 401) {
@@ -92,27 +105,49 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // 更新用户权限列表
-    updatePermissions() {
+    async updatePermissions() {
+      console.log('[Permissions] Starting permission update', {
+        user: this.user,
+        currentPermissions: this.permissions
+      })
+
       if (!this.user) {
+        console.log('[Permissions] No user, clearing permissions')
         this.permissions = []
+        this.permissionsLoaded = false
         return
       }
 
-      if (this.user.isSuperAdmin) {
-        this.permissions = ['*'] // 超级管理员拥有所有权限
-        return
-      }
+      try {
+        if (this.user.isSuperAdmin) {
+          console.log('[Permissions] User is superadmin, granting all permissions')
+          this.permissions = ['*']
+          this.permissionsLoaded = true
+          return
+        }
 
-      // 从用户角色中提取权限
-      const permissions = new Set<string>()
-      if (this.user.role && this.user.role.perms) {
-        this.user.role.perms.forEach((rolePerm: any) => {
-          if (rolePerm.permission) {
-            permissions.add(rolePerm.permission.code)
-          }
+        // 从用户角色中提取权限
+        console.log('[Permissions] Extracting permissions from role:', this.user.role)
+        const permissions = new Set<string>()
+        if (this.user.role && this.user.role.perms) {
+          this.user.role.perms.forEach((rolePerm: any) => {
+            if (rolePerm.permission) {
+              permissions.add(rolePerm.permission.code)
+            }
+          })
+        }
+        this.permissions = Array.from(permissions)
+        this.permissionsLoaded = true
+        
+        console.log('[Permissions] Permissions updated successfully', {
+          permissions: this.permissions,
+          permissionsLoaded: this.permissionsLoaded
         })
+      } catch (error) {
+        console.error('[Permissions] Failed to update permissions:', error)
+        // 权限更新失败时不要清除现有权限
+        throw error
       }
-      this.permissions = Array.from(permissions)
     },
 
     // 生成动态菜单
@@ -152,22 +187,85 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async checkAuth() {
-      const token = localStorage.getItem('accessToken')
-      if (!token) {
-        this.logout()
-        return false
-      }
-
-      try {
-        await this.fetchProfile()
-        this.startTokenCheck()
-        return true
-      } catch (error: any) {
-        if (error?.response?.status === 401) {
-          this.logout()
+      console.log('[Auth Check] Starting auth check', {
+        loading: this.loading,
+        currentState: {
+          isAuthenticated: this.isAuthenticated,
+          hasUser: !!this.user,
+          permissionsLoaded: this.permissionsLoaded
         }
-        return false
+      })
+
+      // 如果已经有正在进行的认证检查，返回该Promise
+      if (this.currentAuthCheck) {
+        console.log('[Auth Check] Using existing auth check promise')
+        return this.currentAuthCheck
       }
+      
+      this.loading = true
+      
+      // 创建新的认证检查Promise
+      this.currentAuthCheck = (async () => {
+        try {
+          const token = localStorage.getItem('accessToken')
+          console.log('[Auth Check] Token exists:', !!token)
+          
+          if (!token) {
+            console.log('[Auth Check] No token found, resetting state')
+            this.resetState()
+            return false
+          }
+
+          // 获取用户信息
+          console.log('[Auth Check] Fetching user profile')
+          const response = await authApi.getProfile()
+          console.log('[Auth Check] Profile received:', response)
+          
+          this.user = response
+          this.isAuthenticated = true
+          
+          // 加载权限
+          console.log('[Auth Check] Loading permissions')
+          await this.updatePermissions()
+          
+          console.log('[Auth Check] Auth check completed successfully', {
+            user: this.user,
+            isAuthenticated: this.isAuthenticated,
+            permissionsLoaded: this.permissionsLoaded,
+            permissions: this.permissions
+          })
+          
+          return true
+        } catch (error: any) {
+          console.error('[Auth Check] Failed:', {
+            error,
+            status: error?.response?.status,
+            message: error?.message
+          })
+          // 只有在401错误时才清除状态
+          if (error?.response?.status === 401) {
+            console.log('[Auth Check] 401 error, resetting state')
+            this.resetState()
+          }
+          return false
+        } finally {
+          this.loading = false
+          this.currentAuthCheck = null
+        }
+      })()
+
+      return this.currentAuthCheck
+    },
+
+    resetState() {
+      console.log('[Auth] Resetting state')
+      this.user = null
+      this.isAuthenticated = false
+      this.permissions = []
+      this.menus = []
+      this.permissionsLoaded = false
+      this.currentAuthCheck = null
+      localStorage.removeItem('accessToken')
     },
 
     // 启动 token 有效性检查

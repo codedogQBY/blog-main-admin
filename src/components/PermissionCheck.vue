@@ -23,6 +23,11 @@ const props = withDefaults(defineProps<Props>(), {
 const authStore = useAuthStore()
 
 const hasPermission = computed(() => {
+  // 如果权限未加载完成且不是超级管理员，不显示内容
+  if (authStore.permissions.length === 0 && !authStore.user?.isSuperAdmin) {
+    return false
+  }
+
   // 如果允许超级管理员且用户是超级管理员
   if (props.allowSuperAdmin && authStore.user?.isSuperAdmin) {
     return true

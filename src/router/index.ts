@@ -227,9 +227,22 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+  
+  console.log('[Router Guard] Navigation started', {
+    to: to.path,
+    from: from.path,
+    requiresAuth: to.meta.requiresAuth,
+    permissions: to.meta.permissions,
+    currentState: {
+      isAuthenticated: authStore.isAuthenticated,
+      hasUser: !!authStore.user,
+      permissionsLoaded: authStore.permissionsLoaded
+    }
+  })
 
   // 如果是登录页且已登录，重定向到管理页
   if (to.path === '/login' && authStore.isAuthenticated) {
+    console.log('[Router Guard] Authenticated user trying to access login page, redirecting to admin')
     next('/admin')
     return
   }
@@ -238,30 +251,67 @@ router.beforeEach(async (to, from, next) => {
 
   // 如果不需要认证，直接通过
   if (!requiresAuth) {
+    console.log('[Router Guard] Page does not require auth, proceeding')
     next()
     return
   }
 
   // 检查认证状态
-  if (!authStore.isAuthenticated) {
+  if (!authStore.isAuthenticated || !authStore.user) {
+    console.log('[Router Guard] Not authenticated or no user, checking token')
     const token = localStorage.getItem('accessToken')
-    if (token) {
-      try {
-        const success = await authStore.checkAuth()
-        if (success) {
-          next()
-          return
-        } else {
-          next('/login')
-          return
-        }
-      } catch (error) {
-        localStorage.removeItem('accessToken')
+    if (!token) {
+      console.log('[Router Guard] No token found, redirecting to login')
+      next('/login')
+      return
+    }
+
+    try {
+      console.log('[Router Guard] Token found, attempting to check auth')
+      const success = await authStore.checkAuth()
+      if (!success) {
+        console.log('[Router Guard] Auth check failed, redirecting to login')
         next('/login')
         return
       }
-    } else {
-      next('/login')
+      console.log('[Router Guard] Auth check successful')
+    } catch (error: any) {
+      console.error('[Router Guard] Auth check error:', {
+        error,
+        status: error?.response?.status
+      })
+      // 只有在认证失败时才跳转到登录页
+      if (error?.response?.status === 401) {
+        console.log('[Router Guard] 401 error, redirecting to login')
+        next('/login')
+        return
+      }
+      // 其他错误可能是网络问题，让用户停留在当前页面
+      console.log('[Router Guard] Non-401 error, staying on current page')
+      return
+    }
+  }
+
+  // 确保权限已加载
+  if (!authStore.permissionsLoaded && !authStore.user?.isSuperAdmin) {
+    console.log('[Router Guard] Permissions not loaded, attempting to load')
+    try {
+      await authStore.updatePermissions()
+      console.log('[Router Guard] Permissions loaded successfully')
+    } catch (error: any) {
+      console.error('[Router Guard] Permission loading error:', {
+        error,
+        status: error?.response?.status
+      })
+      // 如果是认证失败，跳转到登录页
+      if (error?.response?.status === 401) {
+        console.log('[Router Guard] 401 error while loading permissions, redirecting to login')
+        next('/login')
+      } else {
+        // 其他错误（如权限加载失败）跳转到403
+        console.log('[Router Guard] Permission loading failed, redirecting to 403')
+        next('/403')
+      }
       return
     }
   }
@@ -269,14 +319,22 @@ router.beforeEach(async (to, from, next) => {
   // 检查权限
   const requiredPermissions = to.meta.permissions
   if (requiredPermissions && requiredPermissions.length > 0) {
+    console.log('[Router Guard] Checking required permissions:', {
+      required: requiredPermissions,
+      current: authStore.permissions
+    })
+    
     const hasPermission = requiredPermissions.every(p => authStore.hasPermission(p))
     
     if (!hasPermission) {
+      console.log('[Router Guard] Permission check failed, redirecting to 403')
       next('/403')
       return
     }
+    console.log('[Router Guard] Permission check passed')
   }
 
+  console.log('[Router Guard] All checks passed, proceeding to route:', to.path)
   next()
 })
 

@@ -22,6 +22,8 @@ app.use(ElementPlus)
 
 // 在应用启动时检查认证状态
 const authStore = useAuthStore()
-authStore.checkAuth()
+
+// 等待权限检查完成后再挂载应用
+await authStore.checkAuth()
 
 app.mount('#app')
