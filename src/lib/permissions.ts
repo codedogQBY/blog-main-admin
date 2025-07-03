@@ -112,4 +112,12 @@ export const PERMISSIONS = {
     DELETE: 'interaction.delete',
     MODERATE: 'interaction.moderate',
   },
+
+  // 友链管理权限
+  FRIEND_LINK: {
+    READ: 'friend_link.read',
+    CREATE: 'friend_link.create',
+    UPDATE: 'friend_link.update',
+    DELETE: 'friend_link.delete'
+  }
 } as const; 

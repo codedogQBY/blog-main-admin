@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../lib/store'
 import { PERMISSIONS } from '../lib/permissions'
+import FriendLinks from '@/views/blog/FriendLinks.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -213,6 +214,16 @@ const routes = [
         meta: {
           title: '关于页面配置',
           permissions: [PERMISSIONS.ABOUT.READ]
+        }
+      },
+      {
+        path: '/blog/friend-links',
+        name: 'FriendLinks',
+        component: FriendLinks,
+        meta: {
+          title: '友链管理',
+          requiresAuth: true,
+          permissions: [PERMISSIONS.FRIEND_LINK.READ]
         }
       }
     ]

@@ -74,18 +74,18 @@ import {
   Picture,
   FolderOpened
 } from '@element-plus/icons-vue'
+import { PERMISSIONS } from '../lib/permissions'
 
 interface Props {
   isCollapse?: boolean
 }
 
 interface MenuItem {
-  path: string
   title: string
-  icon: any
-  permission: string
-  order: number
+  path?: string
+  icon?: string
   children?: MenuItem[]
+  permissions?: string[]
 }
 
 defineProps<Props>()
@@ -116,42 +116,42 @@ const allMenuItems: MenuItem[] = [
         path: '/admin/articles',
         title: '文章管理',
         icon: Document,
-        permission: 'article.read',
+        permission: PERMISSIONS.ARTICLE.READ,
         order: 1
       },
       {
         path: '/admin/categories',
         title: '分类管理',
         icon: Collection,
-        permission: 'category.read',
+        permission: PERMISSIONS.ARTICLE.CATEGORY.READ,
         order: 2
       },
       {
         path: '/admin/tags',
         title: '标签管理',
         icon: PriceTag,
-        permission: 'tag.read',
+        permission: PERMISSIONS.ARTICLE.TAG.READ,
         order: 3
       },
       {
         path: '/admin/gallery',
         title: '图库管理',
         icon: Picture,
-        permission: 'gallery.read',
+        permission: PERMISSIONS.GALLERY.READ,
         order: 4
       },
       {
         path: '/admin/gallery-categories',
         title: '图库分类',
         icon: Collection,
-        permission: 'gallery.category.read',
+        permission: PERMISSIONS.GALLERY.CATEGORY.READ,
         order: 5
       },
       {
         path: '/admin/diary-notes',
         title: '随记管理',
         icon: Notebook,
-        permission: 'diary.read',
+        permission: PERMISSIONS.DIARY.READ,
         order: 6
       }
     ]
@@ -169,14 +169,14 @@ const allMenuItems: MenuItem[] = [
         path: '/admin/interactions',
         title: '评论管理',
         icon: ChatDotRound,
-        permission: 'interaction.read',
+        permission: PERMISSIONS.INTERACTION.READ,
         order: 1
       },
       {
         path: '/admin/sticky-notes',
         title: '留言管理',
         icon: EditPen,
-        permission: 'sticky-note.read',
+        permission: PERMISSIONS.STICKY_NOTE.READ,
         order: 2
       }
     ]
@@ -194,14 +194,14 @@ const allMenuItems: MenuItem[] = [
         path: '/admin/diary-signatures',
         title: '签名管理',
         icon: Stamp,
-        permission: 'diary.signature.read',
+        permission: PERMISSIONS.DIARY.SIGNATURE.READ,
         order: 1
       },
       {
         path: '/admin/about',
         title: '关于页面',
         icon: UserFilled,
-        permission: 'about.read',
+        permission: PERMISSIONS.ABOUT.READ,
         order: 2
       }
     ]
@@ -212,7 +212,7 @@ const allMenuItems: MenuItem[] = [
     path: '/admin/files',
     title: '文件管理',
     icon: Folder,
-    permission: 'file.read',
+    permission: PERMISSIONS.FILE.READ,
     order: 5
   },
   
@@ -228,31 +228,39 @@ const allMenuItems: MenuItem[] = [
         path: '/admin/users',
         title: '用户管理',
         icon: UserFilled,
-        permission: 'user.read',
+        permission: PERMISSIONS.USER.READ,
         order: 1
       },
       {
         path: '/admin/roles',
         title: '角色管理', 
         icon: User,
-        permission: 'role.read',
+        permission: PERMISSIONS.ROLE.READ,
         order: 2
       },
       {
         path: '/admin/permissions',
         title: '权限管理',
         icon: Key,
-        permission: 'permission.read',
+        permission: PERMISSIONS.PERMISSION.READ,
         order: 3
       },
       {
         path: '/admin/permission-groups',
         title: '权限组管理',
         icon: FolderOpened,
-        permission: 'permission.group.read',
+        permission: PERMISSIONS.PERMISSION.GROUP.READ,
         order: 4
       }
     ]
+  },
+  
+  // 7. 友链管理
+  {
+    title: '友链管理',
+    path: '/blog/friend-links',
+    icon: 'Link',
+    permissions: [PERMISSIONS.FRIEND_LINK.READ]
   }
 ]
 
