@@ -1,622 +1,382 @@
 <template>
-  <div class="dashboard-home">
-    <!-- 欢迎区域 -->
-    <div class="welcome-section">
-      <el-card class="welcome-card" shadow="never">
-        <div class="welcome-content">
-          <div class="welcome-text">
-            <h1 class="welcome-title">
-              <el-icon class="welcome-icon"><Sunny /></el-icon>
-              欢迎回来，{{ userStore.user?.name }}！
-            </h1>
-            <p class="welcome-subtitle">今天是个美好的一天，开始您的创作之旅吧</p>
+  <div class="dashboard-container">
+    <!-- 统计卡片 -->
+    <el-row :gutter="20" class="mb-4">
+      <el-col :span="4" v-for="(stat, key) in stats" :key="key">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <div class="stat-icon" :class="stat.color">
+              <el-icon><component :is="stat.icon" /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stat.value }}</div>
+              <div class="stat-label">{{ stat.label }}</div>
+            </div>
           </div>
-          <div class="welcome-actions">
-            <PermissionCheck permission="article.create">
-              <el-button 
-                type="primary" 
-                size="large"
-                @click="$router.push('/admin/articles/create')"
-                class="create-btn"
-              >
-                <el-icon><EditPen /></el-icon>
-                创作新文章
-              </el-button>
-            </PermissionCheck>
-          </div>
-        </div>
-      </el-card>
-    </div>
+        </el-card>
+      </el-col>
+    </el-row>
 
-    <!-- 统计概览 -->
-    <div class="stats-overview">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon articles">
-            <el-icon><Document /></el-icon>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ stats.articles }}</div>
-            <div class="stat-label">文章总数</div>
-            <div class="stat-change positive">
-              <el-icon><ArrowUp /></el-icon>
-              +12% 本月
+    <!-- 趋势图表 -->
+    <el-row :gutter="20" class="mb-4">
+      <el-col :span="16">
+        <el-card>
+          <template #header>
+            <div class="card-header">
+              <span>内容趋势</span>
+              <el-radio-group v-model="trendType" size="small">
+                <el-radio-button value="articles">文章</el-radio-button>
+          <el-radio-button value="interactions">互动</el-radio-button>
+          <el-radio-button value="diary">随记</el-radio-button>
+          <el-radio-button value="gallery">图库</el-radio-button>
+              </el-radio-group>
             </div>
+          </template>
+          <div class="trend-chart">
+            <el-skeleton :loading="loading" animated>
+              <template #default>
+                <div ref="chartRef" style="height: 300px"></div>
+              </template>
+            </el-skeleton>
           </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon views">
-            <el-icon><View /></el-icon>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ stats.views }}</div>
-            <div class="stat-label">总阅读量</div>
-            <div class="stat-change positive">
-              <el-icon><ArrowUp /></el-icon>
-              +8% 本月
-            </div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon users">
-            <el-icon><UserFilled /></el-icon>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ stats.users }}</div>
-            <div class="stat-label">用户总数</div>
-            <div class="stat-change positive">
-              <el-icon><ArrowUp /></el-icon>
-              +5% 本月
-            </div>
-          </div>
-        </div>
-        
-        <div class="stat-card">
-          <div class="stat-icon categories">
-            <el-icon><CollectionTag /></el-icon>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ stats.categories }}</div>
-            <div class="stat-label">分类数量</div>
-            <div class="stat-change neutral">
-              <el-icon><Minus /></el-icon>
-              无变化
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 快捷操作 -->
-    <div class="quick-actions-section">
-      <el-card class="actions-card" shadow="never">
+        </el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card class="recent-activities">
         <template #header>
           <div class="card-header">
-            <h3>快捷操作</h3>
-            <p>常用功能快速入口</p>
-          </div>
-        </template>
-        
-        <div class="actions-grid">
-          <PermissionCheck permission="article.create">
-            <div class="action-item" @click="$router.push('/admin/articles/create')">
-              <div class="action-icon create">
-                <el-icon><EditPen /></el-icon>
-              </div>
-              <div class="action-content">
-                <h4>创作文章</h4>
-                <p>撰写新的博客文章</p>
-              </div>
+              <span>最近活动</span>
+              <el-button text>查看全部</el-button>
             </div>
-          </PermissionCheck>
-          
-          <PermissionCheck permission="article.read">
-            <div class="action-item" @click="$router.push('/admin/articles')">
-              <div class="action-icon manage">
-                <el-icon><Document /></el-icon>
-              </div>
-              <div class="action-content">
-                <h4>文章管理</h4>
-                <p>管理已发布的文章</p>
-              </div>
-            </div>
-          </PermissionCheck>
-          
-          <PermissionCheck permission="category.read">
-            <div class="action-item" @click="$router.push('/admin/categories')">
-              <div class="action-icon category">
-                <el-icon><FolderOpened /></el-icon>
-              </div>
-              <div class="action-content">
-                <h4>分类管理</h4>
-                <p>组织文章分类结构</p>
-              </div>
-            </div>
-          </PermissionCheck>
-          
-          <PermissionCheck permission="user.read">
-            <div class="action-item" @click="$router.push('/admin/users')">
-              <div class="action-icon users">
-                <el-icon><UserFilled /></el-icon>
-              </div>
-              <div class="action-content">
-                <h4>用户管理</h4>
-                <p>管理系统用户权限</p>
-              </div>
-            </div>
-          </PermissionCheck>
-        </div>
-      </el-card>
-    </div>
+          </template>
+          <el-timeline>
+            <el-timeline-item
+              v-for="activity in recentActivities"
+              :key="activity.id"
+              :timestamp="activity.time"
+              :type="activity.type"
+            >
+              {{ activity.content }}
+            </el-timeline-item>
+          </el-timeline>
+        </el-card>
+      </el-col>
+    </el-row>
 
-    <!-- 最近活动 -->
-    <div class="recent-activity">
-      <el-card class="activity-card" shadow="never">
+    <!-- 最新内容 -->
+    <el-row :gutter="20">
+      <el-col :span="12">
+        <el-card>
+          <template #header>
+            <div class="card-header">
+              <span>最新文章</span>
+              <el-button text @click="$router.push('/admin/articles')">查看全部</el-button>
+            </div>
+          </template>
+          <el-table :data="recentArticles" style="width: 100%" size="small">
+            <el-table-column prop="title" label="标题" />
+            <el-table-column prop="status" label="状态" width="100">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'PUBLISHED' ? 'success' : 'warning'" size="small">
+                  {{ row.status === 'PUBLISHED' ? '已发布' : '草稿' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createdAt" label="创建时间" width="180" />
+          </el-table>
+      </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card>
         <template #header>
           <div class="card-header">
-            <h3>最近活动</h3>
-            <p>系统最新动态</p>
-          </div>
-        </template>
-        
-        <div class="activity-list">
-          <div class="activity-item">
-            <div class="activity-icon">
-              <el-icon><Document /></el-icon>
+              <span>最新评论</span>
+              <el-button text @click="$router.push('/admin/interactions')">查看全部</el-button>
             </div>
-            <div class="activity-content">
-              <div class="activity-title">发布了新文章《Vue 3 最佳实践指南》</div>
-              <div class="activity-time">2小时前</div>
-            </div>
-          </div>
-          
-          <div class="activity-item">
-            <div class="activity-icon">
-              <el-icon><UserFilled /></el-icon>
-            </div>
-            <div class="activity-content">
-              <div class="activity-title">新用户 "张三" 注册成功</div>
-              <div class="activity-time">4小时前</div>
-            </div>
-          </div>
-          
-          <div class="activity-item">
-            <div class="activity-icon">
-              <el-icon><Edit /></el-icon>
-            </div>
-            <div class="activity-content">
-              <div class="activity-title">更新了文章《JavaScript 进阶教程》</div>
-              <div class="activity-time">6小时前</div>
-            </div>
-          </div>
-          
-          <div class="activity-item">
-            <div class="activity-icon">
-              <el-icon><FolderOpened /></el-icon>
-            </div>
-            <div class="activity-content">
-              <div class="activity-title">创建了新分类 "前端开发"</div>
-              <div class="activity-time">1天前</div>
-            </div>
-          </div>
-        </div>
+          </template>
+          <el-table :data="recentComments" style="width: 100%" size="small">
+            <el-table-column prop="content" label="内容" show-overflow-tooltip />
+            <el-table-column label="目标" show-overflow-tooltip width="200">
+              <template #default="{ row }">
+                {{ row.targetInfo?.title || '未知内容' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="createdAt" label="时间" width="180" />
+          </el-table>
       </el-card>
-    </div>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { 
-  Sunny,
-  EditPen, 
-  Document, 
-  View, 
-  UserFilled, 
-  CollectionTag,
-  ArrowUp,
-  Minus,
-  FolderOpened,
-  Edit
-} from '@element-plus/icons-vue'
-import { useAuthStore } from '../lib/store'
-import PermissionCheck from '@/components/PermissionCheck.vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
+import * as echarts from 'echarts'
+import { Document, ChatRound, Picture, Notebook, User } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { markRaw } from 'vue'
+import { api } from '@/lib/api'
 
-const userStore = useAuthStore()
+const router = useRouter()
+const loading = ref(true)
+const chartRef = ref<HTMLElement>()
+const chart = ref<echarts.ECharts>()
+const trendType = ref('articles')
 
 // 统计数据
-const stats = ref({
-  articles: 0,
-  views: 0,
-  users: 0,
-  categories: 0
+const stats = ref([
+  { label: '文章总数', value: 0, icon: markRaw(Document), color: 'blue' },
+  { label: '评论数', value: 0, icon: markRaw(ChatRound), color: 'green' },
+  { label: '图片数', value: 0, icon: markRaw(Picture), color: 'purple' },
+  { label: '随记数', value: 0, icon: markRaw(Notebook), color: 'orange' },
+  { label: '用户数', value: 0, icon: markRaw(User), color: 'red' },
+])
+
+const recentActivities = ref([])
+const recentArticles = ref([])
+const recentComments = ref([])
+const trend = ref({})
+
+// 获取统计数据
+const fetchStats = async () => {
+  try {
+    const { data } = await api.get('/dashboard/stats')
+    stats.value[0].value = data.articles.total
+    stats.value[1].value = data.interactions.comments
+    stats.value[2].value = data.gallery.total
+    stats.value[3].value = data.diary.total
+    stats.value[4].value = data.users.total
+  } catch (error) {
+    ElMessage.error('获取统计数据失败')
+  }
+}
+
+// 获取最近活动
+const fetchRecentActivities = async () => {
+  try {
+    const { data } = await api.get('/dashboard/recent-activities')
+    recentArticles.value = data.articles || []
+    recentComments.value = data.comments || []
+    
+    // 合并活动并按时间排序
+    const activities = [
+      ...(data.articles || []).map(a => ({
+        id: `article-${a.id}`,
+        content: `发布了文章《${a.title}》`,
+        time: a.createdAt,
+        type: 'primary'
+      })),
+      ...(data.comments || []).map(c => ({
+        id: `comment-${c.id}`,
+        content: c.targetType === 'article' 
+          ? `评论了文章《${c.targetInfo?.title || '未知文章'}》`
+          : c.targetType === 'sticky_note'
+          ? `评论了留言《${c.targetInfo?.title || '未知留言'}》`
+          : `评论了图片《${c.targetInfo?.title || '未知图片'}》`,
+        time: c.createdAt,
+        type: 'success'
+      })),
+      ...(data.likes || []).map(l => ({
+        id: `like-${l.id}`,
+        content: l.targetType === 'article' 
+          ? `点赞了文章《${l.targetInfo?.title || '未知文章'}》`
+          : l.targetType === 'sticky_note'
+          ? `点赞了留言《${l.targetInfo?.title || '未知留言'}》`
+          : `点赞了图片《${l.targetInfo?.title || '未知图片'}》`,
+        time: l.createdAt,
+        type: 'warning'
+      }))
+    ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+    
+    recentActivities.value = activities.slice(0, 10)
+  } catch (error) {
+    console.error('获取最近活动失败:', error)
+    ElMessage.error('获取最近活动失败')
+          }
+        }
+
+// 获取趋势数据
+const fetchTrend = async () => {
+  try {
+    const [articlesData, interactionsData, diaryData, galleryData] = await Promise.all([
+      api.get('/dashboard/trend?type=articles'),
+      api.get('/dashboard/trend?type=interactions'),
+      api.get('/dashboard/trend?type=diary'),
+      api.get('/dashboard/trend?type=gallery')
+    ])
+    
+    trend.value = {
+      articles: articlesData.data,
+      interactions: interactionsData.data,
+      diary: diaryData.data,
+      gallery: galleryData.data
+    }
+  } catch (error) {
+    console.error('获取趋势数据失败:', error)
+    ElMessage.error('获取趋势数据失败')
+  }
+}
+
+// 更新图表
+const updateChart = () => {
+  if (!chartRef.value) return
+  
+  if (!chart.value) {
+    chart.value = echarts.init(chartRef.value)
+  }
+
+  const data = trend.value[trendType.value]
+  if (!data || !Array.isArray(data)) {
+    return
+  }
+
+  let series = []
+  
+  if (trendType.value === 'interactions') {
+    // 互动数据有comments和likes两个字段
+    series = [
+      {
+        name: '评论',
+        data: data.map(d => d.comments || 0),
+        type: 'line',
+        smooth: true,
+        areaStyle: {},
+        color: '#67C23A'
+      },
+      {
+        name: '点赞',
+        data: data.map(d => d.likes || 0),
+        type: 'line',
+        smooth: true,
+        areaStyle: {},
+        color: '#E6A23C'
+      }
+    ]
+  } else {
+    // 其他数据只有count字段
+    series = [
+      {
+        data: data.map(d => d.count || 0),
+        type: 'line',
+        smooth: true,
+        areaStyle: {}
+        }
+    ]
+  }
+
+  const option = {
+    tooltip: {
+      trigger: 'axis'
+    },
+    legend: trendType.value === 'interactions' ? {
+      data: ['评论', '点赞']
+    } : undefined,
+    xAxis: {
+      type: 'category',
+      data: data.map(d => d.date)
+    },
+    yAxis: {
+      type: 'value'
+    },
+    series
+  }
+
+  chart.value.setOption(option)
+}
+
+// 监听趋势类型变化
+watch(trendType, () => {
+  updateChart()
 })
 
-// 模拟加载统计数据
 onMounted(async () => {
-  // 这里可以调用实际的API获取统计数据
-  setTimeout(() => {
-    stats.value = {
-      articles: 156,
-      views: 12486,
-      users: 89,
-      categories: 12
-    }
-  }, 500)
+  await Promise.all([
+    fetchStats(),
+    fetchRecentActivities(),
+    fetchTrend()
+  ])
+  loading.value = false
+  
+  // 确保DOM完全渲染后再初始化图表
+  nextTick(() => {
+    updateChart()
+  })
 })
 </script>
 
-<style scoped lang="scss">
-.dashboard-home {
-  padding: 24px;
-  background: #f8fafc;
-  min-height: 100vh;
-}
-
-.welcome-section {
-  margin-bottom: 32px;
-
-  .welcome-card {
-    border-radius: 20px;
-    border: none;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
-
-    :deep(.el-card__body) {
-      padding: 40px;
+<style scoped>
+.dashboard-container {
+  padding: 20px;
     }
 
-    .welcome-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: white;
-
-      .welcome-text {
-        .welcome-title {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin: 0 0 12px 0;
-          font-size: 32px;
-          font-weight: 700;
-
-          .welcome-icon {
-            font-size: 36px;
-            color: #fbbf24;
-          }
-        }
-
-        .welcome-subtitle {
-          margin: 0;
-          font-size: 18px;
-          opacity: 0.9;
-        }
-      }
-
-      .welcome-actions {
-        .create-btn {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 16px 32px;
-          font-size: 16px;
-          font-weight: 600;
-          background: rgba(255, 255, 255, 0.2);
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          color: white;
-          border-radius: 16px;
-          backdrop-filter: blur(10px);
-          transition: all 0.3s ease;
-
-          &:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.5);
-            transform: translateY(-2px);
-          }
-        }
-      }
-    }
-  }
+.mb-4 {
+  margin-bottom: 20px;
 }
 
-.stats-overview {
-  margin-bottom: 32px;
+.stat-card {
+  height: 100px;
+}
 
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 24px;
-
-    .stat-card {
-      background: white;
-      border-radius: 20px;
-      padding: 32px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-      transition: all 0.3s ease;
-
-      &:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-      }
-
-      .stat-icon {
-        width: 72px;
-        height: 72px;
-        border-radius: 20px;
+.stat-content {
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 32px;
-        color: white;
-
-        &.articles {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  height: 100%;
         }
 
-        &.views {
-          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-
-        &.users {
-          background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-
-        &.categories {
-          background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-        }
-      }
-
-      .stat-content {
-        flex: 1;
-
-        .stat-number {
-          font-size: 36px;
-          font-weight: 700;
-          color: #1e293b;
-          line-height: 1;
-          margin-bottom: 8px;
-        }
-
-        .stat-label {
-          color: #64748b;
-          font-size: 16px;
-          font-weight: 500;
-          margin-bottom: 8px;
-        }
-
-        .stat-change {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 14px;
-          font-weight: 500;
-
-          &.positive {
-            color: #22c55e;
-          }
-
-          &.neutral {
-            color: #64748b;
-          }
-        }
-      }
-    }
-  }
-}
-
-.quick-actions-section {
-  margin-bottom: 32px;
-
-  .actions-card {
-    border-radius: 20px;
-    border: none;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-
-    :deep(.el-card__header) {
-      padding: 32px 32px 24px;
-      border-bottom: 1px solid #f1f5f9;
-    }
-
-    :deep(.el-card__body) {
-      padding: 24px 32px 32px;
-    }
-
-    .card-header {
-      h3 {
-        margin: 0 0 8px 0;
-        font-size: 24px;
-        font-weight: 700;
-        color: #1e293b;
-      }
-
-      p {
-        margin: 0;
-        color: #64748b;
-        font-size: 16px;
-      }
-    }
-
-    .actions-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-
-      .action-item {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 24px;
-        border-radius: 16px;
-        border: 2px solid #f1f5f9;
-        cursor: pointer;
-        transition: all 0.3s ease;
-
-        &:hover {
-          border-color: #e2e8f0;
-          background: #f8fafc;
-          transform: translateY(-2px);
-        }
-
-        .action-icon {
-          width: 56px;
-          height: 56px;
-          border-radius: 16px;
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
+  margin-right: 16px;
+}
+
+.stat-icon :deep(.el-icon) {
           font-size: 24px;
           color: white;
-
-          &.create {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          }
-
-          &.manage {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-          }
-
-          &.category {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-          }
-
-          &.users {
-            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-          }
-        }
-
-        .action-content {
-          h4 {
-            margin: 0 0 4px 0;
-            font-size: 18px;
-            font-weight: 600;
-            color: #1e293b;
-          }
-
-          p {
-            margin: 0;
-            color: #64748b;
-            font-size: 14px;
-          }
-        }
-      }
-    }
-  }
 }
 
-.recent-activity {
-  .activity-card {
-    border-radius: 20px;
-    border: none;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+.stat-info {
+  flex: 1;
+          }
 
-    :deep(.el-card__header) {
-      padding: 32px 32px 24px;
-      border-bottom: 1px solid #f1f5f9;
-    }
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  line-height: 1;
+  margin-bottom: 8px;
+}
 
-    :deep(.el-card__body) {
-      padding: 24px 32px 32px;
-    }
+.stat-label {
+            font-size: 14px;
+  color: #909399;
+}
+
+.blue { background-color: #409EFF; }
+.green { background-color: #67C23A; }
+.purple { background-color: #B37FEB; }
+.orange { background-color: #E6A23C; }
+.red { background-color: #F56C6C; }
 
     .card-header {
-      h3 {
-        margin: 0 0 8px 0;
-        font-size: 24px;
-        font-weight: 700;
-        color: #1e293b;
-      }
-
-      p {
-        margin: 0;
-        color: #64748b;
-        font-size: 16px;
-      }
-    }
-
-    .activity-list {
-      .activity-item {
         display: flex;
+  justify-content: space-between;
         align-items: center;
-        gap: 16px;
-        padding: 16px 0;
-        border-bottom: 1px solid #f1f5f9;
-
-        &:last-child {
-          border-bottom: none;
-        }
-
-        .activity-icon {
-          width: 40px;
-          height: 40px;
-          border-radius: 12px;
-          background: #f1f5f9;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #64748b;
-          font-size: 18px;
-        }
-
-        .activity-content {
-          .activity-title {
-            font-size: 16px;
-            font-weight: 500;
-            color: #1e293b;
-            margin-bottom: 4px;
-          }
-
-          .activity-time {
-            font-size: 14px;
-            color: #94a3b8;
-          }
-        }
-      }
-    }
-  }
 }
 
-// 响应式设计
-@media (max-width: 1024px) {
-  .welcome-section .welcome-card .welcome-content {
-    flex-direction: column;
-    gap: 24px;
-    text-align: center;
+.recent-activities {
+  height: 400px;
+  overflow-y: auto;
+        }
+
+:deep(.el-timeline-item__content) {
+  color: #606266;
   }
 
-  .stats-overview .stats-grid {
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  }
-
-  .quick-actions-section .actions-card .actions-grid {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .dashboard-home {
-    padding: 16px;
-  }
-
-  .welcome-section .welcome-card :deep(.el-card__body) {
-    padding: 24px;
-  }
-
-  .welcome-section .welcome-card .welcome-content .welcome-text .welcome-title {
-    font-size: 24px;
-  }
-
-  .stats-overview .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .quick-actions-section .actions-card .actions-grid {
-    grid-template-columns: 1fr;
-  }
+:deep(.el-timeline-item__timestamp) {
+  color: #909399;
 }
 </style> 

@@ -394,7 +394,7 @@ onMounted(async () => {
 
 // 返回列表页
 const goBack = () => {
-  router.push('/gallery')
+  router.push('/admin/gallery')
 }
 
 // 预览

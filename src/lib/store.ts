@@ -80,8 +80,6 @@ export const useAuthStore = defineStore('auth', {
         this.updatePermissions()
         this.generateMenus()
       } catch (error: any) {
-        console.error('获取用户信息失败:', error)
-        // 不要立即登出，让用户有机会重试
         if (error?.response?.status === 401) {
           this.logout()
         }
@@ -155,17 +153,20 @@ export const useAuthStore = defineStore('auth', {
 
     async checkAuth() {
       const token = localStorage.getItem('accessToken')
-      if (token) {
-        try {
-          await this.fetchProfile()
-          this.startTokenCheck()
-        } catch (error: any) {
-          console.error('验证登录状态失败:', error)
-          // 如果 token 无效，清除它
-          if (error?.response?.status === 401) {
-            this.logout()
-          }
+      if (!token) {
+        this.logout()
+        return false
+      }
+
+      try {
+        await this.fetchProfile()
+        this.startTokenCheck()
+        return true
+      } catch (error: any) {
+        if (error?.response?.status === 401) {
+          this.logout()
         }
+        return false
       }
     },
 

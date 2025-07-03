@@ -1,24 +1,30 @@
 <template>
-  <div class="error-container">
+  <div class="error-page">
     <div class="error-content">
-      <div class="error-icon">
-        <el-icon size="120"><Lock /></el-icon>
+      <div class="error-code">
+        <span>4</span>
+        <div class="lock-icon">
+          <el-icon><Lock /></el-icon>
+        </div>
+        <span>3</span>
       </div>
-      <h1 class="error-title">403</h1>
-      <h2 class="error-subtitle">权限不足</h2>
-      <p class="error-description">
-        抱歉，您没有权限访问此页面。<br>
-        请联系管理员获取相应权限，或检查您的登录状态。
-      </p>
+      <h2 class="error-title">访问被拒绝</h2>
+      <p class="error-desc">抱歉，您没有权限访问此页面</p>
+      <p class="error-contact">如需访问权限，请联系系统管理员</p>
       <div class="error-actions">
-        <el-button type="primary" @click="goBack">返回上一页</el-button>
-        <el-button @click="goHome">回到首页</el-button>
-        <el-button @click="refreshPermissions">刷新权限</el-button>
+        <el-button type="primary" @click="router.back()">
+          <el-icon><ArrowLeft /></el-icon>
+          返回上一页
+        </el-button>
+        <el-button @click="router.push('/admin')">
+          <el-icon><HomeFilled /></el-icon>
+          回到首页
+        </el-button>
       </div>
-      <div class="error-info">
-        <p>当前用户：{{ authStore.user?.name || '未登录' }}</p>
-        <p>用户角色：{{ authStore.user?.role?.name || '无角色' }}</p>
-        <p v-if="authStore.user?.isSuperAdmin" class="super-admin-tag">
+      <div class="error-info" v-if="authStore.user">
+        <p>当前用户：{{ authStore.user.name }}</p>
+        <p>用户角色：{{ authStore.user.role?.name || '无角色' }}</p>
+        <p v-if="authStore.user.isSuperAdmin" class="super-admin-tag">
           <el-tag type="danger">超级管理员</el-tag>
         </p>
       </div>
@@ -27,130 +33,137 @@
 </template>
 
 <script setup lang="ts">
-import { ElMessage } from 'element-plus'
-import { Lock } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../lib/store'
+import { Lock, ArrowLeft, HomeFilled } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
-
-const goBack = () => {
-  router.back()
-}
-
-const goHome = () => {
-  router.push('/')
-}
-
-const refreshPermissions = async () => {
-  try {
-    await authStore.fetchUserProfile()
-    ElMessage.success('权限已刷新')
-    // 如果有来源页面，尝试重新访问
-    const fromPath = router.currentRoute.value.query.from as string
-    if (fromPath) {
-      router.push(fromPath)
-    } else {
-      goHome()
-    }
-  } catch (error) {
-    ElMessage.error('刷新权限失败')
-  }
-}
 </script>
 
 <style scoped>
-.error-container {
+.error-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
 
 .error-content {
   text-align: center;
-  background: white;
-  padding: 60px 40px;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  max-width: 500px;
-  width: 100%;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 1rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  max-width: 90%;
+  width: 500px;
 }
 
-.error-icon {
-  color: #f56c6c;
-  margin-bottom: 24px;
+.error-code {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6rem;
+  font-weight: bold;
+  color: #409eff;
+  margin-bottom: 1rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.lock-icon {
+  margin: 0 1rem;
+  background: #409eff;
+  color: white;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(64, 158, 255, 0.35);
+}
+
+.lock-icon :deep(.el-icon) {
+  font-size: 2.5rem;
 }
 
 .error-title {
-  font-size: 72px;
-  font-weight: bold;
-  color: #f56c6c;
-  margin: 0 0 16px 0;
-  line-height: 1;
+  font-size: 2rem;
+  color: #303133;
+  margin: 1rem 0;
+  font-weight: 600;
 }
 
-.error-subtitle {
-  font-size: 28px;
-  color: #333;
-  margin: 0 0 16px 0;
-  font-weight: 500;
+.error-desc {
+  color: #606266;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
 }
 
-.error-description {
-  color: #666;
-  font-size: 16px;
-  line-height: 1.6;
-  margin-bottom: 32px;
+.error-contact {
+  color: #909399;
+  font-size: 0.95rem;
+  margin-bottom: 2rem;
 }
 
 .error-actions {
   display: flex;
-  gap: 12px;
+  gap: 1rem;
   justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 32px;
+  margin-bottom: 2rem;
+}
+
+.error-actions .el-button {
+  min-width: 120px;
 }
 
 .error-info {
-  padding-top: 24px;
-  border-top: 1px solid #eee;
-  color: #999;
-  font-size: 14px;
+  text-align: left;
+  background: #f5f7fa;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-top: 2rem;
 }
 
 .error-info p {
-  margin: 8px 0;
+  margin: 0.5rem 0;
+  color: #606266;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .super-admin-tag {
-  margin-top: 12px;
+  justify-content: center;
+  margin-top: 1rem !important;
 }
 
-@media (max-width: 768px) {
-  .error-content {
-    padding: 40px 24px;
+@media (max-width: 640px) {
+  .error-code {
+    font-size: 4rem;
+  }
+  
+  .lock-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+  
+  .lock-icon :deep(.el-icon) {
+    font-size: 1.75rem;
   }
   
   .error-title {
-    font-size: 56px;
-  }
-  
-  .error-subtitle {
-    font-size: 24px;
+    font-size: 1.5rem;
   }
   
   .error-actions {
     flex-direction: column;
-    align-items: center;
   }
   
   .error-actions .el-button {
     width: 100%;
-    max-width: 200px;
   }
 }
 </style> 
