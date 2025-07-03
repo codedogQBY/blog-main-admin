@@ -5,7 +5,7 @@
       <div class="search-form">
         <el-form :inline="true" :model="searchForm">
           <el-form-item label="状态">
-            <el-select v-model="searchForm.status" placeholder="全部" clearable>
+            <el-select v-model="searchForm.status" placeholder="全部" style="width: 100px;" clearable>
               <el-option label="正常" :value="1" />
               <el-option label="禁用" :value="0" />
             </el-select>
