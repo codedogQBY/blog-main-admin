@@ -294,6 +294,7 @@ interface GalleryForm {
   status: 'published' | 'draft'
   sort: number
   images: EditorGalleryImage[]
+  coverImage: string
 }
 
 // 路由和响应式数据
@@ -321,7 +322,8 @@ const formData = reactive<GalleryForm>({
   tags: [],
   status: 'draft',
   sort: 0,
-  images: []
+  images: [],
+  coverImage: ''
 })
 
 // 表单校验规则
@@ -372,10 +374,19 @@ const initData = async () => {
         formData.tags = response.tags || []
         formData.status = response.status || 'draft'
         formData.sort = response.sort || 0
+        formData.coverImage = response.coverImage || ''
         formData.images = response.images?.map((img, index) => ({
           ...img,
           sort: img.sort || index
         })) || []
+
+        // 设置封面图索引
+        if (response.coverImage) {
+          const coverIndex = formData.images.findIndex(img => img.imageUrl === response.coverImage)
+          if (coverIndex !== -1) {
+            coverImageIndex.value = coverIndex
+          }
+        }
       }
     } catch (error) {
       console.error('获取图集详情失败:', error)
@@ -410,10 +421,15 @@ const handleSave = async () => {
   try {
     await formRef.value.validate()
     
+    if (formData.images.length === 0) {
+      ElMessage.warning('请至少添加一张图片')
+      return
+    }
+    
     saving.value = true
     const data = {
       ...formData,
-      coverImage: formData.images[coverImageIndex.value]?.imageUrl
+      coverImage: formData.images[coverImageIndex.value]?.imageUrl || formData.images[0]?.imageUrl
     }
     
     if (isEditing.value) {
@@ -500,6 +516,7 @@ const removeImage = (index: number) => {
 
 const setCoverImage = (index: number) => {
   coverImageIndex.value = index
+  formData.coverImage = formData.images[index].imageUrl
 }
 
 // 图片编辑相关
