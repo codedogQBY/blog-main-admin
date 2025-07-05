@@ -86,6 +86,7 @@ export interface Article {
   updatedAt: string
   categoryId: string
   authorId: string
+  coverImage?: string
   category: {
     id: string
     name: string

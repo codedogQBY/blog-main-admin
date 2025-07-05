@@ -216,6 +216,40 @@
             </div>
           </div>
 
+          <!-- 阅读时间设置 -->
+          <div class="setting-group">
+            <div class="setting-label">
+              <el-icon><Timer /></el-icon>
+              <span>阅读时间</span>
+            </div>
+            <div class="read-time-inputs">
+              <el-input-number
+                v-model="form.readTime"
+                :min="1"
+                size="default"
+                @change="handleChange"
+                style="width: 60%;"
+                class="read-time-input"
+              >
+                <template #suffix>
+                  <span class="read-time-unit">分钟</span>
+                </template>
+              </el-input-number>
+              <el-button
+                text
+                type="primary"
+                @click="estimateReadTime"
+                class="estimate-btn"
+              >
+                <el-icon><Refresh /></el-icon>
+                重新估算
+              </el-button>
+            </div>
+            <div class="read-time-tip">
+              系统会根据文章内容自动估算阅读时间，您也可以手动调整
+            </div>
+          </div>
+
           <!-- 发布状态 -->
           <div class="setting-group">
             <div class="setting-label">
@@ -227,7 +261,6 @@
               active-text="已发布"
               inactive-text="草稿"
               @change="handleChange"
-              class="publish-switch"
             />
           </div>
         </el-card>
@@ -274,6 +307,7 @@
       @update:visible="coverImagePickerVisible = $event"
       title="选择封面图片"
       :multiple="false"
+      :max-files="1"
       fileType="image"
       @select="handleCoverImageSelect"
     />
@@ -303,6 +337,7 @@ import {
   User,
   Check,
   Clock,
+  Timer,
   Refresh
 } from '@element-plus/icons-vue'
 import TiptapEditor from '@/components/TiptapEditor.vue'
@@ -325,7 +360,8 @@ const form = reactive({
   tags: [] as string[],
   seoKeywords: '',
   seoDescription: '',
-  published: false
+  published: false,
+  readTime: 1
 })
 
 // 状态管理
@@ -625,6 +661,43 @@ watch(form, () => {
   if (hasUnsavedChanges.value) {
     saveToDraft()
   }
+}, { deep: true })
+
+// 估算阅读时间
+const estimateReadTime = () => {
+  if (!form.content) {
+    form.readTime = 1
+    return
+  }
+
+  // 移除HTML标签
+  const plainText = form.content.replace(/<[^>]+>/g, '')
+  
+  // 计算中文字符数（每分钟300字）
+  const chineseChars = plainText.match(/[\u4e00-\u9fa5]/g)?.length || 0
+  const chineseTime = chineseChars / 300
+
+  // 计算英文单词数（每分钟200词）
+  const englishWords = plainText.match(/[a-zA-Z]+/g)?.length || 0
+  const englishTime = englishWords / 200
+
+  // 计算图片数（每张10秒）
+  const images = (form.content.match(/<img[^>]+>/g)?.length || 0)
+  const imageTime = (images * 10) / 60
+
+  // 计算代码块数（每块30秒）
+  const codeBlocks = (form.content.match(/<pre[^>]*>[\s\S]*?<\/pre>/g)?.length || 0)
+  const codeTime = (codeBlocks * 30) / 60
+
+  // 总时间（分钟）
+  const totalTime = Math.max(1, Math.ceil(chineseTime + englishTime + imageTime + codeTime))
+  
+  form.readTime = totalTime
+}
+
+// 监听内容变化，自动估算阅读时间
+watch(() => form.content, () => {
+  estimateReadTime()
 }, { deep: true })
 </script>
 
@@ -1049,28 +1122,31 @@ watch(form, () => {
           }
         }
 
-        .publish-switch {
-          :deep(.el-switch__core) {
-            border-radius: 12px;
-            height: 24px;
-            width: 48px;
+        .read-time-inputs {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 8px;
 
-            .el-switch__action {
-              height: 20px;
-              width: 20px;
-              margin: 2px;
-            }
+          .read-time-input {
+            width: 120px;
           }
 
-          :deep(.el-switch__label) {
-            font-size: 14px;
-            font-weight: 500;
-            color: #64748b;
-
-            &.is-active {
-              color: #3b82f6;
-            }
+          .read-time-unit {
+            margin-left: 4px;
+            color: #666;
           }
+
+          .estimate-btn {
+            padding: 0;
+            height: auto;
+          }
+        }
+
+        .read-time-tip {
+          font-size: 12px;
+          color: #666;
+          margin-top: 4px;
         }
       }
     }
