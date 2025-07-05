@@ -41,51 +41,57 @@
         <!-- Lists -->
         <el-row :gutter="20" class="lists-container">
           <el-col :span="12">
-            <el-card shadow="never">
+            <el-card shadow="never" class="fixed-height-card">
               <template #header>
                 <div class="card-header">
                   <h3>活跃评论用户</h3>
                 </div>
               </template>
-              <el-table :data="topCommenters" style="width: 100%">
-                <el-table-column prop="author" label="用户" />
-                <el-table-column prop="count" label="评论数" width="100" />
-              </el-table>
+              <div class="scrollable-content">
+                <el-table :data="topCommenters" style="width: 100%">
+                  <el-table-column prop="author" label="用户" />
+                  <el-table-column prop="count" label="评论数" width="100" />
+                </el-table>
+              </div>
             </el-card>
           </el-col>
           <el-col :span="12">
-            <el-card shadow="never">
+            <el-card shadow="never" class="fixed-height-card">
               <template #header>
                 <div class="card-header">
                   <h3>热门评论内容</h3>
                 </div>
               </template>
-              <el-table :data="topContent" style="width: 100%">
-                <el-table-column prop="title" label="标题" show-overflow-tooltip />
-                <el-table-column prop="count" label="评论数" width="100" />
-              </el-table>
+              <div class="scrollable-content">
+                <el-table :data="topContent" style="width: 100%">
+                  <el-table-column prop="title" label="标题" show-overflow-tooltip />
+                  <el-table-column prop="count" label="评论数" width="100" />
+                </el-table>
+              </div>
             </el-card>
           </el-col>
         </el-row>
 
         <!-- Recent Activity -->
-        <el-card class="recent-activity" shadow="never">
+        <el-card class="recent-activity fixed-height-card" shadow="never">
           <template #header>
             <div class="card-header">
               <h3>最近活动</h3>
             </div>
           </template>
-          <el-timeline>
-            <el-timeline-item
-              v-for="activity in recentActivity"
-              :key="activity.timestamp"
-              :type="getActivityType(activity.action)"
-              :timestamp="formatTime(activity.timestamp)"
-            >
-              {{ activity.action === 'comment' ? '发表评论' : activity.action === 'like' ? '点赞' : '取消点赞' }}
-              {{ formatType(activity.targetType) }}
-            </el-timeline-item>
-          </el-timeline>
+          <div class="scrollable-content">
+            <el-timeline>
+              <el-timeline-item
+                v-for="activity in recentActivity"
+                :key="activity.timestamp"
+                :type="getActivityType(activity.action)"
+                :timestamp="formatTime(activity.timestamp)"
+              >
+                {{ activity.action === 'comment' ? '发表评论' : activity.action === 'like' ? '点赞' : '取消点赞' }}
+                {{ formatType(activity.targetType) }}
+              </el-timeline-item>
+            </el-timeline>
+          </div>
         </el-card>
       </el-tab-pane>
 
@@ -263,37 +269,67 @@ window.addEventListener('resize', () => {
 }
 
 .overview-card {
-  height: 120px;
+  text-align: center;
 }
 
 .card-content {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .card-title {
   font-size: 14px;
   color: #666;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .card-value {
   font-size: 24px;
   font-weight: bold;
-  color: #409EFF;
+  color: #333;
 }
 
-.charts-container,
+.charts-container {
+  margin-bottom: 20px;
+}
+
 .lists-container {
   margin-bottom: 20px;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.fixed-height-card {
+  margin-bottom: 20px;
 }
 
-.recent-activity {
-  margin-bottom: 20px;
+.fixed-height-card .scrollable-content {
+  height: 300px;
+  overflow-y: auto;
+}
+
+.fixed-height-card :deep(.el-card__body) {
+  padding: 0;
+}
+
+.fixed-height-card .el-table {
+  border: none;
+}
+
+.recent-activity .scrollable-content {
+  padding: 0 20px;
+}
+
+/* 自定义滚动条样式 */
+.scrollable-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollable-content::-webkit-scrollbar-thumb {
+  background-color: #dcdfe6;
+  border-radius: 3px;
+}
+
+.scrollable-content::-webkit-scrollbar-track {
+  background-color: #f5f7fa;
 }
 </style> 
