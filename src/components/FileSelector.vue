@@ -202,6 +202,7 @@
       title="上传文件"
       width="500px"
       append-to-body
+      @close="closeUploadDialog"
     >
       <div class="upload-dialog-content">
         <!-- 文件夹选择 -->
@@ -235,6 +236,7 @@
             :show-file-list="true"
             accept="*/*"
             :on-change="handleFileChange"
+            :on-remove="handleFileChange"
           >
             <div class="upload-content">
               <el-icon class="upload-icon"><Upload /></el-icon>
@@ -251,11 +253,11 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="showUploadDialog = false">取消</el-button>
+          <el-button @click="closeUploadDialog">取消</el-button>
           <el-button
             type="primary"
             @click="submitUpload"
-            :disabled="selectedFileIds.length === 0"
+            :disabled="!uploadFileList.length"
           >
             开始上传
           </el-button>
@@ -357,7 +359,7 @@ const previewVisible = ref(false)
 const previewImageUrl = ref('')
 
 // 上传相关
-const uploadRef = ref()
+const uploadRef = ref<any>()
 const uploadingFiles = ref<Array<{
   uid: string
   name: string
@@ -365,6 +367,7 @@ const uploadingFiles = ref<Array<{
 }>>([])
 const showUploadDialog = ref(false)
 const uploadTargetFolderId = ref<string | null>(null)
+const uploadFileList = ref<any[]>([])
 
 const authStore = useAuthStore()
 const uploadUrl = `${import.meta.env.VITE_API_URL}/files/upload`
@@ -502,20 +505,18 @@ const handlePageChange = (page: number) => {
 }
 
 const handleConfirm = () => {
-  if (selectedFileIds.value.length === 0) {
-    ElMessage.warning('请至少选择一个文件')
+  const selectedFiles = files.value.filter(file => selectedFileIds.value.includes(file.id))
+  if (selectedFiles.length === 0) {
+    ElMessage.warning('请选择文件')
     return
   }
 
-  // 根据是否多选返回不同格式
-  const urls = props.multiple
-    ? selectedFileIds.value.map(id => files.value.find(f => f.id === id)?.url || '')
-    : files.value.find(f => f.id === selectedFileIds.value[0])?.url || ''
-  
-  // 发送 URL 到 v-model，发送文件对象到 select 事件
-  emit('update:modelValue', urls)
-  emit('select', props.multiple ? selectedFileIds.value.map(id => files.value.find(f => f.id === id)) : files.value.find(f => f.id === selectedFileIds.value[0]))
-  
+  const result = props.multiple ? selectedFiles : selectedFiles[0]
+  emit('update:modelValue', props.multiple ? selectedFiles.map(f => f.id) : selectedFiles[0].id)
+  emit('select', result)
+  if (props.onSelect) {
+    props.onSelect(result)
+  }
   handleClose()
 }
 
@@ -558,117 +559,83 @@ const handlePreview = (file: FileType) => {
 }
 
 // 文件选择和上传
-const handleFileChange = (uploadFile: any, fileList: any[]) => {
-  const file = uploadFile.raw as File
-  if (file) {
-    // 创建一个新的文件对象
-    const newFile: FileType = {
-      id: Date.now().toString(), // 临时ID
-      name: file.name,
-      size: file.size,
-      url: URL.createObjectURL(file),
-      extension: file.name.split('.').pop(),
-      createdAt: new Date().toISOString(),
-      folderId: currentFolderId.value
-    }
-    
-    // 更新选中的文件列表
-    selectedFileIds.value = [newFile.id]
-    files.value.push(newFile)
-  }
+const handleFileChange = (file: any, fileList: any[]) => {
+  console.log('File changed:', file, fileList)
+  uploadFileList.value = fileList
 }
 
 const submitUpload = async () => {
-  if (selectedFileIds.value.length === 0) {
-    ElMessage.warning('请选择要上传的文件')
+  if (!uploadFileList.value.length) {
+    ElMessage.error('请选择要上传的文件')
     return
   }
 
-  let successCount = 0
-  let failCount = 0
+  const uploadPromises = uploadFileList.value.map(async (fileInfo) => {
+    try {
+      // 添加到上传列表
+      const uid = Math.random().toString(36).substring(2)
+      uploadingFiles.value.push({
+        uid,
+        name: fileInfo.name,
+        percentage: 0
+      })
+
+      // 上传文件
+      const formData = new FormData()
+      formData.append('file', fileInfo.raw)
+      if (uploadTargetFolderId.value) {
+        formData.append('folderId', uploadTargetFolderId.value)
+      }
+
+      const response = await filesApi.uploadFile(fileInfo.raw, uploadTargetFolderId.value)
+
+      // 更新上传进度
+      const uploadingFile = uploadingFiles.value.find(f => f.uid === uid)
+      if (uploadingFile) {
+        uploadingFile.percentage = 100
+      }
+
+      return response
+    } catch (error) {
+      console.error('上传文件失败:', error)
+      ElMessage.error(`上传文件 ${fileInfo.name} 失败`)
+      throw error
+    }
+  })
 
   try {
-    for (const id of selectedFileIds.value) {
-      const fileToUpload = files.value.find(f => f.id === id)
-      if (!fileToUpload) continue
-
-      const uploadingFile = {
-        uid: fileToUpload.name + Date.now(),
-        name: fileToUpload.name,
-        percentage: 0
-      }
-      uploadingFiles.value.push(uploadingFile)
-
-      try {
-        // 模拟上传进度
-        const progressInterval = setInterval(() => {
-          if (uploadingFile.percentage < 90) {
-            uploadingFile.percentage += 10
-          }
-        }, 200)
-
-        // 执行上传
-        await filesApi.uploadFile({
-          name: fileToUpload.name,
-          size: fileToUpload.size,
-          type: fileToUpload.extension || '',
-          lastModified: Date.now(),
-          arrayBuffer: async () => new ArrayBuffer(0),
-          slice: () => new Blob(),
-          stream: () => new ReadableStream(),
-          text: async () => '',
-          webkitRelativePath: ''
-        } as File, currentFolderId.value)
-        
-        // 清理进度定时器
-        clearInterval(progressInterval)
-        uploadingFile.percentage = 100
-        successCount++
-      } catch (error) {
-        console.error('上传失败:', error)
-        failCount++
-      } finally {
-        // 从上传列表中移除
-        const index = uploadingFiles.value.findIndex(f => f.uid === uploadingFile.uid)
-        if (index > -1) {
-          uploadingFiles.value.splice(index, 1)
-        }
-      }
-    }
-
-    if (successCount > 0) {
-      ElMessage.success(`成功上传 ${successCount} 个文件${failCount > 0 ? `，${failCount} 个失败` : ''}`)
-      // 刷新文件列表和文件夹列表
-      await Promise.all([
-        loadFiles(currentFolderId.value),
-        loadFolders(currentFolderId.value)
-      ])
-    }
-
-    if (failCount > 0 && successCount === 0) {
-      ElMessage.error('所有文件上传失败')
-    }
-
-    // 清理选中的文件
-    selectedFileIds.value = []
+    await Promise.all(uploadPromises)
+    ElMessage.success('文件上传成功')
+    showUploadDialog.value = false
+    uploadingFiles.value = []
+    uploadFileList.value = []
     if (uploadRef.value) {
       uploadRef.value.clearFiles()
     }
-    showUploadDialog.value = false
+    refreshFiles()
   } catch (error) {
-    console.error('上传过程中发生错误:', error)
-    ElMessage.error('上传过程中发生错误')
+    console.error('部分文件上传失败:', error)
+  }
+}
+
+// 关闭上传对话框时清理状态
+const closeUploadDialog = () => {
+  showUploadDialog.value = false
+  uploadingFiles.value = []
+  uploadFileList.value = []
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles()
   }
 }
 
 // 文件夹相关方法
 const showCreateFolderDialog = () => {
-  folderForm.value.name = ''
   createFolderVisible.value = true
+  folderForm.value.name = ''
 }
 
 const handleCreateFolder = async () => {
-  if (!folderForm.value.name.trim()) {
+  if (!folderForm.value.name) {
     ElMessage.warning('请输入文件夹名称')
     return
   }
@@ -680,11 +647,8 @@ const handleCreateFolder = async () => {
     })
     ElMessage.success('文件夹创建成功')
     createFolderVisible.value = false
-    // 刷新文件夹列表和文件列表
-    await Promise.all([
-      loadFolders(currentFolderId.value),
-      loadFiles(currentFolderId.value)
-    ])
+    folderForm.value.name = ''
+    await loadFolders(currentFolderId.value)
   } catch (error) {
     console.error('创建文件夹失败:', error)
     ElMessage.error('创建文件夹失败')
@@ -732,15 +696,40 @@ const handleFolderSelect = (folder: FolderType) => {
   if (props.onFolderSelect) {
     props.onFolderSelect(folder)
   }
+  handleClose()
 }
 
-// 初始化时设置默认文件夹
-onMounted(() => {
+// 初始化
+onMounted(async () => {
   if (props.defaultFolderId) {
-    currentFolderId.value = props.defaultFolderId
-    navigateToFolder(props.defaultFolderId)
+    await navigateToFolder(props.defaultFolderId)
   } else {
-    navigateToFolder(null)
+    await Promise.all([
+      loadFolders(),
+      loadFiles()
+    ])
+  }
+})
+
+// 监听搜索关键词变化
+watch(searchQuery, () => {
+  handleSearch()
+})
+
+// 监听当前页变化
+watch(currentPage, () => {
+  loadFiles(currentFolderId.value)
+})
+
+// 监听文件夹变化
+watch(currentFolderId, () => {
+  uploadTargetFolderId.value = currentFolderId.value
+})
+
+// 监听上传对话框关闭
+watch(showUploadDialog, (newValue) => {
+  if (!newValue) {
+    closeUploadDialog()
   }
 })
 </script>
