@@ -23,74 +23,101 @@
         </div>
       </div>
 
-      <!-- 搜索框 -->
-      <div class="search-box">
-        <el-input
-          v-model="searchQuery"
-          placeholder="搜索文件..."
-          @keyup.enter="handleSearch"
-          clearable
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
-        <el-button @click="refreshFiles" :loading="loading">
-          <el-icon><Refresh /></el-icon>
-          刷新
+      <!-- 操作区域 -->
+      <div class="action-area">
+        <!-- 上传按钮 -->
+        <el-button type="primary" @click="showUploadDialog = true">
+          <el-icon><Upload /></el-icon>
+          上传文件
         </el-button>
+
+        <!-- 新建文件夹按钮 -->
+        <el-button @click="showCreateFolderDialog">
+          <el-icon><FolderAdd /></el-icon>
+          新建文件夹
+        </el-button>
+
+        <!-- 搜索框 -->
+        <div class="search-box">
+          <el-input
+            v-model="searchQuery"
+            placeholder="搜索文件..."
+            @keyup.enter="handleSearch"
+            clearable
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+          <el-button @click="refreshFiles" :loading="loading">
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </el-button>
+        </div>
       </div>
     </div>
 
-    <!-- 文件浏览区域 -->
-    <div class="file-browser">
+    <!-- 上传进度展示 -->
+    <div v-if="uploadingFiles.length > 0" class="upload-progress">
+      <div v-for="file in uploadingFiles" :key="file.uid" class="upload-item">
+        <div class="upload-info">
+          <span class="filename">{{ file.name }}</span>
+          <span class="progress">{{ file.percentage }}%</span>
+        </div>
+        <el-progress :percentage="file.percentage" />
+      </div>
+    </div>
+
+    <!-- 文件列表区域 -->
+    <div class="file-list-container">
       <!-- 文件夹列表 -->
-      <div class="folders-list">
+      <div v-if="folders.length > 0" class="folder-grid">
         <div
           v-for="folder in folders"
           :key="folder.id"
           class="folder-item"
           @click="navigateToFolder(folder.id)"
+          @dblclick="handleFolderSelect(folder)"
         >
-          <el-icon><FolderOpened /></el-icon>
-          <span>{{ folder.name }}</span>
+          <el-icon class="folder-icon"><Folder /></el-icon>
+          <span class="folder-name">{{ folder.name }}</span>
         </div>
       </div>
 
-      <!-- 文件网格 -->
-      <div class="files-grid">
+      <!-- 文件列表 -->
+      <div class="file-grid">
         <div
-          v-for="file in filteredFiles"
+          v-for="file in files"
           :key="file.id"
           class="file-item"
-          :class="{ selected: isFileSelected(file) }"
+          @click="handleFileSelect(file)"
         >
-          <!-- 预览图片 -->
-          <div class="file-preview" @click="toggleFileSelection(file)">
-            <el-image
-              v-if="isImage(file)"
-              :src="file.url"
-              :alt="file.name"
-              fit="cover"
-              lazy
-              :preview-src-list="[]"
-              :initial-index="0"
-            >
-              <template #error>
-                <div class="image-error">
-                  <el-icon><Picture /></el-icon>
-                </div>
-              </template>
-            </el-image>
-            <div v-else class="file-icon">
-              <el-icon><Document /></el-icon>
-            </div>
+          <div class="file-preview">
+            <img v-if="isImageFile(file)" :src="file.url" :alt="file.name" />
+            <el-icon class="file-icon" v-else>
+              <Document v-if="isDocumentFile(file)" />
+              <VideoPlay v-else-if="isVideoFile(file)" />
+              <Files v-else />
+            </el-icon>
             <!-- 选中标记 -->
-            <div class="file-check" v-show="isFileSelected(file)">
+            <div class="file-check" v-show="selectedFileIds.includes(file.id)">
               <el-icon><Check /></el-icon>
             </div>
+            <!-- 预览按钮 -->
+            <div v-if="isImageFile(file)" class="preview-action">
+              <el-button
+                type="primary"
+                circle
+                size="small"
+                class="preview-button"
+                @click.stop="handlePreview(file)"
+              >
+                <el-icon class="preview-icon">
+                  <ZoomIn />
+                </el-icon>
+              </el-button>
+            </div>
           </div>
-          <!-- 文件信息 -->
           <div class="file-info">
             <div class="file-name" :title="file.name">{{ file.name }}</div>
             <div class="file-meta">
@@ -98,53 +125,32 @@
               <span class="file-date">{{ formatDate(file.createdAt) }}</span>
             </div>
           </div>
-          <!-- 预览按钮 -->
-          <div class="file-actions">
-            <el-button
-              v-if="isImage(file)"
-              type="text"
-              size="small"
-              @click="previewImage(file)"
-            >
-              <el-icon><ZoomIn /></el-icon>
-              预览
-            </el-button>
-          </div>
-        </div>
-
-        <!-- 空状态 -->
-        <div v-if="filteredFiles.length === 0 && !loading" class="empty-state">
-          <div class="empty-icon">🖼️</div>
-          <p>{{ searchQuery ? '暂无匹配的文件' : '暂无文件' }}</p>
         </div>
       </div>
 
-      <!-- 加载中状态 -->
-      <div v-if="loading" class="loading-overlay">
-        <el-icon class="loading"><Loading /></el-icon>
-      </div>
-    </div>
-
-    <!-- 分页 -->
-    <div class="pagination-container">
-      <el-pagination
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
-        :page-sizes="[12, 24, 36, 48]"
-        :total="pagination.total"
-        layout="total, sizes, prev, pager, next"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-        @update:current-page="(val: number) => pagination.page = val"
-        @update:page-size="(val: number) => pagination.pageSize = val"
+      <!-- 空状态 -->
+      <el-empty
+        v-if="folders.length === 0 && files.length === 0"
+        description="暂无文件"
       />
+
+      <!-- 分页 -->
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          @current-change="handlePageChange"
+          layout="prev, pager, next"
+        />
+      </div>
     </div>
 
     <!-- 对话框底部按钮 -->
     <template #footer>
       <div class="dialog-footer">
         <div class="selected-info" v-if="props.multiple">
-          已选择 {{ selectedFiles.length }} 个文件
+          已选择 {{ selectedFileIds.length }} 个文件
         </div>
         <div class="action-buttons">
           <el-button @click="handleClose">取消</el-button>
@@ -155,13 +161,107 @@
       </div>
     </template>
 
-    <!-- 图片预览对话框 -->
+    <!-- 图片预览 -->
     <el-image-viewer
       v-if="previewVisible"
       :url-list="[previewImageUrl]"
       :initial-index="0"
-      @close="closePreview"
+      @close="previewVisible = false"
     />
+
+    <!-- 新建文件夹对话框 -->
+    <el-dialog
+      v-model="createFolderVisible"
+      title="新建文件夹"
+      width="30%"
+      append-to-body
+    >
+      <el-form :model="folderForm" label-width="80px">
+        <el-form-item label="文件夹名">
+          <el-input 
+            v-model="folderForm.name"
+            placeholder="请输入文件夹名称"
+            maxlength="50"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="createFolderVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleCreateFolder">
+            确定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 上传文件对话框 -->
+    <el-dialog
+      v-model="showUploadDialog"
+      title="上传文件"
+      width="500px"
+      append-to-body
+    >
+      <div class="upload-dialog-content">
+        <!-- 文件夹选择 -->
+        <div class="upload-section">
+          <label class="section-label">选择目标文件夹：</label>
+          <el-select
+            v-model="uploadTargetFolderId"
+            placeholder="请选择文件夹（留空为根目录）"
+            clearable
+            class="folder-select"
+          >
+            <el-option label="根目录" :value="null" />
+            <el-option
+              v-for="folder in folders"
+              :key="folder.id"
+              :label="folder.name"
+              :value="folder.id"
+            />
+          </el-select>
+        </div>
+
+        <!-- 文件上传区域 -->
+        <div class="upload-section">
+          <label class="section-label">选择文件：</label>
+          <el-upload
+            ref="uploadRef"
+            class="upload-area"
+            drag
+            multiple
+            :auto-upload="false"
+            :show-file-list="true"
+            accept="*/*"
+            :on-change="handleFileChange"
+          >
+            <div class="upload-content">
+              <el-icon class="upload-icon"><Upload /></el-icon>
+              <div class="upload-text">
+                将文件拖到此处，或<em>点击上传</em>
+              </div>
+              <div class="upload-tip">
+                支持多文件上传，单个文件大小不超过 50MB
+              </div>
+            </div>
+          </el-upload>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showUploadDialog = false">取消</el-button>
+          <el-button
+            type="primary"
+            @click="submitUpload"
+            :disabled="selectedFileIds.length === 0"
+          >
+            开始上传
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </el-dialog>
 </template>
 
@@ -171,15 +271,21 @@ import { ElMessage } from 'element-plus'
 import { 
   HomeFilled, 
   Search, 
-  FolderOpened, 
+  FolderOpened,
+  FolderAdd,
   Document, 
   Check, 
   Loading, 
   Picture,
   Refresh,
-  ZoomIn
+  ZoomIn,
+  Upload,
+  Folder,
+  VideoPlay,
+  Files
 } from '@element-plus/icons-vue'
 import { filesApi } from '../api/files'
+import { useAuthStore } from '../lib/store'
 
 export interface FileType {
   id: string
@@ -188,22 +294,27 @@ export interface FileType {
   size: number
   extension?: string
   createdAt: string
+  folderId?: string | null
 }
 
 interface FolderType {
   id: string
   name: string
   parentId: string | null
+  fullPath?: string
 }
 
 // Props
 interface Props {
   modelValue: string | string[]
   visible: boolean
-  title: string
-  multiple: boolean
-  fileType: string
-  maxFiles: number
+  title?: string
+  multiple?: boolean
+  fileType?: 'all' | 'image' | 'document' | 'other'
+  maxFiles?: number
+  defaultFolderId?: string | null
+  onSelect?: (files: FileType | FileType[]) => void
+  onFolderSelect?: (folder: FolderType) => void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -212,7 +323,10 @@ const props = withDefaults(defineProps<Props>(), {
   title: '选择文件',
   multiple: false,
   fileType: 'all',
-  maxFiles: 20
+  maxFiles: undefined,
+  defaultFolderId: null,
+  onSelect: undefined,
+  onFolderSelect: undefined
 })
 
 // Emits
@@ -232,17 +346,40 @@ const dialogVisible = computed({
 const loading = ref(false)
 const folders = ref<FolderType[]>([])
 const files = ref<FileType[]>([])
-const selectedFiles = ref<FileType[]>([])
+const selectedFileIds = ref<string[]>([])
 const currentFolderId = ref<string | null>(null)
 const breadcrumbPath = ref<FolderType[]>([])
 const searchQuery = ref('')
-const pagination = ref({
-  page: 1,
-  pageSize: 24,
-  total: 0
-})
+const currentPage = ref(1)
+const pageSize = ref(8)
+const total = ref(0)
 const previewVisible = ref(false)
 const previewImageUrl = ref('')
+
+// 上传相关
+const uploadRef = ref()
+const uploadingFiles = ref<Array<{
+  uid: string
+  name: string
+  percentage: number
+}>>([])
+const showUploadDialog = ref(false)
+const uploadTargetFolderId = ref<string | null>(null)
+
+const authStore = useAuthStore()
+const uploadUrl = `${import.meta.env.VITE_API_URL}/files/upload`
+const uploadHeaders = computed(() => ({
+  Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+}))
+const uploadData = computed(() => ({
+  folderId: currentFolderId.value || undefined
+}))
+
+// 文件夹创建相关
+const createFolderVisible = ref(false)
+const folderForm = ref({
+  name: ''
+})
 
 // 计算属性
 const filteredFiles = computed(() => {
@@ -286,18 +423,16 @@ const loadFolders = async (parentId: string | null = null) => {
 }
 
 const loadFiles = async (folderId: string | null = null) => {
+  loading.value = true
   try {
-    loading.value = true
-    const params = {
+    const response = await filesApi.getFiles({
       folderId,
-      search: searchQuery.value || undefined,
-      type: props.fileType === 'all' ? undefined : props.fileType as 'image' | 'document' | 'other',
-      page: pagination.value.page,
-      pageSize: pagination.value.pageSize
-    }
-    const response = await filesApi.getFiles(params)
-    files.value = response.data || []
-    pagination.value.total = response.total || 0
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      search: searchQuery.value
+    })
+    files.value = response.data
+    total.value = response.total
   } catch (error) {
     console.error('加载文件失败:', error)
     ElMessage.error('加载文件失败')
@@ -313,7 +448,7 @@ const refreshFiles = async () => {
 
 const navigateToFolder = async (folderId: string | null) => {
   currentFolderId.value = folderId
-  selectedFiles.value = []
+  selectedFileIds.value = []
   
   // 更新面包屑路径
   if (folderId === null) {
@@ -335,68 +470,62 @@ const navigateToFolder = async (folderId: string | null) => {
 }
 
 const isFileSelected = (file: FileType) => {
-  return selectedFiles.value.some(f => f.id === file.id)
+  return selectedFileIds.value.some(f => f === file.id)
 }
 
 const toggleFileSelection = (file: FileType) => {
   if (!props.multiple) {
-    selectedFiles.value = [file]
+    selectedFileIds.value = [file.id]
     return
   }
 
-  const index = selectedFiles.value.findIndex(f => f.id === file.id)
+  const index = selectedFileIds.value.findIndex(f => f === file.id)
   if (index > -1) {
-    selectedFiles.value.splice(index, 1)
+    selectedFileIds.value.splice(index, 1)
   } else {
-    if (props.maxFiles && selectedFiles.value.length >= props.maxFiles) {
+    if (props.maxFiles && selectedFileIds.value.length >= props.maxFiles) {
       ElMessage.warning(`最多只能选择 ${props.maxFiles} 个文件`)
       return
     }
-    selectedFiles.value.push(file)
+    selectedFileIds.value.push(file.id)
   }
 }
 
 const handleSearch = () => {
-  pagination.value.page = 1
+  currentPage.value = 1
   loadFiles(currentFolderId.value)
 }
 
 const handlePageChange = (page: number) => {
-  pagination.value.page = page
-  loadFiles(currentFolderId.value)
-}
-
-const handleSizeChange = (size: number) => {
-  pagination.value.pageSize = size
-  pagination.value.page = 1
+  currentPage.value = page
   loadFiles(currentFolderId.value)
 }
 
 const handleConfirm = () => {
-  if (selectedFiles.value.length === 0) {
+  if (selectedFileIds.value.length === 0) {
     ElMessage.warning('请至少选择一个文件')
     return
   }
 
   // 根据是否多选返回不同格式
   const urls = props.multiple
-    ? selectedFiles.value.map(f => f.url)
-    : selectedFiles.value[0]?.url || ''
+    ? selectedFileIds.value.map(id => files.value.find(f => f.id === id)?.url || '')
+    : files.value.find(f => f.id === selectedFileIds.value[0])?.url || ''
   
   // 发送 URL 到 v-model，发送文件对象到 select 事件
   emit('update:modelValue', urls)
-  emit('select', props.multiple ? selectedFiles.value : selectedFiles.value[0])
+  emit('select', props.multiple ? selectedFileIds.value.map(id => files.value.find(f => f.id === id)) : files.value.find(f => f.id === selectedFileIds.value[0]))
   
   handleClose()
 }
 
 const handleClose = () => {
   dialogVisible.value = false
-  selectedFiles.value = []
+  selectedFileIds.value = []
   searchQuery.value = ''
   files.value = []
-  pagination.value.page = 1
-  pagination.value.total = 0
+  currentPage.value = 1
+  total.value = 0
   currentFolderId.value = null
   breadcrumbPath.value = []
 }
@@ -405,10 +534,10 @@ const handleClose = () => {
 watch(dialogVisible, (newValue) => {
   if (newValue) {
     // 重置状态并加载数据
-    selectedFiles.value = []
+    selectedFileIds.value = []
     currentFolderId.value = null
     breadcrumbPath.value = []
-    pagination.value.page = 1
+    currentPage.value = 1
     loadFolders(null)
     loadFiles(null)
   }
@@ -416,24 +545,204 @@ watch(dialogVisible, (newValue) => {
 
 // 格式化文件大小
 const formatFileSize = (size: number) => {
-  if (!size) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let index = 0
-  while (size >= 1024 && index < units.length - 1) {
-    size /= 1024
-    index++
+  if (size < 1024) return size + ' B'
+  if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB'
+  return (size / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+const handlePreview = (file: FileType) => {
+  if (isImageFile(file)) {
+    previewImageUrl.value = file.url
+    previewVisible.value = true
   }
-  return `${size.toFixed(2)} ${units[index]}`
 }
 
-const previewImage = (file: FileType) => {
-  previewImageUrl.value = file.url
-  previewVisible.value = true
+// 文件选择和上传
+const handleFileChange = (uploadFile: any, fileList: any[]) => {
+  const file = uploadFile.raw as File
+  if (file) {
+    // 创建一个新的文件对象
+    const newFile: FileType = {
+      id: Date.now().toString(), // 临时ID
+      name: file.name,
+      size: file.size,
+      url: URL.createObjectURL(file),
+      extension: file.name.split('.').pop(),
+      createdAt: new Date().toISOString(),
+      folderId: currentFolderId.value
+    }
+    
+    // 更新选中的文件列表
+    selectedFileIds.value = [newFile.id]
+    files.value.push(newFile)
+  }
 }
 
-const closePreview = () => {
-  previewVisible.value = false
+const submitUpload = async () => {
+  if (selectedFileIds.value.length === 0) {
+    ElMessage.warning('请选择要上传的文件')
+    return
+  }
+
+  let successCount = 0
+  let failCount = 0
+
+  try {
+    for (const id of selectedFileIds.value) {
+      const fileToUpload = files.value.find(f => f.id === id)
+      if (!fileToUpload) continue
+
+      const uploadingFile = {
+        uid: fileToUpload.name + Date.now(),
+        name: fileToUpload.name,
+        percentage: 0
+      }
+      uploadingFiles.value.push(uploadingFile)
+
+      try {
+        // 模拟上传进度
+        const progressInterval = setInterval(() => {
+          if (uploadingFile.percentage < 90) {
+            uploadingFile.percentage += 10
+          }
+        }, 200)
+
+        // 执行上传
+        await filesApi.uploadFile({
+          name: fileToUpload.name,
+          size: fileToUpload.size,
+          type: fileToUpload.extension || '',
+          lastModified: Date.now(),
+          arrayBuffer: async () => new ArrayBuffer(0),
+          slice: () => new Blob(),
+          stream: () => new ReadableStream(),
+          text: async () => '',
+          webkitRelativePath: ''
+        } as File, currentFolderId.value)
+        
+        // 清理进度定时器
+        clearInterval(progressInterval)
+        uploadingFile.percentage = 100
+        successCount++
+      } catch (error) {
+        console.error('上传失败:', error)
+        failCount++
+      } finally {
+        // 从上传列表中移除
+        const index = uploadingFiles.value.findIndex(f => f.uid === uploadingFile.uid)
+        if (index > -1) {
+          uploadingFiles.value.splice(index, 1)
+        }
+      }
+    }
+
+    if (successCount > 0) {
+      ElMessage.success(`成功上传 ${successCount} 个文件${failCount > 0 ? `，${failCount} 个失败` : ''}`)
+      // 刷新文件列表和文件夹列表
+      await Promise.all([
+        loadFiles(currentFolderId.value),
+        loadFolders(currentFolderId.value)
+      ])
+    }
+
+    if (failCount > 0 && successCount === 0) {
+      ElMessage.error('所有文件上传失败')
+    }
+
+    // 清理选中的文件
+    selectedFileIds.value = []
+    if (uploadRef.value) {
+      uploadRef.value.clearFiles()
+    }
+    showUploadDialog.value = false
+  } catch (error) {
+    console.error('上传过程中发生错误:', error)
+    ElMessage.error('上传过程中发生错误')
+  }
 }
+
+// 文件夹相关方法
+const showCreateFolderDialog = () => {
+  folderForm.value.name = ''
+  createFolderVisible.value = true
+}
+
+const handleCreateFolder = async () => {
+  if (!folderForm.value.name.trim()) {
+    ElMessage.warning('请输入文件夹名称')
+    return
+  }
+
+  try {
+    await filesApi.createFolder({
+      name: folderForm.value.name,
+      parentId: currentFolderId.value
+    })
+    ElMessage.success('文件夹创建成功')
+    createFolderVisible.value = false
+    // 刷新文件夹列表和文件列表
+    await Promise.all([
+      loadFolders(currentFolderId.value),
+      loadFiles(currentFolderId.value)
+    ])
+  } catch (error) {
+    console.error('创建文件夹失败:', error)
+    ElMessage.error('创建文件夹失败')
+  }
+}
+
+// 文件类型判断
+const isImageFile = (file: FileType) => {
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+  return imageExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+}
+
+const isDocumentFile = (file: FileType) => {
+  const docExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt']
+  return docExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+}
+
+const isVideoFile = (file: FileType) => {
+  const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov']
+  return videoExtensions.some(ext => file.name.toLowerCase().endsWith(ext))
+}
+
+// 文件选择相关
+const handleFileSelect = (file: FileType) => {
+  if (props.multiple) {
+    const index = selectedFileIds.value.indexOf(file.id)
+    if (index > -1) {
+      selectedFileIds.value.splice(index, 1)
+    } else {
+      selectedFileIds.value.push(file.id)
+    }
+  } else {
+    selectedFileIds.value = [file.id]
+  }
+}
+
+const handleFileDoubleClick = (file: FileType) => {
+  if (props.onSelect) {
+    props.onSelect([file])
+    dialogVisible.value = false
+  }
+}
+
+const handleFolderSelect = (folder: FolderType) => {
+  if (props.onFolderSelect) {
+    props.onFolderSelect(folder)
+  }
+}
+
+// 初始化时设置默认文件夹
+onMounted(() => {
+  if (props.defaultFolderId) {
+    currentFolderId.value = props.defaultFolderId
+    navigateToFolder(props.defaultFolderId)
+  } else {
+    navigateToFolder(null)
+  }
+})
 </script>
 
 <script lang="ts">
@@ -443,42 +752,11 @@ export default {
 }
 </script>
 
-<style scoped>
-.file-selector-dialog :deep(.el-dialog) {
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.file-selector-dialog :deep(.el-dialog__header) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 24px;
-  margin-right: 0;
-  border-bottom: none;
-}
-
-.file-selector-dialog :deep(.el-dialog__title) {
-  color: white;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.file-selector-dialog :deep(.el-dialog__headerbtn) {
-  top: 18px;
-  right: 18px;
-}
-
-.file-selector-dialog :deep(.el-dialog__close) {
-  color: white;
-  font-size: 20px;
-}
-
-.file-selector-dialog :deep(.el-dialog__close:hover) {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.file-selector-dialog :deep(.el-dialog__body) {
-  padding: 0;
+<style lang="scss" scoped>
+.file-selector-dialog {
+  :deep(.el-dialog__body) {
+    padding: 0;
+  }
 }
 
 .file-selector-toolbar {
@@ -497,6 +775,17 @@ export default {
   flex-wrap: wrap;
 }
 
+.action-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .search-box {
+    display: flex;
+    gap: 8px;
+  }
+}
+
 .search-box {
   display: flex;
   gap: 16px;
@@ -507,177 +796,215 @@ export default {
   width: 300px;
 }
 
-.file-browser {
-  position: relative;
+.file-list-container {
+  padding: 20px 40px;
   min-height: 400px;
-  max-height: 600px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: #f8fafc;
-  padding: 24px;
+  gap: 20px;
 }
 
-.folders-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 20px;
+.folder-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .folder-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  height: 72px;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  background: #fff;
+  transition: all 0.3s ease;
   cursor: pointer;
-  transition: all 0.3s;
-  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 6px;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.1);
+    border-color: var(--el-color-primary);
+  }
+
+  .folder-icon {
+    font-size: 24px;
+    color: #909399;
+  }
+
+  .folder-name {
+    font-size: 12px;
+    color: #606266;
+    text-align: center;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
 }
 
-.folder-item:hover {
-  border-color: #667eea;
-  background: #f8fafc;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.folder-item .el-icon {
-  color: #667eea;
-  font-size: 16px;
-}
-
-.files-grid {
-  flex: 1;
+.file-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-.files-grid::-webkit-scrollbar {
-  width: 8px;
-}
-
-.files-grid::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.files-grid::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
-}
-
-.files-grid::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  margin: 0;
 }
 
 .file-item {
-  border: 2px solid #e4e7ed;
+  position: relative;
+  height: 220px;
+  border: 1px solid #e4e7ed;
   border-radius: 8px;
+  background: #fff;
+  transition: all 0.3s ease;
   overflow: hidden;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  background: white;
-}
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 
-.file-preview {
-  position: relative;
-  width: 100%;
-  height: 120px;
-  overflow: hidden;
-  cursor: pointer;
-}
+    .preview-action {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
 
-.file-preview:hover::before {
-  opacity: 0.1;
-}
+    .file-preview::after {
+      opacity: 1;
+    }
+  }
+  
+  .file-preview {
+    position: relative;
+    width: 100%;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 4px;
+    background: #f5f7fa;
 
-.file-preview::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 1;
-  pointer-events: none;
-}
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
 
-.file-check {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
-  background: #409eff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  z-index: 2;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-}
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
 
-.file-info {
-  padding: 12px;
-  background: white;
-  position: relative;
-  z-index: 2;
-  cursor: default;
-}
+    .file-icon {
+      font-size: 48px;
+      color: #909399;
+    }
 
-.file-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1e293b;
-  margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+    // 选中打勾标记
+    .file-check {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      background: var(--el-color-primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      z-index: 3;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+  }
 
-.file-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #64748b;
-}
+  // 预览按钮
+  .preview-action {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 3;
 
-.loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-}
+    .preview-button {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--el-color-primary);
+      border: none;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
 
-.loading {
-  font-size: 24px;
-  animation: rotate 1s linear infinite;
-  color: #667eea;
+      &:hover {
+        transform: scale(1.1);
+        background: var(--el-color-primary-light-3);
+      }
+
+      .preview-icon {
+        font-size: 20px;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+  }
+
+  .file-info {
+    padding: 12px;
+    height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    .file-name {
+      font-size: 14px;
+      color: #606266;
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .file-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #909399;
+      padding: 0 4px;
+
+      .file-size,
+      .file-date {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
 }
 
 .pagination-container {
+  margin-top: auto;
+  padding: 20px 0;
   display: flex;
   justify-content: center;
-  padding: 20px;
-  background: white;
-  border-top: 1px solid #e2e8f0;
 }
 
 .dialog-footer {
@@ -699,54 +1026,95 @@ export default {
   gap: 12px;
 }
 
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.file-actions {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 2;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.file-item:hover .file-actions {
-  opacity: 1;
-}
-
-.file-actions .el-button {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(4px);
-  border: none;
-  padding: 4px 8px;
-  height: 24px;
+.upload-progress {
+  margin: 12px 0;
+  padding: 12px;
+  background: #f8f9fa;
   border-radius: 4px;
-  color: #1e293b;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+
+  .upload-item {
+    margin-bottom: 8px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    .upload-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-size: 14px;
+
+      .filename {
+        color: #666;
+      }
+
+      .progress {
+        color: #409eff;
+      }
+    }
+  }
 }
 
-.file-actions .el-button:hover {
-  background: white;
-  color: #409eff;
+.upload-dialog-content {
+  .upload-section {
+    margin-bottom: 20px;
+
+    .section-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .folder-select {
+      width: 100%;
+    }
+  }
+
+  .upload-area {
+    width: 100%;
+    
+    :deep(.el-upload) {
+      width: 100%;
+    }
+
+    :deep(.el-upload-dragger) {
+      width: 100%;
+      height: 200px;
+    }
+  }
+
+  .upload-content {
+    padding: 20px;
+    text-align: center;
+
+    .upload-icon {
+      font-size: 48px;
+      color: #909399;
+      margin-bottom: 12px;
+    }
+
+    .upload-text {
+      font-size: 16px;
+      color: #606266;
+      margin-bottom: 8px;
+
+      em {
+        color: #409eff;
+        font-style: normal;
+      }
+    }
+
+    .upload-tip {
+      font-size: 12px;
+      color: #909399;
+    }
+  }
 }
 
-.file-item.selected {
-  border-color: #409eff;
-  box-shadow: 0 0 0 4px rgba(64, 158, 255, 0.1);
-}
-
-.file-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+// 移除之前的预览对话框样式
+.preview-dialog,
+.preview-image {
+  display: none;
 }
 </style> 
