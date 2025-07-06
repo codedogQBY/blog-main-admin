@@ -8,6 +8,8 @@ export interface FriendLink {
   description?: string
   status: number
   order: number
+  auditStatus: number
+  email?: string
   createdAt: string
   updatedAt: string
 }
@@ -45,4 +47,9 @@ export function updateFriendLinkOrder(id: string, order: number) {
 // 更新友链状态
 export function updateFriendLinkStatus(id: string, status: number) {
   return request.put(`/friend-links/admin/${id}/status`, { status })
+}
+
+// 审核友链
+export function updateFriendLinkAudit(id: string, auditStatus: number) {
+  return request.put(`/friend-links/admin/${id}/audit`, { auditStatus })
 } 

@@ -82,13 +82,47 @@
             />
           </template>
         </el-table-column>
+        <el-table-column prop="auditStatus" label="审核状态" width="120">
+          <template #default="{ row }">
+            <el-tag
+              :type="row.auditStatus === 0 ? 'warning' : row.auditStatus === 1 ? 'success' : 'danger'"
+              size="small"
+            >
+              {{ row.auditStatus === 0 ? '待审核' : row.auditStatus === 1 ? '已通过' : '已拒绝' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="email" label="申请人邮箱" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.email">
+              <el-link type="primary" :href="`mailto:${row.email}`">{{ row.email }}</el-link>
+            </span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" width="180">
           <template #default="{ row }">
             {{ formatDate(row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
+            <el-button
+              v-if="row.auditStatus === 0"
+              link
+              type="success"
+              @click="handleAudit(row, 1)"
+            >
+              通过
+            </el-button>
+            <el-button
+              v-if="row.auditStatus === 0"
+              link
+              type="danger"
+              @click="handleAudit(row, 2)"
+            >
+              拒绝
+            </el-button>
             <el-button
               link
               type="primary"
@@ -208,6 +242,7 @@ import {
   deleteFriendLink,
   updateFriendLinkOrder,
   updateFriendLinkStatus,
+  updateFriendLinkAudit,
   type FriendLink
 } from '@/api/friend-links'
 import FileSelector, {type FileType } from '@/components/FileSelector.vue'
@@ -409,6 +444,18 @@ const handleStatusChange = async (id: string, status: number) => {
     console.error('更新状态失败:', error)
     ElMessage.error('更新状态失败')
     loadData() // 重新加载数据，恢复原值
+  }
+}
+
+// 审核友链
+const handleAudit = async (row: FriendLink, auditStatus: number) => {
+  try {
+    await updateFriendLinkAudit(row.id, auditStatus)
+    ElMessage.success('审核操作成功')
+    loadData()
+  } catch (error) {
+    console.error('审核操作失败:', error)
+    ElMessage.error('审核操作失败')
   }
 }
 
