@@ -45,6 +45,7 @@ export interface Comment {
   createdAt: string
   repliesCount: number
   isDeleted: boolean
+  isAdmin?: boolean
   deleting?: boolean
 }
 

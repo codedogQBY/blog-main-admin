@@ -35,9 +35,19 @@
       </template>
 
       <el-table v-loading="loading" :data="comments" style="width: 100%">
-        <el-table-column prop="author" label="作者" width="120">
+        <el-table-column prop="author" label="作者" width="150">
           <template #default="{ row }">
-            {{ row.author || '匿名用户' }}
+            <div class="author-cell">
+              <span>{{ row.author || '匿名用户' }}</span>
+              <el-tag 
+                v-if="row.isAdmin" 
+                type="primary" 
+                size="small" 
+                class="admin-tag"
+              >
+                站长
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="content" label="评论内容" show-overflow-tooltip />
@@ -195,10 +205,20 @@ onMounted(() => {
     align-items: center;
   }
 
+  .author-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .admin-tag {
+      margin-left: 4px;
+    }
+  }
+
   .pagination {
     margin-top: 20px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
   }
 }
 </style> 
