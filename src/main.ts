@@ -5,6 +5,8 @@ import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import router from './router/index'
 import { useAuthStore } from './lib/store'
+import { initWebSee } from './lib/websee-config'
+import { setupVueErrorHandler, setupGlobalErrorHandlers } from './lib/websee-examples'
 import App from './App.vue'
 import './style.css'
 
@@ -25,5 +27,14 @@ const authStore = useAuthStore()
 
 // 等待权限检查完成后再挂载应用
 await authStore.checkAuth()
+
+// 初始化web-see监控
+initWebSee(authStore.user?.id)
+
+// 设置Vue错误处理器
+setupVueErrorHandler(app)
+
+// 设置全局错误处理器
+setupGlobalErrorHandlers()
 
 app.mount('#app')

@@ -44,9 +44,13 @@ export const useAuthStore = defineStore('auth', {
         permissions: state.permissions
       })
       
-      if (!state.user || !state.permissionsLoaded) return false
+      // 如果权限未加载，返回false
+      if (!state.permissionsLoaded) return false
+      
       // 超级管理员拥有所有权限
-      if (state.user.isSuperAdmin) return true
+      if (state.user?.isSuperAdmin) return true
+      
+      // 检查具体权限
       return state.permissions.includes(permission) || state.permissions.includes('*')
     },
 

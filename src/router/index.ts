@@ -2,6 +2,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../lib/store'
 import { PERMISSIONS } from '../lib/permissions'
 import FriendLinks from '@/views/blog/FriendLinks.vue'
+import Login from '@/views/Login.vue'
+import Dashboard from '@/views/Dashboard.vue'
+import PermissionCheck from '@/components/PermissionCheck.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -19,18 +22,20 @@ const routes = [
   },
   {
     path: '/login',
-    component: () => import('../views/Login.vue'),
+    name: 'Login',
+    component: Login,
     meta: { requiresAuth: false }
   },
   {
     path: '/403',
+    name: '403',
     component: () => import('../views/403.vue'),
     meta: { requiresAuth: false }
   },
   {
     path: '/admin',
     name: 'Dashboard',
-    component: () => import('../views/Dashboard.vue'),
+    component: Dashboard,
     meta: { requiresAuth: true },
     children: [
       {
@@ -217,6 +222,53 @@ const routes = [
         }
       },
       {
+        path: 'monitoring',
+        name: 'Monitoring',
+        redirect: '/admin/monitoring/logs',
+        meta: {
+          title: '系统监控',
+          icon: 'Monitor'
+        },
+        children: [
+          {
+            path: 'logs',
+            name: 'SystemLogs',
+            component: () => import('../views/monitoring/SystemLogs.vue'),
+            meta: {
+              title: '系统日志',
+              permissions: [PERMISSIONS.LOG.READ]
+            }
+          },
+          {
+            path: 'alerts',
+            name: 'SystemAlerts',
+            component: () => import('../views/monitoring/SystemAlerts.vue'),
+            meta: {
+              title: '系统告警',
+              permissions: [PERMISSIONS.ALERT.READ]
+            }
+          },
+          {
+            path: 'performance',
+            name: 'PerformanceAnalysis',
+            component: () => import('../views/monitoring/PerformanceAnalysis.vue'),
+            meta: {
+              title: '性能分析',
+              permissions: [PERMISSIONS.LOG.READ]
+            }
+          },
+          {
+            path: 'test',
+            name: 'MonitoringTest',
+            component: () => import('../views/monitoring/MonitoringTest.vue'),
+            meta: {
+              title: '监控测试',
+              permissions: [PERMISSIONS.LOG.READ]
+            }
+          }
+        ]
+      },
+      {
         path: '/blog/friend-links',
         name: 'FriendLinks',
         component: FriendLinks,
@@ -251,102 +303,77 @@ router.beforeEach(async (to, from, next) => {
     }
   })
 
-  // 如果是登录页且已登录，重定向到管理页
-  if (to.path === '/login' && authStore.isAuthenticated) {
-    console.log('[Router Guard] Authenticated user trying to access login page, redirecting to admin')
-    next('/admin')
-    return
-  }
-
-  const requiresAuth = to.meta.requiresAuth !== false
-
-  // 如果不需要认证，直接通过
-  if (!requiresAuth) {
-    console.log('[Router Guard] Page does not require auth, proceeding')
-    next()
-    return
-  }
-
-  // 检查认证状态
-  if (!authStore.isAuthenticated || !authStore.user) {
-    console.log('[Router Guard] Not authenticated or no user, checking token')
-    const token = localStorage.getItem('accessToken')
-    if (!token) {
-      console.log('[Router Guard] No token found, redirecting to login')
-      next('/login')
-      return
+  const token = localStorage.getItem('accessToken')
+  
+  if (to.path === '/login') {
+    if (token) {
+      console.log('[Router Guard] Authenticated user trying to access login page, redirecting to admin')
+      next('/admin')
+    } else {
+      console.log('[Router Guard] User not authenticated, proceeding to login')
+      next()
     }
-
-    try {
-      console.log('[Router Guard] Token found, attempting to check auth')
-      const success = await authStore.checkAuth()
-      if (!success) {
+  } else {
+    if (!token) {
+      console.log('[Router Guard] User not authenticated, redirecting to login')
+      next('/login')
+    } else {
+      // 先进行认证检查，确保用户信息已加载
+      console.log('[Router Guard] Performing auth check')
+      const isAuthenticated = await authStore.checkAuth()
+      
+      if (!isAuthenticated) {
         console.log('[Router Guard] Auth check failed, redirecting to login')
         next('/login')
         return
       }
-      console.log('[Router Guard] Auth check successful')
-    } catch (error: any) {
-      console.error('[Router Guard] Auth check error:', {
-        error,
-        status: error?.response?.status
-      })
-      // 只有在认证失败时才跳转到登录页
-      if (error?.response?.status === 401) {
-        console.log('[Router Guard] 401 error, redirecting to login')
-        next('/login')
-        return
+
+      // 确保权限已加载
+      if (!authStore.permissionsLoaded) {
+        console.log('[Router Guard] Permissions not loaded, attempting to load')
+        try {
+          await authStore.updatePermissions()
+          console.log('[Router Guard] Permissions loaded successfully')
+        } catch (error: any) {
+          console.error('[Router Guard] Permission loading error:', {
+            error,
+            status: error?.response?.status
+          })
+          // 如果是认证失败，跳转到登录页
+          if (error?.response?.status === 401) {
+            console.log('[Router Guard] 401 error while loading permissions, redirecting to login')
+            next('/login')
+          } else {
+            // 其他错误（如权限加载失败）跳转到403
+            console.log('[Router Guard] Permission loading failed, redirecting to 403')
+            next('/403')
+          }
+          return
+        }
       }
-      // 其他错误可能是网络问题，让用户停留在当前页面
-      console.log('[Router Guard] Non-401 error, staying on current page')
-      return
-    }
-  }
 
-  // 确保权限已加载
-  if (!authStore.permissionsLoaded && !authStore.user?.isSuperAdmin) {
-    console.log('[Router Guard] Permissions not loaded, attempting to load')
-    try {
-      await authStore.updatePermissions()
-      console.log('[Router Guard] Permissions loaded successfully')
-    } catch (error: any) {
-      console.error('[Router Guard] Permission loading error:', {
-        error,
-        status: error?.response?.status
-      })
-      // 如果是认证失败，跳转到登录页
-      if (error?.response?.status === 401) {
-        console.log('[Router Guard] 401 error while loading permissions, redirecting to login')
-        next('/login')
-      } else {
-        // 其他错误（如权限加载失败）跳转到403
-        console.log('[Router Guard] Permission loading failed, redirecting to 403')
-        next('/403')
+      // 检查权限
+      const requiredPermissions = to.meta.permissions
+      if (requiredPermissions && requiredPermissions.length > 0) {
+        console.log('[Router Guard] Checking required permissions:', {
+          required: requiredPermissions,
+          current: authStore.permissions
+        })
+        
+        const hasPermission = requiredPermissions.every(p => authStore.hasPermission(p))
+        
+        if (!hasPermission) {
+          console.log('[Router Guard] Permission check failed, redirecting to 403')
+          next('/403')
+          return
+        }
+        console.log('[Router Guard] Permission check passed')
       }
-      return
+
+      console.log('[Router Guard] All checks passed, proceeding to route:', to.path)
+      next()
     }
   }
-
-  // 检查权限
-  const requiredPermissions = to.meta.permissions
-  if (requiredPermissions && requiredPermissions.length > 0) {
-    console.log('[Router Guard] Checking required permissions:', {
-      required: requiredPermissions,
-      current: authStore.permissions
-    })
-    
-    const hasPermission = requiredPermissions.every(p => authStore.hasPermission(p))
-    
-    if (!hasPermission) {
-      console.log('[Router Guard] Permission check failed, redirecting to 403')
-      next('/403')
-      return
-    }
-    console.log('[Router Guard] Permission check passed')
-  }
-
-  console.log('[Router Guard] All checks passed, proceeding to route:', to.path)
-  next()
 })
 
 export default router 

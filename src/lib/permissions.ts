@@ -119,5 +119,25 @@ export const PERMISSIONS = {
     CREATE: 'friend_link.create',
     UPDATE: 'friend_link.update',
     DELETE: 'friend_link.delete'
+  },
+
+  // 日志管理权限
+  LOG: {
+    READ: 'log.read',
+    CREATE: 'log.create',
+    DELETE: 'log.delete',
+  },
+
+  // 告警管理权限
+  ALERT: {
+    READ: 'alert.read',
+    UPDATE: 'alert.update',
+    DELETE: 'alert.delete',
+  },
+
+  // 性能分析权限
+  PERFORMANCE: {
+    READ: 'performance.read',
+    DELETE: 'performance.delete',
   }
 } as const; 

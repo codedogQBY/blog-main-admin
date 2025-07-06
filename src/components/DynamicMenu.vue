@@ -72,7 +72,10 @@ import {
   Files,
   Comment,
   Picture,
-  FolderOpened
+  FolderOpened,
+  DocumentCopy,
+  Warning,
+  Link
 } from '@element-plus/icons-vue'
 import { PERMISSIONS } from '../lib/permissions'
 
@@ -83,7 +86,9 @@ interface Props {
 interface MenuItem {
   title: string
   path?: string
-  icon?: string
+  icon?: any
+  permission?: string
+  order?: number
   children?: MenuItem[]
   permissions?: string[]
 }
@@ -259,8 +264,47 @@ const allMenuItems: MenuItem[] = [
   {
     title: '友链管理',
     path: '/blog/friend-links',
-    icon: 'Link',
+    icon: Link,
     permissions: [PERMISSIONS.FRIEND_LINK.READ]
+  },
+  
+  // 8. 系统监控
+  {
+    path: '/admin/monitoring',
+    title: '系统监控',
+    icon: Warning,
+    permission: '',
+    order: 7,
+    children: [
+      {
+        path: '/admin/monitoring/logs',
+        title: '系统日志',
+        icon: DocumentCopy,
+        permission: PERMISSIONS.LOG.READ,
+        order: 1
+      },
+      {
+        path: '/admin/monitoring/alerts',
+        title: '系统告警',
+        icon: Warning,
+        permission: PERMISSIONS.ALERT.READ,
+        order: 2
+      },
+      {
+        path: '/admin/monitoring/performance',
+        title: '性能分析',
+        icon: Management,
+        permission: PERMISSIONS.PERFORMANCE.READ,
+        order: 3
+      },
+      {
+        path: '/admin/monitoring/test',
+        title: '监控测试',
+        icon: Setting,
+        permission: PERMISSIONS.LOG.READ,
+        order: 4
+      }
+    ]
   }
 ]
 
