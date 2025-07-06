@@ -106,8 +106,41 @@ export interface Article {
     comments: number
     likes: number
   }
-  seoKeywords?: string
-  seoDescription?: string
+  metaTitle?: string
+  metaDescription?: string
+  metaKeywords?: string
+  canonicalUrl?: string
+}
+
+// 创建和更新文章时使用的接口
+export interface CreateArticleRequest {
+  title: string
+  content: string
+  excerpt?: string
+  coverImage?: string
+  categoryId: string
+  tags?: string[]
+  metaTitle?: string
+  metaDescription?: string
+  metaKeywords?: string
+  canonicalUrl?: string
+  published?: boolean
+  readTime?: number
+}
+
+export interface UpdateArticleRequest {
+  title?: string
+  content?: string
+  excerpt?: string
+  coverImage?: string
+  categoryId?: string
+  tags?: string[]
+  metaTitle?: string
+  metaDescription?: string
+  metaKeywords?: string
+  canonicalUrl?: string
+  published?: boolean
+  readTime?: number
 }
 
 export interface Category {
@@ -488,12 +521,12 @@ class ApiClient {
     return response.data
   }
 
-  async createArticle(data: Partial<Article>): Promise<Article> {
+  async createArticle(data: CreateArticleRequest): Promise<Article> {
     const response = await this.client.post<Article>('/articles', data)
     return response.data
   }
 
-  async updateArticle(id: string, data: Partial<Article>): Promise<Article> {
+  async updateArticle(id: string, data: UpdateArticleRequest): Promise<Article> {
     const response = await this.client.put<Article>(`/articles/${id}`, data)
     return response.data
   }

@@ -198,18 +198,30 @@
             </div>
             <div class="seo-inputs">
               <el-input
-                v-model="form.seoKeywords"
+                v-model="form.metaTitle"
+                placeholder="SEO标题（留空则使用文章标题）"
+                @input="handleChange"
+                class="seo-input"
+              />
+              <el-input
+                v-model="form.metaDescription"
+                type="textarea"
+                :rows="2"
+                placeholder="SEO描述（留空则使用文章摘要）"
+                maxlength="160"
+                show-word-limit
+                @input="handleChange"
+                class="seo-input"
+              />
+              <el-input
+                v-model="form.metaKeywords"
                 placeholder="SEO关键词，用逗号分隔"
                 @input="handleChange"
                 class="seo-input"
               />
               <el-input
-                v-model="form.seoDescription"
-                type="textarea"
-                :rows="2"
-                placeholder="SEO描述"
-                maxlength="160"
-                show-word-limit
+                v-model="form.canonicalUrl"
+                placeholder="规范链接（留空则使用默认URL）"
                 @input="handleChange"
                 class="seo-input"
               />
@@ -345,6 +357,7 @@ import FileSelector, {type FileType} from '@/components/FileSelector.vue'
 import { articleApi, categoryApi, tagApi, fileApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
 import PermissionCheck from '@/components/PermissionCheck.vue'
+import type { CreateArticleRequest, UpdateArticleRequest } from '@/lib/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -358,8 +371,10 @@ const form = reactive({
   coverImage: '',
   categoryId: '',
   tags: [] as string[],
-  seoKeywords: '',
-  seoDescription: '',
+  metaTitle: '',
+  metaDescription: '',
+  metaKeywords: '',
+  canonicalUrl: '',
   published: false,
   readTime: 1
 })
@@ -460,8 +475,10 @@ const loadArticle = async () => {
       coverImage: article.coverImage,
       categoryId: article.categoryId,
       tags: article.tags?.map(t => t.tag.name) || [],
-      seoKeywords: article.seoKeywords || '',
-      seoDescription: article.seoDescription || '',
+      metaTitle: article.metaTitle || '',
+      metaDescription: article.metaDescription || '',
+      metaKeywords: article.metaKeywords || '',
+      canonicalUrl: article.canonicalUrl || '',
       published: article.published
     })
     
@@ -502,7 +519,8 @@ const selectCoverImage = () => {
 }
 
 // 处理封面图片选择
-const handleCoverImageSelect = (file: FileType) => {
+const handleCoverImageSelect = (files: FileType | FileType[]) => {
+  const file = Array.isArray(files) ? files[0] : files
   if (file) {
     form.coverImage = file.url
   }
@@ -527,12 +545,23 @@ const handlePublish = async () => {
   
   publishing.value = true
   try {
-    const articleData = {
-      ...form
+    const articleData: CreateArticleRequest = {
+      title: form.title,
+      content: form.content,
+      excerpt: form.excerpt,
+      coverImage: form.coverImage,
+      categoryId: form.categoryId,
+      tags: form.tags,
+      metaTitle: form.metaTitle,
+      metaDescription: form.metaDescription,
+      metaKeywords: form.metaKeywords,
+      canonicalUrl: form.canonicalUrl,
+      published: form.published,
+      readTime: form.readTime
     }
     
     if (isEditing.value && articleId.value) {
-      await articleApi.update(articleId.value, articleData)
+      await articleApi.update(articleId.value, articleData as UpdateArticleRequest)
     } else {
       const newArticle = await articleApi.create(articleData)
       articleId.value = newArticle.id
@@ -591,12 +620,23 @@ const saveDraft = async () => {
   
   isSaving.value = true
   try {
-    const articleData = {
-      ...form
+    const articleData: CreateArticleRequest = {
+      title: form.title,
+      content: form.content,
+      excerpt: form.excerpt,
+      coverImage: form.coverImage,
+      categoryId: form.categoryId,
+      tags: form.tags,
+      metaTitle: form.metaTitle,
+      metaDescription: form.metaDescription,
+      metaKeywords: form.metaKeywords,
+      canonicalUrl: form.canonicalUrl,
+      published: form.published,
+      readTime: form.readTime
     }
     
     if (isEditing.value && articleId.value) {
-      await articleApi.update(articleId.value, articleData)
+      await articleApi.update(articleId.value, articleData as UpdateArticleRequest)
     } else {
       const newArticle = await articleApi.create(articleData)
       articleId.value = newArticle.id
