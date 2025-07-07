@@ -225,7 +225,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Edit, Check, User, Message, Lock, Key, Platform, ChatRound } from '@element-plus/icons-vue'
 import { useAuthStore } from '../lib/store'
-import { authApi } from '../lib/api'
+import { api as authApi } from '../lib/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -236,6 +236,15 @@ const rememberMe = ref(false)
 const agreeTerms = ref(false)
 const sendingCode = ref(false)
 const countdown = ref(0)
+
+// 2FA验证相关状态
+const show2FAModal = ref(false)
+const twoFAToken = ref('')
+const verifying2FA = ref(false)
+const showBackupInput = ref(false)
+const backupCode = ref('')
+const verifyingBackup = ref(false)
+const pendingUserId = ref('')
 
 // 表单引用
 const loginFormRef = ref<FormInstance>()
@@ -346,15 +355,90 @@ const handleLogin = async () => {
   
   await loginFormRef.value.validate(async (valid) => {
     if (valid) {
-      const success = await authStore.login(loginForm.mail, loginForm.password)
-      if (success) {
-        ElMessage.success('登录成功')
-        router.push('/admin')
-      } else {
+      try {
+        const response = await authApi.login({ mail: loginForm.mail, password: loginForm.password })
+        
+        // 检查是否需要2FA验证
+        if (response.requires2FA && response.userId) {
+          pendingUserId.value = response.userId
+          show2FAModal.value = true
+          twoFAToken.value = ''
+          showBackupInput.value = false
+          backupCode.value = ''
+        } else {
+          // 正常登录流程
+          const success = await authStore.login(loginForm.mail, loginForm.password)
+          if (success) {
+            ElMessage.success('登录成功')
+            router.push('/admin')
+          } else {
+            ElMessage.error('登录失败，请检查邮箱和密码')
+          }
+        }
+      } catch (error) {
+        console.error('登录失败:', error)
         ElMessage.error('登录失败，请检查邮箱和密码')
       }
     }
   })
+}
+
+// 验证2FA
+const verify2FA = async () => {
+  if (!twoFAToken.value || twoFAToken.value.length !== 6) {
+    ElMessage.warning('请输入6位验证码')
+    return
+  }
+
+  try {
+    verifying2FA.value = true
+    await authApi.verify2FA(pendingUserId.value, twoFAToken.value)
+    
+    // 2FA验证成功，完成登录
+    const success = await authStore.login(loginForm.mail, loginForm.password)
+    if (success) {
+      ElMessage.success('登录成功')
+      show2FAModal.value = false
+      router.push('/admin')
+    }
+  } catch (error) {
+    console.error('2FA验证失败:', error)
+    ElMessage.error('验证码错误，请重试')
+  } finally {
+    verifying2FA.value = false
+  }
+}
+
+// 使用备用验证码
+const useBackupCode = () => {
+  showBackupInput.value = true
+  backupCode.value = ''
+}
+
+// 验证备用验证码
+const verifyBackupCode = async () => {
+  if (!backupCode.value) {
+    ElMessage.warning('请输入备用验证码')
+    return
+  }
+
+  try {
+    verifyingBackup.value = true
+    await authApi.verifyBackupCode(pendingUserId.value, backupCode.value)
+    
+    // 备用码验证成功，完成登录
+    const success = await authStore.login(loginForm.mail, loginForm.password)
+    if (success) {
+      ElMessage.success('登录成功')
+      show2FAModal.value = false
+      router.push('/admin')
+    }
+  } catch (error) {
+    console.error('备用码验证失败:', error)
+    ElMessage.error('备用验证码错误，请重试')
+  } finally {
+    verifyingBackup.value = false
+  }
 }
 
 // 处理注册

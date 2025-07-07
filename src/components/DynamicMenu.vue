@@ -109,13 +109,22 @@ const allMenuItems: MenuItem[] = [
     order: 1
   },
   
-  // 2. 内容管理
+  // 2. 个人设置
+  {
+    path: '/admin/profile',
+    title: '个人设置',
+    icon: UserFilled,
+    permission: '',
+    order: 2
+  },
+  
+  // 3. 内容管理
   {
     path: '/admin/content',
     title: '内容管理',
     icon: Document,
     permission: '',
-    order: 2,
+    order: 3,
     children: [
       {
         path: '/admin/articles',
@@ -162,13 +171,13 @@ const allMenuItems: MenuItem[] = [
     ]
   },
   
-  // 3. 互动管理
+  // 4. 互动管理
   {
     path: '/admin/interaction',
     title: '互动管理',
     icon: Comment,
     permission: '',
-    order: 3,
+    order: 4,
     children: [
       {
         path: '/admin/interactions',
@@ -187,13 +196,13 @@ const allMenuItems: MenuItem[] = [
     ]
   },
   
-  // 4. 个性化设置
+  // 5. 个性化设置
   {
     path: '/admin/customization',
     title: '个性化',
     icon: Setting,
     permission: '',
-    order: 4,
+    order: 5,
     children: [
       {
         path: '/admin/diary-signatures',
@@ -212,22 +221,22 @@ const allMenuItems: MenuItem[] = [
     ]
   },
   
-  // 5. 文件管理
+  // 6. 文件管理
   {
     path: '/admin/files',
     title: '文件管理',
     icon: Folder,
     permission: PERMISSIONS.FILE.READ,
-    order: 5
+    order: 6
   },
   
-  // 6. 系统管理
+  // 7. 系统管理
   {
     path: '/admin/system',
     title: '系统管理',
     icon: Management,
     permission: '',
-    order: 6,
+    order: 7,
     children: [
       {
         path: '/admin/users',
@@ -256,11 +265,18 @@ const allMenuItems: MenuItem[] = [
         icon: FolderOpened,
         permission: PERMISSIONS.PERMISSION.GROUP.READ,
         order: 4
+      },
+      {
+        path: '/admin/two-factor',
+        title: '2FA管理',
+        icon: Lock,
+        permission: PERMISSIONS.TWO_FACTOR.READ,
+        order: 5
       }
     ]
   },
   
-  // 7. 友链管理
+  // 8. 友链管理
   {
     title: '友链管理',
     path: '/blog/friend-links',
@@ -268,13 +284,13 @@ const allMenuItems: MenuItem[] = [
     permissions: [PERMISSIONS.FRIEND_LINK.READ]
   },
   
-  // 8. 系统监控
+  // 9. 系统监控
   {
     path: '/admin/monitoring',
     title: '系统监控',
     icon: Warning,
     permission: '',
-    order: 7,
+    order: 8,
     children: [
       {
         path: '/admin/monitoring/logs',

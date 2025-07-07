@@ -139,5 +139,19 @@ export const PERMISSIONS = {
   PERFORMANCE: {
     READ: 'performance.read',
     DELETE: 'performance.delete',
+  },
+
+  // 双因素认证管理权限
+  TWO_FACTOR: {
+    READ: 'two_factor.read',
+    CREATE: 'two_factor.create',
+    UPDATE: 'two_factor.update',
+    DELETE: 'two_factor.delete',
+    BIND: 'two_factor.bind',
+    UNBIND: 'two_factor.unbind',
+    VERIFY: 'two_factor.verify',
+    RECOVERY: 'two_factor.recovery',
+    UNLOCK: 'two_factor.unlock',
+    STATS: 'two_factor.stats',
   }
 } as const; 

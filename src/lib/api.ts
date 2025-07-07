@@ -61,7 +61,10 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  accessToken: string
+  accessToken?: string
+  requires2FA?: boolean
+  userId?: string
+  message?: string
 }
 
 export interface RegisterRequest {
@@ -385,22 +388,31 @@ class ApiClient {
 
   // 认证相关
   async login(data: LoginRequest): Promise<LoginResponse> {
-    const response = await this.client.post<LoginResponse>('/auth/login', data)
+    const response = await this.post('/auth/login', data)
     return response.data
   }
 
   async register(data: RegisterRequest): Promise<LoginResponse> {
-    const response = await this.client.post<LoginResponse>('/auth/register', data)
+    const response = await this.post('/auth/register', data)
     return response.data
   }
 
   async sendCode(mail: string): Promise<void> {
-    await this.client.post('/auth/send-code', { mail })
+    await this.post('/auth/send-code', { mail })
   }
 
   async getProfile(): Promise<any> {
-    const response = await this.client.get('/auth/profile')
+    const response = await this.get('/auth/profile')
     return response.data
+  }
+
+  // 2FA相关方法
+  async verify2FA(userId: string, token: string): Promise<void> {
+    await this.post('/auth/two-factor/verify', { userId, token })
+  }
+
+  async verifyBackupCode(userId: string, code: string): Promise<void> {
+    await this.post('/auth/two-factor/verify-backup-code', { userId, code })
   }
 
   // 用户管理

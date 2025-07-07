@@ -133,16 +133,16 @@
               <span>文章摘要</span>
             </div>
             <div class="excerpt-input-group">
-              <el-input
-                v-model="form.excerpt"
-                type="textarea"
-                :rows="3"
-                placeholder="请输入文章摘要，用于搜索和分享..."
-                maxlength="200"
-                show-word-limit
-                @input="handleChange"
-                class="excerpt-input"
-              />
+            <el-input
+              v-model="form.excerpt"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入文章摘要，用于搜索和分享..."
+              maxlength="200"
+              show-word-limit
+              @input="handleChange"
+              class="excerpt-input"
+            />
               <el-button 
                 type="primary" 
                 size="small"
@@ -172,26 +172,26 @@
                 class="slug-input"
               />
               <div class="slug-buttons">
-                <el-button 
-                  type="primary" 
-                  size="small"
-                  @click="generateSlug"
+              <el-button 
+                type="primary" 
+                size="small"
+                @click="generateSlug"
                   :disabled="!form.title || isGeneratingSlug"
                   :loading="isGeneratingSlug"
-                  class="generate-slug-btn"
-                >
+                class="generate-slug-btn"
+              >
                   <el-icon v-if="!isGeneratingSlug"><Refresh /></el-icon>
                   {{ isGeneratingSlug ? '生成中...' : 'AI生成' }}
-                </el-button>
-                <el-button 
-                  type="info" 
-                  size="small"
-                  @click="toggleSlugLock"
-                  class="lock-slug-btn"
-                >
-                  <el-icon><Lock v-if="slugLocked" /><Unlock v-else /></el-icon>
-                  {{ slugLocked ? '解锁' : '锁定' }}
-                </el-button>
+              </el-button>
+              <el-button 
+                type="info" 
+                size="small"
+                @click="toggleSlugLock"
+                class="lock-slug-btn"
+              >
+                <el-icon><Lock v-if="slugLocked" /><Unlock v-else /></el-icon>
+                {{ slugLocked ? '解锁' : '锁定' }}
+              </el-button>
               </div>
             </div>
             <div class="slug-preview" v-if="form.slug">
@@ -1376,23 +1376,23 @@ const getConfidenceClass = () => {
           flex-direction: column;
           gap: 8px;
 
-          .excerpt-input {
+        .excerpt-input {
             width: 100%;
             
-            :deep(.el-textarea__inner) {
-              border-radius: 8px;
-              border: 1px solid #e2e8f0;
-              transition: all 0.2s ease;
+          :deep(.el-textarea__inner) {
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
 
-              &:hover {
-                border-color: #3b82f6;
-              }
-
-              &:focus {
-                border-color: #3b82f6;
-                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-              }
+            &:hover {
+              border-color: #3b82f6;
             }
+
+            &:focus {
+              border-color: #3b82f6;
+              box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+          }
           }
 
           .generate-excerpt-btn {
