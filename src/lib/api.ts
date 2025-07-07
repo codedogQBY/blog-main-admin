@@ -126,6 +126,7 @@ export interface CreateArticleRequest {
   canonicalUrl?: string
   published?: boolean
   readTime?: number
+  slug?: string
 }
 
 export interface UpdateArticleRequest {
@@ -141,6 +142,7 @@ export interface UpdateArticleRequest {
   canonicalUrl?: string
   published?: boolean
   readTime?: number
+  slug?: string
 }
 
 export interface Category {
@@ -815,7 +817,31 @@ class ApiClient {
   }
 
   async setPermissionGroupSort(items: { id: string; sort: number }[]): Promise<void> {
-    await this.client.post('/admin/permission-groups/sort', items)
+    await this.post('/rbac/permission-groups/sort', { items })
+  }
+
+  // 智谱AI相关接口
+  async generateSlugWithAI(title: string, content?: string): Promise<{ slug: string; confidence: number }> {
+    const requestData = { title, content }
+    const response = await this.client.post('/ai/generate-slug', requestData)
+    return response.data.data
+  }
+
+  async generateExcerptWithAI(title: string, content: string): Promise<{ excerpt: string; confidence: number }> {
+    const requestData = { title, content }
+    const response = await this.client.post('/ai/generate-excerpt', requestData)
+    return response.data.data
+  }
+
+  async generateSEOWithAI(title: string, content: string): Promise<{
+    metaTitle: string;
+    metaDescription: string;
+    metaKeywords: string;
+    confidence: number;
+  }> {
+    const requestData = { title, content }
+    const response = await this.client.post('/ai/generate-seo', requestData)
+    return response.data.data
   }
 }
 
@@ -863,6 +889,9 @@ export const articleApi = {
   create: apiClient.createArticle.bind(apiClient),
   update: apiClient.updateArticle.bind(apiClient),
   delete: apiClient.deleteArticle.bind(apiClient),
+  generateSlugWithAI: apiClient.generateSlugWithAI.bind(apiClient),
+  generateExcerptWithAI: apiClient.generateExcerptWithAI.bind(apiClient),
+  generateSEOWithAI: apiClient.generateSEOWithAI.bind(apiClient),
 }
 
 export const categoryApi = {

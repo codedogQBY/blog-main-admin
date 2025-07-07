@@ -132,16 +132,76 @@
               <el-icon><Reading /></el-icon>
               <span>文章摘要</span>
             </div>
-            <el-input
-              v-model="form.excerpt"
-              type="textarea"
-              :rows="3"
-              placeholder="请输入文章摘要，用于搜索和分享..."
-              maxlength="200"
-              show-word-limit
-              @input="handleChange"
-              class="excerpt-input"
-            />
+            <div class="excerpt-input-group">
+              <el-input
+                v-model="form.excerpt"
+                type="textarea"
+                :rows="3"
+                placeholder="请输入文章摘要，用于搜索和分享..."
+                maxlength="200"
+                show-word-limit
+                @input="handleChange"
+                class="excerpt-input"
+              />
+              <el-button 
+                type="primary" 
+                size="small"
+                @click="generateExcerpt"
+                :disabled="!form.title || !form.content"
+                class="generate-excerpt-btn"
+              >
+                <el-icon><Refresh /></el-icon>
+                AI生成
+              </el-button>
+            </div>
+          </div>
+
+          <!-- 文章别名 -->
+          <div class="setting-group">
+            <div class="setting-label">
+              <el-icon><Link /></el-icon>
+              <span>文章别名</span>
+            </div>
+            <div class="slug-input-group">
+              <el-input
+                v-model="form.slug"
+                placeholder="文章别名，用于URL"
+                :disabled="slugLocked"
+                @input="handleChange"
+                class="slug-input"
+              />
+              <div class="slug-buttons">
+                <el-button 
+                  type="primary" 
+                  size="small"
+                  @click="generateSlug"
+                  :disabled="!form.title"
+                  class="generate-slug-btn"
+                >
+                  <el-icon><Refresh /></el-icon>
+                  AI生成
+                </el-button>
+                <el-button 
+                  type="info" 
+                  size="small"
+                  @click="toggleSlugLock"
+                  class="lock-slug-btn"
+                >
+                  <el-icon><Lock v-if="slugLocked" /><Unlock v-else /></el-icon>
+                  {{ slugLocked ? '解锁' : '锁定' }}
+                </el-button>
+              </div>
+            </div>
+            <div class="slug-preview" v-if="form.slug">
+              <span class="preview-label">预览URL：</span>
+              <span class="preview-url">{{ getSlugPreview() }}</span>
+              <div v-if="slugConfidence > 0" class="confidence-indicator">
+                <span class="confidence-label">AI置信度：</span>
+                <span class="confidence-value" :class="getConfidenceClass()">
+                  {{ Math.round(slugConfidence * 100) }}%
+                </span>
+              </div>
+            </div>
           </div>
 
           <!-- 分类选择 -->
@@ -195,6 +255,16 @@
             <div class="setting-label">
               <el-icon><Search /></el-icon>
               <span>SEO优化</span>
+              <el-button 
+                type="primary" 
+                size="small"
+                @click="generateSEO"
+                :disabled="!form.title || !form.content"
+                class="generate-seo-btn"
+              >
+                <el-icon><Refresh /></el-icon>
+                AI生成
+              </el-button>
             </div>
             <div class="seo-inputs">
               <el-input
@@ -350,7 +420,10 @@ import {
   Check,
   Clock,
   Timer,
-  Refresh
+  Refresh,
+  Link,
+  Lock,
+  Unlock
 } from '@element-plus/icons-vue'
 import TiptapEditor from '@/components/TiptapEditor.vue'
 import FileSelector, {type FileType} from '@/components/FileSelector.vue'
@@ -376,8 +449,14 @@ const form = reactive({
   metaKeywords: '',
   canonicalUrl: '',
   published: false,
-  readTime: 1
+  readTime: 1,
+  slug: ''
 })
+
+// slug 锁定状态
+const slugLocked = ref(true)
+// slug 置信度
+const slugConfidence = ref(0)
 
 // 状态管理
 const isSaving = ref(false)
@@ -479,7 +558,8 @@ const loadArticle = async () => {
       metaDescription: article.metaDescription || '',
       metaKeywords: article.metaKeywords || '',
       canonicalUrl: article.canonicalUrl || '',
-      published: article.published
+      published: article.published,
+      slug: article.slug || ''
     })
     
     // 清除未保存标记
@@ -497,6 +577,16 @@ const handleChange = () => {
 
 const handleTitleChange = () => {
   handleChange()
+  
+  // 如果 slug 没有被锁定且为空，自动生成
+  if (!slugLocked.value && !form.slug && form.title.trim()) {
+    // 延迟生成，避免用户输入时频繁更新
+    setTimeout(() => {
+      if (!slugLocked.value && !form.slug && form.title.trim()) {
+        generateSlug()
+      }
+    }, 1000)
+  }
 }
 
 const handleContentChange = () => {
@@ -557,7 +647,8 @@ const handlePublish = async () => {
       metaKeywords: form.metaKeywords,
       canonicalUrl: form.canonicalUrl,
       published: form.published,
-      readTime: form.readTime
+      readTime: form.readTime,
+      slug: form.slug
     }
     
     if (isEditing.value && articleId.value) {
@@ -632,7 +723,8 @@ const saveDraft = async () => {
       metaKeywords: form.metaKeywords,
       canonicalUrl: form.canonicalUrl,
       published: form.published,
-      readTime: form.readTime
+      readTime: form.readTime,
+      slug: form.slug
     }
     
     if (isEditing.value && articleId.value) {
@@ -682,7 +774,25 @@ const restoreDraft = () => {
       return
     }
 
-    Object.assign(form, draftData)
+    // 确保关键字段有有效值
+    const safeDraftData = {
+      ...draftData,
+      title: draftData.title || '',
+      content: draftData.content || '',
+      excerpt: draftData.excerpt || '',
+      coverImage: draftData.coverImage || '',
+      categoryId: draftData.categoryId || '',
+      tags: Array.isArray(draftData.tags) ? draftData.tags : [],
+      metaTitle: draftData.metaTitle || '',
+      metaDescription: draftData.metaDescription || '',
+      metaKeywords: draftData.metaKeywords || '',
+      canonicalUrl: draftData.canonicalUrl || '',
+      published: Boolean(draftData.published),
+      readTime: Number(draftData.readTime) || 1,
+      slug: draftData.slug || ''
+    }
+    
+    Object.assign(form, safeDraftData)
     hasUnsavedChanges.value = true
     ElMessage.info('已恢复未保存的草稿')
   } catch (error) {
@@ -695,6 +805,8 @@ const restoreDraft = () => {
 const clearDraft = () => {
   localStorage.removeItem(CACHE_KEY)
 }
+
+
 
 // 监听表单变化，实时保存到缓存
 watch(form, () => {
@@ -739,6 +851,162 @@ const estimateReadTime = () => {
 watch(() => form.content, () => {
   estimateReadTime()
 }, { deep: true })
+
+// 生成文章别名
+const generateSlug = async () => {
+  if (!form.title.trim()) {
+    ElMessage.warning('请先输入文章标题')
+    return
+  }
+  
+  try {
+    // 显示加载状态
+    const loadingMessage = ElMessage({
+      message: '正在使用AI生成文章别名...',
+      type: 'info',
+      duration: 0
+    })
+    
+    // 调用AI生成slug
+    const result = await articleApi.generateSlugWithAI(form.title, form.content)
+    
+    // 关闭加载消息
+    loadingMessage.close()
+    
+    if (result.slug) {
+      form.slug = result.slug
+      slugConfidence.value = result.confidence
+      handleChange()
+      ElMessage.success('AI已生成文章别名')
+    } else {
+      generateLocalSlug()
+    }
+  } catch (error) {
+    console.error('AI生成slug失败:', error)
+    ElMessage.warning('AI生成失败，使用本地生成方式')
+    generateLocalSlug()
+  }
+}
+
+// 生成文章摘要
+const generateExcerpt = async () => {
+  if (!form.title.trim()) {
+    ElMessage.warning('请先输入文章标题')
+    return
+  }
+  
+  if (!form.content.trim()) {
+    ElMessage.warning('请先输入文章内容')
+    return
+  }
+  
+  try {
+    // 显示加载状态
+    const loadingMessage = ElMessage({
+      message: '正在使用AI生成文章摘要...',
+      type: 'info',
+      duration: 0
+    })
+    
+    // 调用AI生成摘要
+    const result = await articleApi.generateExcerptWithAI(form.title, form.content)
+    
+    // 关闭加载消息
+    loadingMessage.close()
+    
+    if (result.excerpt) {
+      form.excerpt = result.excerpt
+      handleChange()
+      ElMessage.success('AI已生成文章摘要')
+    }
+  } catch (error) {
+    console.error('AI生成摘要失败:', error)
+    ElMessage.warning('AI生成摘要失败')
+  }
+}
+
+// 生成SEO内容
+const generateSEO = async () => {
+  if (!form.title.trim()) {
+    ElMessage.warning('请先输入文章标题')
+    return
+  }
+  
+  if (!form.content.trim()) {
+    ElMessage.warning('请先输入文章内容')
+    return
+  }
+  
+  try {
+    // 显示加载状态
+    const loadingMessage = ElMessage({
+      message: '正在使用AI生成SEO内容...',
+      type: 'info',
+      duration: 0
+    })
+    
+    // 调用AI生成SEO内容
+    const result = await articleApi.generateSEOWithAI(form.title, form.content)
+    
+    // 关闭加载消息
+    loadingMessage.close()
+    
+    if (result.metaTitle && result.metaDescription && result.metaKeywords) {
+      form.metaTitle = result.metaTitle
+      form.metaDescription = result.metaDescription
+      form.metaKeywords = result.metaKeywords
+      handleChange()
+      ElMessage.success('AI已生成SEO内容')
+    }
+  } catch (error) {
+    console.error('AI生成SEO内容失败:', error)
+    ElMessage.warning('AI生成SEO内容失败')
+  }
+}
+
+// 本地生成slug（作为AI的备选方案）
+const generateLocalSlug = () => {
+  let slug = form.title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // 移除特殊字符
+    .replace(/\s+/g, '-') // 空格替换为连字符
+    .replace(/-+/g, '-') // 多个连字符替换为单个
+    .replace(/^-+|-+$/g, '') // 移除首尾连字符
+  
+  // 如果 slug 为空，使用默认值
+  if (!slug) {
+    slug = 'untitled-article'
+  }
+  
+  form.slug = slug
+  handleChange()
+  ElMessage.success('文章别名已生成')
+}
+
+// 获取文章别名预览
+const getSlugPreview = () => {
+  if (!form.slug) {
+    return '未生成文章别名'
+  }
+  
+  // 构建完整的预览URL - 使用前端的博客URL结构
+  const baseUrl = window.location.origin
+  return `${baseUrl}/blog/${form.slug}`
+}
+
+// 切换文章别名锁定状态
+const toggleSlugLock = () => {
+  slugLocked.value = !slugLocked.value
+  handleChange()
+}
+
+// 获取置信度样式类
+const getConfidenceClass = () => {
+  if (slugConfidence.value >= 0.8) return 'high-confidence'
+  if (slugConfidence.value >= 0.6) return 'medium-confidence'
+  return 'low-confidence'
+}
 </script>
 
 <style scoped lang="scss">
@@ -1010,6 +1278,18 @@ watch(() => form.content, () => {
           .el-icon {
             font-size: 16px;
           }
+
+          .generate-seo-btn {
+            margin-left: auto;
+            padding: 4px 8px;
+            height: 24px;
+            border-radius: 4px;
+            font-size: 11px;
+            
+            .el-icon {
+              margin-right: 2px;
+            }
+          }
         }
 
         .cover-upload-area {
@@ -1101,21 +1381,45 @@ watch(() => form.content, () => {
           }
         }
 
-        .excerpt-input {
-          :deep(.el-textarea__inner) {
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            transition: all 0.2s ease;
+        .excerpt-input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
 
-            &:hover {
-              border-color: #3b82f6;
-            }
+          .excerpt-input {
+            width: 100%;
+            
+            :deep(.el-textarea__inner) {
+              border-radius: 8px;
+              border: 1px solid #e2e8f0;
+              transition: all 0.2s ease;
 
-            &:focus {
-              border-color: #3b82f6;
-              box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+              &:hover {
+                border-color: #3b82f6;
+              }
+
+              &:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+              }
             }
           }
+
+          .generate-excerpt-btn {
+            align-self: flex-end;
+            padding: 6px 12px;
+            height: 28px;
+            border-radius: 6px;
+            font-size: 12px;
+            
+            .el-icon {
+              margin-right: 4px;
+            }
+          }
+        }
+
+        .excerpt-input {
+          width: 100%;
         }
 
         .category-select,
@@ -1187,6 +1491,89 @@ watch(() => form.content, () => {
           font-size: 12px;
           color: #666;
           margin-top: 4px;
+        }
+
+        .slug-input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+
+          .slug-input {
+            width: 100%;
+          }
+
+          .slug-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+          }
+
+          .generate-slug-btn,
+          .lock-slug-btn {
+            padding: 6px 12px;
+            height: 28px;
+            border-radius: 6px;
+            font-size: 12px;
+            
+            .el-icon {
+              margin-right: 4px;
+            }
+          }
+        }
+
+        .slug-preview {
+          margin-top: 8px;
+          padding: 8px 12px;
+          background: #f8fafc;
+          border-radius: 6px;
+          font-size: 12px;
+          color: #64748b;
+          border: 1px solid #e2e8f0;
+          
+          .preview-label {
+            font-weight: 500;
+            color: #475569;
+          }
+          
+          .preview-url {
+            color: #667eea;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            word-break: break-all;
+          }
+          
+          .confidence-indicator {
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            
+            .confidence-label {
+              color: #64748b;
+            }
+            
+            .confidence-value {
+              font-weight: 600;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 11px;
+              
+              &.high-confidence {
+                background: #dcfce7;
+                color: #166534;
+              }
+              
+              &.medium-confidence {
+                background: #fef3c7;
+                color: #92400e;
+              }
+              
+              &.low-confidence {
+                background: #fee2e2;
+                color: #991b1b;
+              }
+            }
+          }
         }
       }
     }
