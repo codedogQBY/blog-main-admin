@@ -85,10 +85,6 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu class="user-menu">
-                <el-dropdown-item command="profile">
-                  <el-icon><User /></el-icon>
-                  个人资料
-                </el-dropdown-item>
                 <el-dropdown-item command="settings">
                   <el-icon><Setting /></el-icon>
                   系统设置
@@ -232,9 +228,6 @@ const toggleSidebar = () => {
 // 处理用户下拉菜单命令
 const handleUserCommand = async (command: string) => {
   switch (command) {
-    case 'profile':
-      ElMessage.info('个人资料功能开发中...')
-      break
     case 'settings':
       ElMessage.info('系统设置功能开发中...')
       break

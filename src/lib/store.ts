@@ -20,6 +20,7 @@ export interface AuthState {
   tokenCheckInterval: number | null
   permissionsLoaded: boolean
   currentAuthCheck: Promise<boolean> | null
+  needsSetup2FA: boolean
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -31,7 +32,8 @@ export const useAuthStore = defineStore('auth', {
     menus: [],
     tokenCheckInterval: null,
     permissionsLoaded: false,
-    currentAuthCheck: null as Promise<boolean> | null
+    currentAuthCheck: null as Promise<boolean> | null,
+    needsSetup2FA: false
   }),
 
   getters: {
@@ -73,14 +75,31 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    async login(mail: string, password: string) {
+    async login(mail: string, password: string): Promise<boolean | { requires2FA: true; userId: string }> {
       this.loading = true
       try {
         const response = await authApi.login({ mail, password })
-        localStorage.setItem('accessToken', response.accessToken)
-        await this.fetchProfile()
-        this.startTokenCheck()
-        return true
+        
+        // 检查是否需要2FA验证
+        if (response.requires2FA && response.userId) {
+          return { requires2FA: true, userId: response.userId }
+        }
+        
+        // 检查是否需要设置2FA
+        if (response.needsSetup2FA) {
+          this.needsSetup2FA = true
+        } else {
+          this.needsSetup2FA = false
+        }
+        
+        if (response.accessToken) {
+          localStorage.setItem('accessToken', response.accessToken)
+          await this.fetchProfile()
+          this.startTokenCheck()
+          return true
+        }
+        
+        return false
       } catch (error) {
         console.error('登录失败:', error)
         return false
@@ -110,13 +129,7 @@ export const useAuthStore = defineStore('auth', {
 
     // 更新用户权限列表
     async updatePermissions() {
-      console.log('[Permissions] Starting permission update', {
-        user: this.user,
-        currentPermissions: this.permissions
-      })
-
       if (!this.user) {
-        console.log('[Permissions] No user, clearing permissions')
         this.permissions = []
         this.permissionsLoaded = false
         return
@@ -124,14 +137,12 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         if (this.user.isSuperAdmin) {
-          console.log('[Permissions] User is superadmin, granting all permissions')
           this.permissions = ['*']
           this.permissionsLoaded = true
           return
         }
 
         // 从用户角色中提取权限
-        console.log('[Permissions] Extracting permissions from role:', this.user.role)
         const permissions = new Set<string>()
         if (this.user.role && this.user.role.perms) {
           this.user.role.perms.forEach((rolePerm: any) => {
@@ -142,11 +153,6 @@ export const useAuthStore = defineStore('auth', {
         }
         this.permissions = Array.from(permissions)
         this.permissionsLoaded = true
-        
-        console.log('[Permissions] Permissions updated successfully', {
-          permissions: this.permissions,
-          permissionsLoaded: this.permissionsLoaded
-        })
       } catch (error) {
         console.error('[Permissions] Failed to update permissions:', error)
         // 权限更新失败时不要清除现有权限
@@ -187,6 +193,7 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = false
       this.permissions = []
       this.menus = []
+      this.needsSetup2FA = false
       this.stopTokenCheck()
     },
 
@@ -269,6 +276,7 @@ export const useAuthStore = defineStore('auth', {
       this.menus = []
       this.permissionsLoaded = false
       this.currentAuthCheck = null
+      this.needsSetup2FA = false
       localStorage.removeItem('accessToken')
     },
 

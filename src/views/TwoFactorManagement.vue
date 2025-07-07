@@ -29,69 +29,84 @@
     <div class="section">
       <h2>用户2FA状态</h2>
       <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>用户</th>
-              <th>邮箱</th>
-              <th>2FA状态</th>
-              <th>设置时间</th>
-              <th>备用码数量</th>
-              <th>锁定状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.id">
-              <td>{{ user.name }}</td>
-              <td>{{ user.mail }}</td>
-              <td>
-                <span :class="['status-badge', user.twoFactorEnabled ? 'enabled' : 'disabled']">
-                  {{ user.twoFactorEnabled ? '已启用' : '未启用' }}
-                </span>
-              </td>
-              <td>{{ user.twoFactorSetupAt ? formatDate(user.twoFactorSetupAt) : '-' }}</td>
-              <td>{{ user.backupCodesCount || 0 }}</td>
-              <td>
-                <span v-if="user.lockStatus?.locked" class="status-badge locked">
-                  已锁定 ({{ user.lockStatus.remainingMinutes }}分钟)
-                </span>
-                <span v-else class="status-badge unlocked">正常</span>
-              </td>
-              <td>
-                <div class="actions">
-                  <button 
-                    v-if="!user.twoFactorEnabled" 
-                    @click="showBind2FAModal(user)"
-                    class="btn btn-primary btn-sm"
-                  >
-                    绑定2FA
-                  </button>
-                  <button 
-                    v-if="user.twoFactorEnabled" 
-                    @click="showDisable2FAModal(user)"
-                    class="btn btn-danger btn-sm"
-                  >
-                    禁用2FA
-                  </button>
-                  <button 
-                    @click="showBackupCodesModal(user)"
-                    class="btn btn-secondary btn-sm"
-                  >
-                    备用码
-                  </button>
-                  <button 
-                    v-if="user.lockStatus?.locked" 
-                    @click="unlockUser(user)"
-                    class="btn btn-warning btn-sm"
-                  >
-                    解锁
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <el-table :data="users" style="width: 100%" v-loading="loading">
+          <el-table-column prop="name" label="用户" />
+          <el-table-column prop="mail" label="邮箱" />
+          <el-table-column label="2FA状态" width="120">
+            <template #default="{ row }">
+              <el-tag :type="row.twoFactorEnabled ? 'success' : 'info'" size="small">
+                {{ row.twoFactorEnabled ? '已启用' : '未启用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="设置时间" width="180">
+            <template #default="{ row }">
+              {{ row.twoFactorSetupAt ? formatDate(row.twoFactorSetupAt) : '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column label="备用码数量" width="120">
+            <template #default="{ row }">
+              {{ row.backupCodesCount || 0 }}
+            </template>
+          </el-table-column>
+          <el-table-column label="锁定状态" width="150">
+            <template #default="{ row }">
+              <el-tag v-if="row.lockStatus?.locked" type="danger" size="small">
+                已锁定 ({{ row.lockStatus.remainingMinutes }}分钟)
+              </el-tag>
+              <el-tag v-else type="success" size="small">正常</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="300">
+            <template #default="{ row }">
+              <el-button 
+                v-if="!row.twoFactorEnabled" 
+                @click="showBind2FAModal(row)"
+                type="primary"
+                size="small"
+              >
+                绑定2FA
+              </el-button>
+              <el-button 
+                v-if="row.twoFactorEnabled" 
+                @click="showDisable2FAModal(row)"
+                type="danger"
+                size="small"
+              >
+                禁用2FA
+              </el-button>
+              <el-button 
+                v-if="row.twoFactorEnabled" 
+                @click="showBackupCodesModal(row)"
+                type="warning"
+                size="small"
+              >
+                备用码
+              </el-button>
+              <el-button 
+                v-if="row.lockStatus?.locked" 
+                @click="unlockUser(row)"
+                type="warning"
+                size="small"
+              >
+                解锁
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <!-- 分页 -->
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
     </div>
 
@@ -119,88 +134,102 @@
     </div>
 
     <!-- 绑定2FA模态框 -->
-    <div v-if="showBindModal" class="modal-overlay" @click="closeBindModal">
-      <div class="modal" @click.stop>
-        <h3>绑定2FA</h3>
-        <div v-if="qrCodeData" class="qr-section">
-          <h4>扫描二维码</h4>
-          <div class="qr-code">
-            <img :src="qrCodeData.qrCode" alt="2FA QR Code" />
-          </div>
-          <p>请使用Google Authenticator或其他TOTP应用扫描此二维码</p>
-          
-          <div class="verification-section">
-            <h4>验证设置</h4>
-            <input 
-              v-model="verificationToken" 
-              type="text" 
-              placeholder="输入6位验证码"
-              class="form-input"
-              maxlength="6"
-            />
-            <div class="button-group">
-              <button @click="verifyAndBind" class="btn btn-primary" :disabled="!verificationToken">
-                验证并绑定
-              </button>
-              <button @click="closeBindModal" class="btn btn-secondary">取消</button>
-            </div>
-          </div>
+    <el-dialog v-model="showBindModal" title="绑定2FA" width="500px" :close-on-click-modal="false">
+      <div v-if="qrCodeData" class="qr-section">
+        <h4>扫描二维码</h4>
+        <div class="qr-code">
+          <img :src="qrCodeData.qrCode" alt="2FA QR Code" />
         </div>
-        <div v-else class="loading">
-          <p>正在生成二维码...</p>
+        <p>请使用Google Authenticator或其他TOTP应用扫描此二维码</p>
+        
+        <div class="verification-section">
+          <h4>验证设置</h4>
+          <el-input 
+            v-model="verificationToken" 
+            placeholder="输入6位验证码"
+            maxlength="6"
+            style="margin-bottom: 20px;"
+          />
         </div>
       </div>
-    </div>
+      <div v-else class="loading">
+        <p>正在生成二维码...</p>
+      </div>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="closeBindModal">取消</el-button>
+          <el-button 
+            type="primary" 
+            @click="verifyAndBind" 
+            :disabled="!verificationToken || verificationToken.length !== 6"
+            :loading="verifying"
+          >
+            验证并绑定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <!-- 禁用2FA模态框 -->
-    <div v-if="showDisableModal" class="modal-overlay" @click="closeDisableModal">
-      <div class="modal" @click.stop>
-        <h3>禁用2FA</h3>
-        <p>为了安全起见，请输入您的2FA验证码来确认禁用操作。</p>
-        <input 
-          v-model="disableToken" 
-          type="text" 
-          placeholder="输入6位验证码"
-          class="form-input"
-          maxlength="6"
-        />
-        <div class="button-group">
-          <button @click="disable2FA" class="btn btn-danger" :disabled="!disableToken">
+    <el-dialog v-model="showDisableModal" title="禁用2FA" width="400px" :close-on-click-modal="false">
+      <p>为了安全起见，请输入该用户的2FA验证码来确认禁用操作。</p>
+      <el-input 
+        v-model="disableToken" 
+        placeholder="输入6位验证码"
+        maxlength="6"
+        style="margin: 20px 0;"
+      />
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="closeDisableModal">取消</el-button>
+          <el-button 
+            type="danger" 
+            @click="disable2FA" 
+            :disabled="!disableToken || disableToken.length !== 6"
+            :loading="disabling"
+          >
             确认禁用
-          </button>
-          <button @click="closeDisableModal" class="btn btn-secondary">取消</button>
-        </div>
-      </div>
-    </div>
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <!-- 备用码模态框 -->
-    <div v-if="showBackupModal" class="modal-overlay" @click="closeBackupModal">
-      <div class="modal" @click.stop>
-        <h3>备用验证码</h3>
-        <div v-if="backupCodes.length > 0" class="backup-codes">
-          <p>请妥善保管以下备用验证码，每个码只能使用一次：</p>
-          <div class="codes-grid">
-            <div v-for="code in backupCodes" :key="code" class="code-item">
-              {{ code }}
-            </div>
-          </div>
-          <div class="button-group">
-            <button @click="regenerateBackupCodes" class="btn btn-warning">
-              重新生成
-            </button>
-            <button @click="closeBackupModal" class="btn btn-secondary">关闭</button>
-          </div>
-        </div>
-        <div v-else class="loading">
-          <p>正在获取备用码...</p>
+    <el-dialog v-model="showBackupModal" title="备用验证码" width="600px" :close-on-click-modal="false">
+      <div v-if="backupCodes.length > 0" class="backup-codes">
+        <p>请妥善保管以下备用验证码，每个码只能使用一次：</p>
+        <div class="codes-grid">
+          <el-tag
+            v-for="code in backupCodes"
+            :key="code"
+            class="backup-code"
+            size="large"
+          >
+            {{ code }}
+          </el-tag>
         </div>
       </div>
-    </div>
+      <div v-else class="loading">
+        <p>正在获取备用码...</p>
+      </div>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="regenerateBackupCodes" type="warning" :loading="regenerating">
+            重新生成
+          </el-button>
+          <el-button @click="closeBackupModal">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { api } from '../lib/api'
 
 // 类型定义
@@ -221,6 +250,7 @@ interface User {
 
 // 响应式数据
 const users = ref<User[]>([])
+const loading = ref(false)
 const stats = ref({
   totalUsers: 0,
   enabled2FA: 0,
@@ -235,6 +265,11 @@ const securityStats = ref({
   activeLocks: 0,
   pendingRecoveries: 0
 })
+
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
 
 // 模态框状态
 const showBindModal = ref(false)
@@ -251,10 +286,21 @@ const verificationToken = ref('')
 const disableToken = ref('')
 const backupCodes = ref([])
 
+// 加载状态
+const verifying = ref(false)
+const disabling = ref(false)
+const regenerating = ref(false)
+
 // 获取用户列表和2FA状态
 const loadUsers = async () => {
+  loading.value = true
   try {
-    const response = await api.get('/users')
+    const response = await api.get('/users', {
+      params: {
+        page: currentPage.value,
+        limit: pageSize.value
+      }
+    })
     // 正确处理API返回的数据结构
     const userList = response.data.data || response.data
     users.value = userList.map((user: any) => ({
@@ -276,14 +322,31 @@ const loadUsers = async () => {
     
     // 计算统计信息
     stats.value = {
-      totalUsers: users.value.length,
+      totalUsers: response.data.total || users.value.length,
       enabled2FA: users.value.filter(u => u.twoFactorEnabled).length,
       lockedUsers: users.value.filter(u => u.lockStatus?.locked).length,
       pendingRecoveries: 0 // 稍后获取
     }
+    
+    total.value = response.data.total || users.value.length
   } catch (error) {
     console.error('加载用户列表失败:', error)
+    ElMessage.error('加载用户列表失败')
+  } finally {
+    loading.value = false
   }
+}
+
+// 分页处理
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1
+  loadUsers()
+}
+
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val
+  loadUsers()
 }
 
 // 获取安全统计
@@ -293,6 +356,7 @@ const loadSecurityStats = async () => {
     securityStats.value = response.data
   } catch (error) {
     console.error('加载安全统计失败:', error)
+    ElMessage.error('加载安全统计失败')
   }
 }
 
@@ -303,36 +367,61 @@ const showBind2FAModal = async (user: User) => {
   verificationToken.value = ''
   
   try {
-    const response = await api.get('/auth/two-factor/generate')
-    qrCodeData.value = response.data
+    // 使用用户特定的setup API获取密钥
+    const response = await api.get(`/auth/two-factor/setup/${user.id}`)
+    const secret = response.data.secret
+    const userEmail = response.data.userEmail
+    
+    // 生成otpauth URL，对邮箱地址进行URL编码
+    const encodedEmail = encodeURIComponent(userEmail)
+    const otpauthUrl = `otpauth://totp/${encodedEmail}?secret=${secret}&issuer=BlogAdmin`
+    
+    // 使用qrcode库生成二维码图片
+    const QRCode = (await import('qrcode')).default
+    const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl)
+    
+    qrCodeData.value = {
+      secret: secret,
+      qrCode: qrCodeDataUrl
+    }
   } catch (error) {
     console.error('生成二维码失败:', error)
+    ElMessage.error('生成二维码失败')
   }
 }
 
 // 验证并绑定2FA
 const verifyAndBind = async () => {
   if (!verificationToken.value || verificationToken.value.length !== 6) {
-    alert('请输入6位验证码')
+    ElMessage.warning('请输入6位验证码')
     return
   }
   
+  if (!selectedUser.value) {
+    ElMessage.error('未选择用户')
+    return
+  }
+  
+  verifying.value = true
   try {
     if (!qrCodeData.value) {
-      alert('二维码数据不存在，请重新生成')
+      ElMessage.error('二维码数据不存在，请重新生成')
       return
     }
-    await api.post('/auth/two-factor/bind', {
+    // 使用用户特定的enable API
+    const response = await api.post(`/auth/two-factor/enable/${selectedUser.value.id}`, {
       token: verificationToken.value,
       secret: qrCodeData.value.secret
     })
     
-    alert('2FA绑定成功！')
+    ElMessage.success('2FA绑定成功！')
     closeBindModal()
     loadUsers() // 重新加载用户列表
   } catch (error) {
     console.error('绑定2FA失败:', error)
-    alert('绑定失败，请检查验证码是否正确')
+    ElMessage.error('绑定失败，请检查验证码是否正确')
+  } finally {
+    verifying.value = false
   }
 }
 
@@ -346,21 +435,30 @@ const showDisable2FAModal = (user: User) => {
 // 禁用2FA
 const disable2FA = async () => {
   if (!disableToken.value || disableToken.value.length !== 6) {
-    alert('请输入6位验证码')
+    ElMessage.warning('请输入6位验证码')
     return
   }
   
+  if (!selectedUser.value) {
+    ElMessage.error('未选择用户')
+    return
+  }
+  
+  disabling.value = true
   try {
-    await api.post('/auth/two-factor/disable', {
+    // 使用用户特定的disable API
+    await api.post(`/auth/two-factor/disable/${selectedUser.value.id}`, {
       token: disableToken.value
     })
     
-    alert('2FA已禁用')
+    ElMessage.success('2FA已禁用')
     closeDisableModal()
     loadUsers() // 重新加载用户列表
   } catch (error) {
     console.error('禁用2FA失败:', error)
-    alert('禁用失败，请检查验证码是否正确')
+    ElMessage.error('禁用失败，请检查验证码是否正确')
+  } finally {
+    disabling.value = false
   }
 }
 
@@ -371,25 +469,30 @@ const showBackupCodesModal = async (user: User) => {
   backupCodes.value = []
   
   try {
-    // 这里需要为特定用户获取备用码，但API可能需要调整
-    // 暂时使用当前用户的备用码
-    const response = await api.get('/auth/two-factor/backup-codes')
+    // 使用新的用户特定API获取备用码
+    const response = await api.get(`/auth/two-factor/backup-codes/${user.id}`)
     backupCodes.value = response.data.codes || response.data
   } catch (error) {
     console.error('获取备用码失败:', error)
-    alert('获取备用码失败')
+    ElMessage.error('获取备用码失败')
   }
 }
 
 // 重新生成备用码
 const regenerateBackupCodes = async () => {
+  if (!selectedUser.value) return
+  
+  regenerating.value = true
   try {
-    const response = await api.post('/auth/two-factor/regenerate-backup-codes')
+    // 使用新的用户特定API重新生成备用码
+    const response = await api.post(`/auth/two-factor/regenerate-backup-codes/${selectedUser.value.id}`)
     backupCodes.value = response.data.codes || response.data
-    alert('备用码已重新生成')
+    ElMessage.success('备用码已重新生成')
   } catch (error) {
     console.error('重新生成备用码失败:', error)
-    alert('重新生成失败')
+    ElMessage.error('重新生成失败')
+  } finally {
+    regenerating.value = false
   }
 }
 
@@ -400,11 +503,11 @@ const unlockUser = async (user: User) => {
       userId: user.id
     })
     
-    alert('用户已解锁')
+    ElMessage.success('用户已解锁')
     loadUsers() // 重新加载用户列表
   } catch (error) {
     console.error('解锁用户失败:', error)
-    alert('解锁失败')
+    ElMessage.error('解锁失败')
   }
 }
 
@@ -603,6 +706,12 @@ onMounted(() => {
   font-size: 0.7em;
 }
 
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -611,46 +720,18 @@ onMounted(() => {
 
 .stat-item {
   background: #f8f9fa;
-  padding: 15px;
-  border-radius: 6px;
+  padding: 20px;
+  border-radius: 8px;
 }
 
 .stat-item h3 {
-  margin: 0 0 10px 0;
+  margin: 0 0 15px 0;
   color: #333;
 }
 
 .stat-details p {
-  margin: 5px 0;
+  margin: 8px 0;
   color: #666;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: white;
-  padding: 30px;
-  border-radius: 8px;
-  max-width: 500px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.modal h3 {
-  margin: 0 0 20px 0;
-  color: #333;
 }
 
 .qr-section {
@@ -663,29 +744,12 @@ onMounted(() => {
 
 .qr-code img {
   max-width: 200px;
-  height: auto;
+  border: 1px solid #ddd;
+  border-radius: 8px;
 }
 
 .verification-section {
   margin-top: 20px;
-  text-align: left;
-}
-
-.form-input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-bottom: 15px;
-  font-size: 1.1em;
-  text-align: center;
-  letter-spacing: 2px;
-}
-
-.button-group {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
 }
 
 .backup-codes {
@@ -694,23 +758,26 @@ onMounted(() => {
 
 .codes-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
   margin: 20px 0;
 }
 
-.code-item {
-  background: #f8f9fa;
-  padding: 10px;
-  border-radius: 4px;
+.backup-code {
+  text-align: center;
   font-family: monospace;
-  font-size: 1.1em;
-  font-weight: bold;
-  color: #333;
+  font-size: 16px;
 }
 
 .loading {
   text-align: center;
+  padding: 40px;
   color: #666;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style> 

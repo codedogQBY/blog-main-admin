@@ -217,6 +217,97 @@
       </div>
     </div>
   </div>
+
+  <!-- 2FA验证对话框 -->
+  <el-dialog
+    v-model="show2FAModal"
+    title="双因素认证"
+    width="420px"
+    :close-on-click-modal="false"
+    :show-close="false"
+    class="twofa-dialog"
+  >
+    <div v-if="!showBackupInput" class="twofa-content">
+      <div class="twofa-header">
+        <div class="twofa-icon">
+          <el-icon :size="32" color="#3b82f6">
+            <Key />
+          </el-icon>
+        </div>
+        <h3>安全验证</h3>
+        <p>请输入认证器应用中显示的6位验证码</p>
+      </div>
+      
+      <div class="twofa-form">
+        <el-input
+          v-model="twoFAToken"
+          placeholder="000000"
+          maxlength="6"
+          class="twofa-input"
+          size="large"
+        />
+        
+        <div class="twofa-actions">
+          <el-button 
+            text 
+            @click="useBackupCode"
+            class="backup-button"
+          >
+            使用备用验证码
+          </el-button>
+          <el-button
+            type="primary"
+            size="large"
+            :loading="verifying2FA"
+            @click="verify2FA"
+            class="verify-button"
+          >
+            验证
+          </el-button>
+        </div>
+      </div>
+    </div>
+    
+    <div v-else class="twofa-content">
+      <div class="twofa-header">
+        <div class="twofa-icon">
+          <el-icon :size="32" color="#3b82f6">
+            <Key />
+          </el-icon>
+        </div>
+        <h3>备用验证码</h3>
+        <p>请输入您的备用验证码</p>
+      </div>
+      
+      <div class="twofa-form">
+        <el-input
+          v-model="backupCode"
+          placeholder="请输入备用验证码"
+          class="twofa-input"
+          size="large"
+        />
+        
+        <div class="twofa-actions">
+          <el-button 
+            text 
+            @click="showBackupInput = false"
+            class="back-button"
+          >
+            返回
+          </el-button>
+          <el-button
+            type="primary"
+            size="large"
+            :loading="verifyingBackup"
+            @click="verifyBackupCode"
+            class="verify-button"
+          >
+            验证
+          </el-button>
+        </div>
+      </div>
+    </div>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -237,7 +328,7 @@ const agreeTerms = ref(false)
 const sendingCode = ref(false)
 const countdown = ref(0)
 
-// 2FA验证相关状态
+// 2FA相关状态
 const show2FAModal = ref(false)
 const twoFAToken = ref('')
 const verifying2FA = ref(false)
@@ -356,24 +447,25 @@ const handleLogin = async () => {
   await loginFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        const response = await authApi.login({ mail: loginForm.mail, password: loginForm.password })
+        const result = await authStore.login(loginForm.mail, loginForm.password)
         
-        // 检查是否需要2FA验证
-        if (response.requires2FA && response.userId) {
-          pendingUserId.value = response.userId
+        if (result === true) {
+          ElMessage.success('登录成功')
+          // 检查是否需要设置2FA
+          if (authStore.needsSetup2FA) {
+            router.push('/admin/setup-2fa')
+          } else {
+            router.push('/admin')
+          }
+        } else if (typeof result === 'object' && result.requires2FA) {
+          // 需要2FA验证
+          pendingUserId.value = result.userId || ''
           show2FAModal.value = true
           twoFAToken.value = ''
           showBackupInput.value = false
           backupCode.value = ''
         } else {
-          // 正常登录流程
-          const success = await authStore.login(loginForm.mail, loginForm.password)
-          if (success) {
-            ElMessage.success('登录成功')
-            router.push('/admin')
-          } else {
-            ElMessage.error('登录失败，请检查邮箱和密码')
-          }
+          ElMessage.error('登录失败，请检查邮箱和密码')
         }
       } catch (error) {
         console.error('登录失败:', error)
@@ -392,11 +484,13 @@ const verify2FA = async () => {
 
   try {
     verifying2FA.value = true
-    await authApi.verify2FA(pendingUserId.value, twoFAToken.value)
+    const result = await authApi.verify2FA(pendingUserId.value, twoFAToken.value)
     
-    // 2FA验证成功，完成登录
-    const success = await authStore.login(loginForm.mail, loginForm.password)
-    if (success) {
+    // 2FA验证成功，保存token并设置登录状态
+    if (result.accessToken) {
+      localStorage.setItem('accessToken', result.accessToken)
+      await authStore.fetchProfile()
+      authStore.startTokenCheck()
       ElMessage.success('登录成功')
       show2FAModal.value = false
       router.push('/admin')
@@ -424,17 +518,27 @@ const verifyBackupCode = async () => {
 
   try {
     verifyingBackup.value = true
-    await authApi.verifyBackupCode(pendingUserId.value, backupCode.value)
+    const result = await authApi.verifyBackupCode(pendingUserId.value, backupCode.value)
     
-    // 备用码验证成功，完成登录
-    const success = await authStore.login(loginForm.mail, loginForm.password)
-    if (success) {
-      ElMessage.success('登录成功')
-      show2FAModal.value = false
-      router.push('/admin')
+    // 备用验证码验证成功
+    if (result.accessToken) {
+      localStorage.setItem('accessToken', result.accessToken)
+      await authStore.fetchProfile()
+      authStore.startTokenCheck()
+      
+      // 检查是否需要重新设置2FA
+      if (result.requiresReSetup) {
+        ElMessage.success(result.message || '备用码验证成功，请重新绑定2FA')
+        show2FAModal.value = false
+        router.push('/admin/setup-2fa')
+      } else {
+        ElMessage.success('登录成功')
+        show2FAModal.value = false
+        router.push('/admin')
+      }
     }
   } catch (error) {
-    console.error('备用码验证失败:', error)
+    console.error('备用验证码验证失败:', error)
     ElMessage.error('备用验证码错误，请重试')
   } finally {
     verifyingBackup.value = false
@@ -447,6 +551,11 @@ const handleRegister = async () => {
   
   await registerFormRef.value.validate(async (valid) => {
     if (valid) {
+      if (!agreeTerms.value) {
+        ElMessage.warning('请先同意用户协议和隐私政策')
+        return
+      }
+
       try {
         await authApi.register({
           name: registerForm.name,
@@ -454,11 +563,12 @@ const handleRegister = async () => {
           password: registerForm.password,
           code: registerForm.verificationCode
         })
+        
         ElMessage.success('注册成功，请登录')
         switchMode(false)
       } catch (error) {
         console.error('注册失败:', error)
-        ElMessage.error('注册失败，请检查信息后重试')
+        ElMessage.error('注册失败，请稍后重试')
       }
     }
   })
@@ -812,5 +922,164 @@ const handleRegister = async () => {
   .auth-card {
     padding: 20px;
   }
+}
+
+/* 2FA验证对话框样式 */
+.twofa-content {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.twofa-input {
+  margin: 20px 0;
+  text-align: center;
+  letter-spacing: 4px;
+  font-size: 20px;
+}
+
+.twofa-input :deep(input) {
+  text-align: center;
+  letter-spacing: 4px;
+  font-size: 20px;
+}
+
+.twofa-actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.twofa-dialog :deep(.el-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+}
+
+.twofa-dialog :deep(.el-dialog__header) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom: none;
+  padding: 24px 32px;
+}
+
+.twofa-dialog :deep(.el-dialog__title) {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+}
+
+.twofa-dialog :deep(.el-dialog__body) {
+  padding: 32px;
+  background: white;
+}
+
+.twofa-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.twofa-icon {
+  margin-bottom: 16px;
+  display: inline-block;
+  padding: 16px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 50%;
+  color: #3b82f6;
+}
+
+.twofa-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.twofa-header p {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0;
+}
+
+.twofa-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.twofa-input {
+  width: 100%;
+  margin: 24px 0;
+  text-align: center;
+  letter-spacing: 8px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.twofa-input :deep(.el-input__wrapper) {
+  border-radius: 12px;
+  box-shadow: 0 0 0 2px #e2e8f0;
+  transition: all 0.2s ease;
+  padding: 16px;
+}
+
+.twofa-input :deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 2px #cbd5e1;
+}
+
+.twofa-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.twofa-input :deep(input) {
+  text-align: center;
+  letter-spacing: 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.twofa-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin-top: 24px;
+}
+
+.backup-button,
+.back-button {
+  color: #3b82f6;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.backup-button:hover,
+.back-button:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+}
+
+.verify-button {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border: none;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.verify-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+.verify-button:active {
+  transform: translateY(0);
 }
 </style> 

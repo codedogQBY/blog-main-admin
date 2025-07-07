@@ -19,6 +19,8 @@
     "@tiptap/pm": "^2.23.0",
     "@tiptap/starter-kit": "^2.23.0",
     "@tiptap/vue-3": "^2.23.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/speakeasy": "^2.0.10",
     "@websee/core": "^4.0.2",
     "@websee/performance": "^4.0.2",
     "@websee/recordscreen": "^4.0.2",
@@ -30,6 +32,8 @@
     "lowlight": "^3.3.0",
     "lucide-vue-next": "^0.525.0",
     "pinia": "^2.1.7",
+    "qrcode": "^1.5.4",
+    "speakeasy": "^2.0.0",
     "vue": "^3.5.17",
     "vue-router": "^4.2.5",
     "vuedraggable": "^4.1.0"

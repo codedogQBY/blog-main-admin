@@ -1283,17 +1283,42 @@ const handleImageLoad = (event: Event) => {
 
 .empty-state {
   text-align: center;
-  padding: 40px 20px;
+  padding: 60px 20px;
   color: #666;
 
-  .el-icon {
-    font-size: 48px;
-    color: #c0c4cc;
-    margin-bottom: 16px;
+  .empty-content {
+    max-width: 400px;
+    margin: 0 auto;
   }
 
-  .empty-text {
+  .empty-icon {
+    margin-bottom: 20px;
+    
+    .el-icon {
+      font-size: 64px;
+      color: #c0c4cc;
+    }
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 500;
+    color: #303133;
+    margin: 0 0 12px 0;
+    line-height: 1.4;
+  }
+
+  p {
     font-size: 14px;
+    color: #909399;
+    margin: 0 0 24px 0;
+    line-height: 1.5;
+  }
+
+  .empty-action {
+    .el-icon {
+      margin-right: 8px;
+    }
   }
 }
 

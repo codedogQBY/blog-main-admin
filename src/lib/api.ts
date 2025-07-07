@@ -65,6 +65,15 @@ export interface LoginResponse {
   requires2FA?: boolean
   userId?: string
   message?: string
+  needsSetup2FA?: boolean
+  requiresReSetup?: boolean
+  user?: {
+    id: string
+    name: string
+    mail: string
+    twoFactorEnabled: boolean
+    isSuperAdmin: boolean
+  }
 }
 
 export interface RegisterRequest {
@@ -407,12 +416,14 @@ class ApiClient {
   }
 
   // 2FA相关方法
-  async verify2FA(userId: string, token: string): Promise<void> {
-    await this.post('/auth/two-factor/verify', { userId, token })
+  async verify2FA(userId: string, token: string): Promise<LoginResponse> {
+    const response = await this.post<LoginResponse>('/auth/two-factor/verify', { userId, token })
+    return response.data
   }
 
-  async verifyBackupCode(userId: string, code: string): Promise<void> {
-    await this.post('/auth/two-factor/verify-backup-code', { userId, code })
+  async verifyBackupCode(userId: string, code: string): Promise<LoginResponse> {
+    const response = await this.post<LoginResponse>('/auth/two-factor/verify-backup-code', { userId, code })
+    return response.data
   }
 
   // 用户管理
