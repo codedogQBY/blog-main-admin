@@ -147,11 +147,12 @@
                 type="primary" 
                 size="small"
                 @click="generateExcerpt"
-                :disabled="!form.title || !form.content"
+                :disabled="!form.title || !form.content || isGeneratingExcerpt"
+                :loading="isGeneratingExcerpt"
                 class="generate-excerpt-btn"
               >
-                <el-icon><Refresh /></el-icon>
-                AI生成
+                <el-icon v-if="!isGeneratingExcerpt"><Refresh /></el-icon>
+                {{ isGeneratingExcerpt ? '生成中...' : 'AI生成' }}
               </el-button>
             </div>
           </div>
@@ -175,11 +176,12 @@
                   type="primary" 
                   size="small"
                   @click="generateSlug"
-                  :disabled="!form.title"
+                  :disabled="!form.title || isGeneratingSlug"
+                  :loading="isGeneratingSlug"
                   class="generate-slug-btn"
                 >
-                  <el-icon><Refresh /></el-icon>
-                  AI生成
+                  <el-icon v-if="!isGeneratingSlug"><Refresh /></el-icon>
+                  {{ isGeneratingSlug ? '生成中...' : 'AI生成' }}
                 </el-button>
                 <el-button 
                   type="info" 
@@ -259,11 +261,12 @@
                 type="primary" 
                 size="small"
                 @click="generateSEO"
-                :disabled="!form.title || !form.content"
+                :disabled="!form.title || !form.content || isGeneratingSEO"
+                :loading="isGeneratingSEO"
                 class="generate-seo-btn"
               >
-                <el-icon><Refresh /></el-icon>
-                AI生成
+                <el-icon v-if="!isGeneratingSEO"><Refresh /></el-icon>
+                {{ isGeneratingSEO ? '生成中...' : 'AI生成' }}
               </el-button>
             </div>
             <div class="seo-inputs">
@@ -464,6 +467,11 @@ const publishing = ref(false)
 const lastSaved = ref<Date | null>(null)
 const previewVisible = ref(false)
 const hasUnsavedChanges = ref(false)
+
+// AI生成loading状态
+const isGeneratingSlug = ref(false)
+const isGeneratingExcerpt = ref(false)
+const isGeneratingSEO = ref(false)
 
 // 数据
 const categories = ref<any[]>([])
@@ -859,19 +867,11 @@ const generateSlug = async () => {
     return
   }
   
+  isGeneratingSlug.value = true
+  
   try {
-    // 显示加载状态
-    const loadingMessage = ElMessage({
-      message: '正在使用AI生成文章别名...',
-      type: 'info',
-      duration: 0
-    })
-    
     // 调用AI生成slug
     const result = await articleApi.generateSlugWithAI(form.title, form.content)
-    
-    // 关闭加载消息
-    loadingMessage.close()
     
     if (result.slug) {
       form.slug = result.slug
@@ -885,6 +885,8 @@ const generateSlug = async () => {
     console.error('AI生成slug失败:', error)
     ElMessage.warning('AI生成失败，使用本地生成方式')
     generateLocalSlug()
+  } finally {
+    isGeneratingSlug.value = false
   }
 }
 
@@ -900,19 +902,11 @@ const generateExcerpt = async () => {
     return
   }
   
+  isGeneratingExcerpt.value = true
+  
   try {
-    // 显示加载状态
-    const loadingMessage = ElMessage({
-      message: '正在使用AI生成文章摘要...',
-      type: 'info',
-      duration: 0
-    })
-    
     // 调用AI生成摘要
     const result = await articleApi.generateExcerptWithAI(form.title, form.content)
-    
-    // 关闭加载消息
-    loadingMessage.close()
     
     if (result.excerpt) {
       form.excerpt = result.excerpt
@@ -922,6 +916,8 @@ const generateExcerpt = async () => {
   } catch (error) {
     console.error('AI生成摘要失败:', error)
     ElMessage.warning('AI生成摘要失败')
+  } finally {
+    isGeneratingExcerpt.value = false
   }
 }
 
@@ -937,19 +933,11 @@ const generateSEO = async () => {
     return
   }
   
+  isGeneratingSEO.value = true
+  
   try {
-    // 显示加载状态
-    const loadingMessage = ElMessage({
-      message: '正在使用AI生成SEO内容...',
-      type: 'info',
-      duration: 0
-    })
-    
     // 调用AI生成SEO内容
     const result = await articleApi.generateSEOWithAI(form.title, form.content)
-    
-    // 关闭加载消息
-    loadingMessage.close()
     
     if (result.metaTitle && result.metaDescription && result.metaKeywords) {
       form.metaTitle = result.metaTitle
@@ -961,6 +949,8 @@ const generateSEO = async () => {
   } catch (error) {
     console.error('AI生成SEO内容失败:', error)
     ElMessage.warning('AI生成SEO内容失败')
+  } finally {
+    isGeneratingSEO.value = false
   }
 }
 
