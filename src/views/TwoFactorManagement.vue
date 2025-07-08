@@ -29,27 +29,27 @@
     <div class="section">
       <h2>用户2FA状态</h2>
       <div class="table-container">
-        <el-table :data="users" style="width: 100%" v-loading="loading">
-          <el-table-column prop="name" label="用户" />
-          <el-table-column prop="mail" label="邮箱" />
-          <el-table-column label="2FA状态" width="120">
+        <el-table :data="users" style="width: 100%" v-loading="loading" class="user-table">
+          <el-table-column prop="name" label="用户" min-width="150" />
+          <el-table-column prop="mail" label="邮箱" min-width="200" />
+          <el-table-column label="2FA状态" min-width="120">
             <template #default="{ row }">
               <el-tag :type="row.twoFactorEnabled ? 'success' : 'info'" size="small">
                 {{ row.twoFactorEnabled ? '已启用' : '未启用' }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="设置时间" width="180">
+          <el-table-column label="设置时间" min-width="180">
             <template #default="{ row }">
               {{ row.twoFactorSetupAt ? formatDate(row.twoFactorSetupAt) : '-' }}
             </template>
           </el-table-column>
-          <el-table-column label="备用码数量" width="120">
+          <el-table-column label="备用码数量" min-width="120">
             <template #default="{ row }">
               {{ row.backupCodesCount || 0 }}
             </template>
           </el-table-column>
-          <el-table-column label="锁定状态" width="150">
+          <el-table-column label="锁定状态" min-width="150">
             <template #default="{ row }">
               <el-tag v-if="row.lockStatus?.locked" type="danger" size="small">
                 已锁定 ({{ row.lockStatus.remainingMinutes }}分钟)
@@ -57,40 +57,62 @@
               <el-tag v-else type="success" size="small">正常</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="300">
+          <el-table-column label="操作" min-width="350">
             <template #default="{ row }">
-              <el-button 
-                v-if="!row.twoFactorEnabled" 
-                @click="showBind2FAModal(row)"
-                type="primary"
-                size="small"
-              >
-                绑定2FA
-              </el-button>
-              <el-button 
-                v-if="row.twoFactorEnabled" 
-                @click="showDisable2FAModal(row)"
-                type="danger"
-                size="small"
-              >
-                禁用2FA
-              </el-button>
-              <el-button 
-                v-if="row.twoFactorEnabled" 
-                @click="showBackupCodesModal(row)"
-                type="warning"
-                size="small"
-              >
-                备用码
-              </el-button>
-              <el-button 
-                v-if="row.lockStatus?.locked" 
-                @click="unlockUser(row)"
-                type="warning"
-                size="small"
-              >
-                解锁
-              </el-button>
+              <PermissionCheck permission="two_factor.bind">
+                <el-button 
+                  v-if="!row.twoFactorEnabled" 
+                  @click="showBind2FAModal(row)"
+                  type="primary"
+                  size="small"
+                >
+                  绑定2FA
+                </el-button>
+              </PermissionCheck>
+              
+              <PermissionCheck permission="two_factor.unbind">
+                <el-button 
+                  v-if="row.twoFactorEnabled" 
+                  @click="showDisable2FAModal(row)"
+                  type="danger"
+                  size="small"
+                >
+                  禁用2FA
+                </el-button>
+              </PermissionCheck>
+              
+              <PermissionCheck permission="two_factor.read">
+                <el-button 
+                  v-if="row.twoFactorEnabled" 
+                  @click="showBackupCodesModal(row)"
+                  type="warning"
+                  size="small"
+                >
+                  备用码
+                </el-button>
+              </PermissionCheck>
+              
+              <PermissionCheck permission="two_factor.unlock">
+                <el-button 
+                  v-if="row.lockStatus?.locked" 
+                  @click="unlockUser(row)"
+                  type="warning"
+                  size="small"
+                >
+                  解锁
+                </el-button>
+              </PermissionCheck>
+              
+              <PermissionCheck permission="two_factor.update">
+                <el-button 
+                  v-if="!row.lockStatus?.locked"
+                  @click="showLockUserModal(row)"
+                  type="danger"
+                  size="small"
+                >
+                  锁定
+                </el-button>
+              </PermissionCheck>
             </template>
           </el-table-column>
         </el-table>
@@ -98,8 +120,8 @@
         <!-- 分页 -->
         <div class="pagination-container">
           <el-pagination
-            v-model:current-page="currentPage"
-            v-model:page-size="pageSize"
+            :current-page="currentPage"
+            :page-size="pageSize"
             :page-sizes="[10, 20, 50, 100]"
             :total="total"
             layout="total, sizes, prev, pager, next, jumper"
@@ -130,6 +152,148 @@
             <p>待处理恢复: {{ securityStats.pendingRecoveries }}</p>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 审计日志 -->
+    <div class="section">
+      <h2>审计日志</h2>
+      <div class="audit-tabs">
+        <el-tabs v-model="activeAuditTab" @tab-click="handleAuditTabChange">
+          <el-tab-pane label="尝试记录" name="attempts">
+            <div class="audit-table-container">
+              <el-table :data="auditAttempts" style="width: 100%" v-loading="auditLoading" class="audit-table">
+                <el-table-column label="用户" min-width="150">
+                  <template #default="{ row }">
+                    {{ row.user?.name || '未知用户' }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="attemptType" label="类型" min-width="120">
+                  <template #default="{ row }">
+                    <el-tag :type="row.attemptType === 'totp' ? 'primary' : 'warning'" size="small">
+                      {{ row.attemptType === 'totp' ? 'TOTP' : '备用码' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="success" label="结果" min-width="100">
+                  <template #default="{ row }">
+                    <el-tag :type="row.success ? 'success' : 'danger'" size="small">
+                      {{ row.success ? '成功' : '失败' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="ipAddress" label="IP地址" min-width="150" />
+                <el-table-column prop="createdAt" label="时间" min-width="200">
+                  <template #default="{ row }">
+                    {{ formatDate(row.createdAt) }}
+                  </template>
+                </el-table-column>
+              </el-table>
+              
+              <div class="pagination-container">
+                <el-pagination
+                  v-model:current-page="auditCurrentPage"
+                  v-model:page-size="auditPageSize"
+                  :page-sizes="[10, 20, 50, 100]"
+                  :total="auditTotal"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  @size-change="handleAuditSizeChange"
+                  @current-change="handleAuditCurrentChange"
+                />
+              </div>
+            </div>
+          </el-tab-pane>
+          
+          <el-tab-pane label="锁定记录" name="locks">
+            <div class="audit-table-container">
+              <el-table :data="auditLocks" style="width: 100%" v-loading="auditLoading" class="audit-table">
+                <el-table-column label="用户" min-width="150">
+                  <template #default="{ row }">
+                    {{ row.user?.name || '未知用户' }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="lockType" label="锁定类型" min-width="120">
+                  <template #default="{ row }">
+                    <el-tag :type="getLockTypeColor(row.lockType)" size="small">
+                      {{ getLockTypeLabel(row.lockType) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="lockedUntil" label="锁定到" min-width="200">
+                  <template #default="{ row }">
+                    {{ formatDate(row.lockedUntil) }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="createdAt" label="创建时间" min-width="200">
+                  <template #default="{ row }">
+                    {{ formatDate(row.createdAt) }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="状态" min-width="100">
+                  <template #default="{ row }">
+                    <el-tag :type="isLockExpired(row.lockedUntil) ? 'success' : 'danger'" size="small">
+                      {{ isLockExpired(row.lockedUntil) ? '已过期' : '活跃' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+              </el-table>
+              
+              <div class="pagination-container">
+                <el-pagination
+                  v-model:current-page="auditCurrentPage"
+                  v-model:page-size="auditPageSize"
+                  :page-sizes="[10, 20, 50, 100]"
+                  :total="auditTotal"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  @size-change="handleAuditSizeChange"
+                  @current-change="handleAuditCurrentChange"
+                />
+              </div>
+            </div>
+          </el-tab-pane>
+          
+          <el-tab-pane label="操作日志" name="logs">
+            <div class="audit-table-container">
+              <el-table :data="auditLogs" style="width: 100%" v-loading="auditLoading" class="audit-table">
+                <el-table-column label="用户" min-width="150">
+                  <template #default="{ row }">
+                    {{ row.user?.name || '未知用户' }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="action" label="操作" min-width="120">
+                  <template #default="{ row }">
+                    <el-tag :type="getActionTypeColor(row.action)" size="small">
+                      {{ getActionLabel(row.action) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作员" min-width="150">
+                  <template #default="{ row }">
+                    {{ row.admin?.name || '系统' }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="details" label="详情" min-width="200" />
+                <el-table-column prop="createdAt" label="时间" min-width="200">
+                  <template #default="{ row }">
+                    {{ formatDate(row.createdAt) }}
+                  </template>
+                </el-table-column>
+              </el-table>
+              
+              <div class="pagination-container">
+                <el-pagination
+                  v-model:current-page="auditCurrentPage"
+                  v-model:page-size="auditPageSize"
+                  :page-sizes="[10, 20, 50, 100]"
+                  :total="auditTotal"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  @size-change="handleAuditSizeChange"
+                  @current-change="handleAuditCurrentChange"
+                />
+              </div>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </div>
     </div>
 
@@ -224,6 +388,32 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 锁定用户模态框 -->
+    <el-dialog v-model="showLockModal" title="手动锁定用户" width="400px" :close-on-click-modal="false">
+      <div v-if="lockTargetUser">
+        <p>锁定用户：<b>{{ lockTargetUser.name }}</b>（{{ lockTargetUser.mail }}）</p>
+        <el-form :model="lockForm" label-width="80px" style="margin-top: 20px;">
+          <el-form-item label="锁定类型">
+            <el-select v-model="lockForm.lockType" placeholder="请选择类型" style="width: 100%">
+              <el-option label="TOTP" value="totp" />
+              <el-option label="备用码" value="backup_code" />
+              <el-option label="登录" value="login" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="时长(分钟)">
+            <el-input-number v-model="lockForm.duration" :min="1" :max="1440" style="width: 100%" />
+          </el-form-item>
+        </el-form>
+      </div>
+      <div v-else>未选择用户</div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showLockModal = false">取消</el-button>
+          <el-button type="primary" :loading="locking" @click="handleLockUser">确认锁定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -231,6 +421,8 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '../lib/api'
+import { useAuthStore } from '../lib/store'
+import PermissionCheck from '../components/PermissionCheck.vue'
 
 // 类型定义
 interface User {
@@ -291,6 +483,48 @@ const verifying = ref(false)
 const disabling = ref(false)
 const regenerating = ref(false)
 
+// 审计日志相关
+const activeAuditTab = ref('attempts') // 默认显示尝试记录
+const auditAttempts = ref<any[]>([])
+const auditLocks = ref<any[]>([])
+const auditLogs = ref<any[]>([])
+const auditLoading = ref(false)
+const auditCurrentPage = ref(1)
+const auditPageSize = ref(10)
+const auditTotal = ref(0)
+
+// 锁定相关
+const showLockModal = ref(false)
+const lockTargetUser = ref<User | null>(null)
+const lockForm = ref({ lockType: 'totp', duration: 30 })
+const locking = ref(false)
+
+function showLockUserModal(user: User) {
+  lockTargetUser.value = user
+  lockForm.value = { lockType: 'totp', duration: 30 }
+  showLockModal.value = true
+}
+
+async function handleLockUser() {
+  if (!lockTargetUser.value) return
+  locking.value = true
+  try {
+    await api.post('/auth/two-factor-auxiliary/locks/create', {
+      userId: lockTargetUser.value.id,
+      lockType: lockForm.value.lockType,
+      durationMinutes: lockForm.value.duration
+    })
+    ElMessage.success('锁定成功')
+    showLockModal.value = false
+    await loadUsers()
+    await loadAuditLogs('locks')
+  } catch (e) {
+    ElMessage.error('锁定失败')
+  } finally {
+    locking.value = false
+  }
+}
+
 // 获取用户列表和2FA状态
 const loadUsers = async () => {
   loading.value = true
@@ -312,7 +546,7 @@ const loadUsers = async () => {
     // 获取每个用户的锁定状态
     for (const user of users.value) {
       try {
-        const lockResponse = await api.get(`/auth/two-factor-auxiliary/locks/check?userId=${user.id}`)
+        const lockResponse = await api.get(`/auth/two-factor-auxiliary/locks/check-user?userId=${user.id}`)
         user.lockStatus = lockResponse.data
       } catch (error) {
         console.error('获取用户锁定状态失败:', error)
@@ -358,6 +592,117 @@ const loadSecurityStats = async () => {
     console.error('加载安全统计失败:', error)
     ElMessage.error('加载安全统计失败')
   }
+}
+
+// 获取审计日志
+const loadAuditLogs = async (type: string) => {
+  auditLoading.value = true
+  try {
+    let response
+    if (type === 'attempts') {
+      response = await api.get('/auth/two-factor-auxiliary/attempts/all', {
+        params: {
+          page: auditCurrentPage.value,
+          limit: auditPageSize.value
+        }
+      })
+      // 正确处理API返回的数据结构
+      auditAttempts.value = response.data?.attempts || []
+      auditTotal.value = response.data?.total || 0
+    } else if (type === 'locks') {
+      response = await api.get('/auth/two-factor-auxiliary/locks/all', {
+        params: {
+          page: auditCurrentPage.value,
+          limit: auditPageSize.value
+        }
+      })
+      // 正确处理API返回的数据结构
+      auditLocks.value = response.data?.locks || []
+      auditTotal.value = response.data?.total || 0
+    } else if (type === 'logs') {
+      response = await api.get('/auth/two-factor-auxiliary/logs/all', {
+        params: {
+          page: auditCurrentPage.value,
+          limit: auditPageSize.value
+        }
+      })
+      // 正确处理API返回的数据结构
+      auditLogs.value = response.data?.logs || []
+      auditTotal.value = response.data?.total || 0
+    }
+  } catch (error) {
+    console.error('加载审计日志失败:', error)
+    ElMessage.error('加载审计日志失败')
+    // 设置默认空数组
+    if (type === 'attempts') {
+      auditAttempts.value = []
+    } else if (type === 'locks') {
+      auditLocks.value = []
+    } else if (type === 'logs') {
+      auditLogs.value = []
+    }
+    auditTotal.value = 0
+  } finally {
+    auditLoading.value = false
+  }
+}
+
+// 审计日志分页处理
+const handleAuditSizeChange = (val: number) => {
+  auditPageSize.value = val
+  auditCurrentPage.value = 1
+  loadAuditLogs(activeAuditTab.value)
+}
+
+const handleAuditCurrentChange = (val: number) => {
+  auditCurrentPage.value = val
+  loadAuditLogs(activeAuditTab.value)
+}
+
+// 审计日志标签切换
+const handleAuditTabChange = (tab: any) => {
+  activeAuditTab.value = tab.paneName
+  loadAuditLogs(tab.paneName)
+}
+
+// 获取锁定类型颜色
+const getLockTypeColor = (type: string) => {
+  if (type === 'totp') return 'primary'
+  if (type === 'backup_code') return 'warning'
+  return 'info'
+}
+
+// 获取锁定类型标签
+const getLockTypeLabel = (type: string) => {
+  if (type === 'totp') return 'TOTP'
+  if (type === 'backup_code') return '备用码'
+  return type
+}
+
+// 判断锁定是否过期
+const isLockExpired = (lockedUntil: string | undefined) => {
+  if (!lockedUntil) return false
+  const lockDate = new Date(lockedUntil)
+  const now = new Date()
+  return lockDate < now
+}
+
+// 获取操作类型颜色
+const getActionTypeColor = (action: string) => {
+  if (action === 'enable') return 'success'
+  if (action === 'disable') return 'danger'
+  if (action === 'regenerate_backup_codes') return 'warning'
+  if (action === 'unlock') return 'info'
+  return 'info'
+}
+
+// 获取操作类型标签
+const getActionLabel = (action: string) => {
+  if (action === 'enable') return '启用2FA'
+  if (action === 'disable') return '禁用2FA'
+  if (action === 'regenerate_backup_codes') return '重新生成备用码'
+  if (action === 'unlock') return '解锁用户'
+  return action
 }
 
 // 显示绑定2FA模态框
@@ -540,6 +885,7 @@ const formatDate = (dateString: string) => {
 onMounted(() => {
   loadUsers()
   loadSecurityStats()
+  loadAuditLogs('attempts') // 默认加载尝试记录
 })
 </script>
 
@@ -779,5 +1125,95 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+/* 审计日志样式 */
+.audit-tabs {
+  margin-top: 20px;
+}
+
+.audit-table-container {
+  overflow-x: auto;
+  min-width: 100%;
+}
+
+.audit-table {
+  min-width: 100%;
+  width: 100%;
+}
+
+.audit-table th,
+.audit-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  white-space: nowrap;
+}
+
+.audit-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+}
+
+.audit-table .el-tag {
+  margin-right: 5px;
+}
+
+.audit-table .el-tag:last-child {
+  margin-right: 0;
+}
+
+/* 用户表格样式 */
+.user-table {
+  min-width: 100%;
+  width: 100%;
+}
+
+.user-table th,
+.user-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  white-space: nowrap;
+}
+
+.user-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+}
+
+/* 确保表格容器有足够的宽度 */
+.audit-table-container .el-table {
+  min-width: 800px;
+}
+
+.table-container .el-table {
+  min-width: 1000px;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .audit-table-container .el-table {
+    min-width: 1000px;
+  }
+  
+  .table-container .el-table {
+    min-width: 1200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .audit-table-container,
+  .table-container {
+    overflow-x: scroll;
+  }
+  
+  .audit-table-container .el-table {
+    min-width: 1200px;
+  }
+  
+  .table-container .el-table {
+    min-width: 1400px;
+  }
 }
 </style> 

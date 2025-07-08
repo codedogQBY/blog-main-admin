@@ -457,13 +457,16 @@ const handleLogin = async () => {
           } else {
             router.push('/admin')
           }
-        } else if (typeof result === 'object' && result.requires2FA) {
+        } else if (typeof result === 'object' && 'requires2FA' in result && result.requires2FA) {
           // 需要2FA验证
-          pendingUserId.value = result.userId || ''
+          pendingUserId.value = (result as any).userId || ''
           show2FAModal.value = true
           twoFAToken.value = ''
           showBackupInput.value = false
           backupCode.value = ''
+        } else if (typeof result === 'object' && 'locked' in result && result.locked) {
+          // 账户被锁定
+          ElMessage.error((result as any).message || '账户已被锁定')
         } else {
           ElMessage.error('登录失败，请检查邮箱和密码')
         }

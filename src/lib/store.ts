@@ -75,7 +75,7 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    async login(mail: string, password: string): Promise<boolean | { requires2FA: true; userId: string }> {
+    async login(mail: string, password: string): Promise<boolean | { requires2FA: true; userId: string } | { locked: true; message: string }> {
       this.loading = true
       try {
         const response = await authApi.login({ mail, password })
@@ -100,8 +100,14 @@ export const useAuthStore = defineStore('auth', {
         }
         
         return false
-      } catch (error) {
+      } catch (error: any) {
         console.error('登录失败:', error)
+        
+        // 检查是否是锁定错误
+        if (error?.response?.status === 401 && error?.response?.data?.message?.includes('锁定')) {
+          return { locked: true, message: error.response.data.message }
+        }
+        
         return false
       } finally {
         this.loading = false
