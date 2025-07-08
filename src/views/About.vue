@@ -41,197 +41,105 @@
               <span>基本信息</span>
             </div>
           </template>
-          
           <div class="config-section">
-            <div class="preview-section">
-              <div class="preview-card">
-                <div class="preview-header">
-                  <el-icon><Monitor /></el-icon>
-                  <span>预览效果</span>
+            <el-card class="basic-form-card">
+              <el-form :model="config" label-position="top" class="basic-form-horizontal">
+                <el-row :gutter="24" align="middle">
+                  <el-col :xs="24" :sm="6" class="form-bg-col">
+                    <el-form-item label="背景图片">
+                      <div class="modern-upload">
+                        <div class="upload-preview bg-preview" v-if="config.heroAvatar">
+                          <el-image :src="config.heroAvatar" fit="cover" class="preview-bg-image" />
+                          <div class="upload-overlay">
+                            <el-button type="primary" text @click="showAvatarSelector = true">
+                              <el-icon><Edit /></el-icon>更换背景
+                            </el-button>
+                          </div>
+                        </div>
+                        <div v-else class="upload-placeholder" @click="showAvatarSelector = true">
+                          <el-icon><Plus /></el-icon><span>上传背景</span>
+                        </div>
+                        <FileSelector :visible="showAvatarSelector" @update:visible="val => showAvatarSelector = val" accept="image/*" :limit="1" @select="onAvatarSelect" />
+                      </div>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24" :sm="10">
+                    <el-form-item label="个性签名">
+                      <el-input v-model="config.heroSignature" placeholder="输入个性签名" size="large" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24" :sm="4">
+                    <el-form-item label="Logo图片">
+                      <div class="modern-upload">
+                        <div class="upload-preview logo-preview" v-if="config.introLogo">
+                          <div class="logo-square">
+                            <el-image :src="config.introLogo" fit="contain" class="preview-logo-img" />
+                          </div>
+                          <div class="upload-overlay">
+                            <el-button type="primary" text @click="showLogoSelector = true">
+                              <el-icon><Edit /></el-icon>更换Logo
+                            </el-button>
+                          </div>
+                        </div>
+                        <div v-else class="upload-placeholder" @click="showLogoSelector = true">
+                          <el-icon><Plus /></el-icon><span>上传Logo</span>
+                        </div>
+                        <FileSelector :visible="showLogoSelector" @update:visible="val => showLogoSelector = val" accept="image/*" :limit="1" @select="onLogoSelect" />
+                      </div>
+                    </el-form-item>
+                  </el-col>
+                  <el-col :xs="24" :sm="4">
+                    <el-form-item label="介绍标题">
+                      <el-input v-model="config.introTitle" placeholder="输入介绍标题" size="large" />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+              </el-form>
+            </el-card>
+            <!-- 介绍段落编辑区 -->
+            <el-card class="basic-content-card">
+              <template #header>
+                <div class="modern-card-header">
+                  <el-icon><EditPen /></el-icon>
+                  <span>介绍段落</span>
                 </div>
-                <div class="preview-content">
-                  <div class="hero-preview">
-                    <el-image 
-                      :src="config.heroAvatar" 
-                      fit="cover"
-                      class="hero-avatar"
+              </template>
+              <div class="modern-content-editor">
+                <div 
+                  v-for="(content, index) in config.introContent"
+                  :key="index"
+                  class="content-item"
+                >
+                  <div class="content-header">
+                    <span class="content-badge">段落 {{ index + 1 }}</span>
+                    <el-button 
+                      type="danger" 
+                      text 
+                      @click="removeIntroContent(index)"
+                      v-if="config.introContent.length > 1"
                     >
-                      <template #error>
-                        <div class="image-placeholder">
-                          <el-icon><Avatar /></el-icon>
-                        </div>
-                      </template>
-                    </el-image>
-                    <div class="hero-info">
-                      <h3 class="hero-signature">{{ config.heroSignature || '个性签名' }}</h3>
-                      <div class="hero-logo">
-                        <el-image 
-                          :src="config.introLogo" 
-                          fit="contain"
-                          class="intro-logo"
-                        >
-                          <template #error>
-                            <div class="image-placeholder">
-                              <el-icon><Picture /></el-icon>
-                            </div>
-                          </template>
-                        </el-image>
-                      </div>
-                    </div>
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
                   </div>
+                  <el-input
+                    v-model="config.introContent[index]"
+                    type="textarea"
+                    :rows="4"
+                    placeholder="输入段落内容"
+                    class="modern-textarea"
+                  />
                 </div>
+                <el-button 
+                  type="primary" 
+                  plain 
+                  @click="addIntroContent"
+                  class="modern-add-btn"
+                >
+                  <el-icon><Plus /></el-icon>
+                  添加段落
+                </el-button>
               </div>
-            </div>
-
-            <div class="form-section">
-              <el-row :gutter="24">
-                <el-col :span="12">
-                  <el-card class="modern-card">
-                    <template #header>
-                      <div class="modern-card-header">
-                        <el-icon><Avatar /></el-icon>
-                        <span>个人展示</span>
-                      </div>
-                    </template>
-                    
-                    <el-form :model="config" label-position="top">
-                      <el-form-item label="个性签名">
-                        <el-input 
-                          v-model="config.heroSignature" 
-                          placeholder="输入个性签名"
-                          size="large"
-                        />
-                      </el-form-item>
-                      
-                      <el-form-item label="头像图片">
-                        <div class="modern-upload">
-                          <div class="upload-preview" v-if="config.heroAvatar">
-                            <el-image 
-                              :src="config.heroAvatar" 
-                              fit="cover"
-                              class="preview-image"
-                            />
-                            <div class="upload-overlay">
-                              <el-button type="primary" text @click="showAvatarSelector = true">
-                                <el-icon><Edit /></el-icon>
-                                更换图片
-                              </el-button>
-                            </div>
-                          </div>
-                          <div v-else class="upload-placeholder" @click="showAvatarSelector = true">
-                            <el-icon><Plus /></el-icon>
-                            <span>上传头像</span>
-                          </div>
-                          <FileSelector
-                            :visible="showAvatarSelector"
-                            @update:visible="val => showAvatarSelector = val"
-                            accept="image/*"
-                            :limit="1"
-                            @select="onAvatarSelect"
-                          />
-                        </div>
-                      </el-form-item>
-                    </el-form>
-                  </el-card>
-                </el-col>
-
-                <el-col :span="12">
-                  <el-card class="modern-card">
-                    <template #header>
-                      <div class="modern-card-header">
-                        <el-icon><Document /></el-icon>
-                        <span>介绍内容</span>
-                      </div>
-                    </template>
-                    
-                    <el-form :model="config" label-position="top">
-                      <el-form-item label="介绍标题">
-                        <el-input 
-                          v-model="config.introTitle" 
-                          placeholder="输入介绍标题"
-                          size="large"
-                        />
-                      </el-form-item>
-                      
-                      <el-form-item label="Logo图片">
-                        <div class="modern-upload">
-                          <div class="upload-preview" v-if="config.introLogo">
-                            <el-image 
-                              :src="config.introLogo" 
-                              fit="contain"
-                              class="preview-logo"
-                            />
-                            <div class="upload-overlay">
-                              <el-button type="primary" text @click="showLogoSelector = true">
-                                <el-icon><Edit /></el-icon>
-                                更换Logo
-                              </el-button>
-                            </div>
-                          </div>
-                          <div v-else class="upload-placeholder" @click="showLogoSelector = true">
-                            <el-icon><Plus /></el-icon>
-                            <span>上传Logo</span>
-                          </div>
-                          <FileSelector
-                            :visible="showLogoSelector"
-                            @update:visible="val => showLogoSelector = val"
-                            accept="image/*"
-                            :limit="1"
-                            @select="onLogoSelect"
-                          />
-                        </div>
-                      </el-form-item>
-                    </el-form>
-                  </el-card>
-                </el-col>
-              </el-row>
-
-              <el-card class="modern-card content-card">
-                <template #header>
-                  <div class="modern-card-header">
-                    <el-icon><EditPen /></el-icon>
-                    <span>介绍段落</span>
-                  </div>
-                </template>
-                
-                <div class="modern-content-editor">
-                  <div 
-                    v-for="(content, index) in config.introContent"
-                    :key="index"
-                    class="content-item"
-                  >
-                    <div class="content-header">
-                      <span class="content-badge">段落 {{ index + 1 }}</span>
-                      <el-button 
-                        type="danger" 
-                        text 
-                        @click="removeIntroContent(index)"
-                        v-if="config.introContent.length > 1"
-                      >
-                        <el-icon><Delete /></el-icon>
-                      </el-button>
-                    </div>
-                    <el-input
-                      v-model="config.introContent[index]"
-                      type="textarea"
-                      :rows="4"
-                      placeholder="输入段落内容"
-                      class="modern-textarea"
-                    />
-                  </div>
-                  
-                  <el-button 
-                    type="primary" 
-                    plain 
-                    @click="addIntroContent"
-                    class="modern-add-btn"
-                  >
-                    <el-icon><Plus /></el-icon>
-                    添加段落
-                  </el-button>
-                </div>
-              </el-card>
-            </div>
+            </el-card>
           </div>
         </el-tab-pane>
 
@@ -728,14 +636,16 @@ const loadConfig = async () => {
         id: tag.id,
         content: tag.content,
         position: tag.position,
-        sort: tag.sort
+        sort: tag.sort,
+        aboutId: tag.aboutId
       })) || []
       
       rightTags.value = aboutData.tags?.filter(tag => tag.position === 'right').map(tag => ({
         id: tag.id,
         content: tag.content,
         position: tag.position,
-        sort: tag.sort
+        sort: tag.sort,
+        aboutId: tag.aboutId
       })) || []
       
       // 处理章节
@@ -744,13 +654,15 @@ const loadConfig = async () => {
         title: section.title,
         content: JSON.parse(section.content),
         sort: section.sort,
+        aboutId: section.aboutId,
         expanded: false,
         images: section.images?.map(img => ({
           id: img.id,
           src: img.src,
           alt: img.alt,
           caption: img.caption,
-          sort: img.sort
+          sort: img.sort,
+          sectionId: img.sectionId
         })) || []
       })) || []
       
@@ -873,7 +785,6 @@ const saveSections = async (aboutId: string) => {
     // 获取当前数据库中的章节
     const { data: currentAbout } = await getAboutList()
     const existingSections = currentAbout[0]?.sections || []
-    
     // 删除所有现有章节
     for (const section of existingSections) {
       try {
@@ -885,24 +796,20 @@ const saveSections = async (aboutId: string) => {
         continue
       }
     }
-    
     // 创建新章节（只保存有效章节）
-    const validSections = sections.value.filter(section => 
-      section.title.trim() && section.content.some(c => c.trim())
+    const validSections = sections.value.filter(section =>
+      section.title.trim() && Array.isArray(section.content) && section.content.some((c: string) => c.trim())
     )
-    
     for (let i = 0; i < validSections.length; i++) {
       try {
         const section = validSections[i]
-        const validContent = section.content.filter(c => c.trim())
-        
+        const validContent = Array.isArray(section.content) ? section.content.filter((c: string) => c.trim()) : []
         const newSection = await createAboutSection({
           title: section.title,
           content: validContent,
           sort: i,
           aboutId
         })
-        
         // 保存章节图片
         if (section.images && section.images.length > 0) {
           const validImages = section.images
@@ -913,7 +820,6 @@ const saveSections = async (aboutId: string) => {
               caption: image.caption || '',
               sort: index
             }))
-            
           if (validImages.length > 0) {
             await batchCreateAboutImages(newSection.data.id, validImages)
           }
@@ -941,9 +847,11 @@ const removeIntroContent = (index: number) => {
 // 标签管理
 const addTag = (position: string) => {
   const newTag = {
+    id: '',
     content: '',
     position,
-    sort: 0
+    sort: 0,
+    aboutId: aboutId.value || ''
   }
   
   if (position === 'left') {
@@ -966,9 +874,11 @@ const removeRightTag = (index: number) => {
 // 章节管理
 const addSection = () => {
   sections.value.push({
+    id: '',
     title: '',
     content: [''],
     sort: sections.value.length,
+    aboutId: aboutId.value || '',
     expanded: true,
     images: []
   })
@@ -990,11 +900,15 @@ const toggleSectionExpand = (index: number) => {
 }
 
 const addSectionContent = (sectionIndex: number) => {
-  sections.value[sectionIndex].content.push('')
+  if (Array.isArray(sections.value[sectionIndex].content)) {
+    sections.value[sectionIndex].content.push('')
+  }
 }
 
 const removeSectionContent = (sectionIndex: number, contentIndex: number) => {
-  sections.value[sectionIndex].content.splice(contentIndex, 1)
+  if (Array.isArray(sections.value[sectionIndex].content)) {
+    sections.value[sectionIndex].content.splice(contentIndex, 1)
+  }
 }
 
 // 图片管理
@@ -1540,5 +1454,144 @@ onUnmounted(() => {
 .modern-card {
   width: 100%;
   overflow: visible;
+}
+.basic-info-row {
+  margin-bottom: 32px;
+}
+.basic-preview-card {
+  background: var(--el-bg-color);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px var(--el-box-shadow-lighter);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.basic-preview-avatar {
+  margin-bottom: 8px;
+}
+.basic-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 8px var(--el-box-shadow-lighter);
+}
+.basic-preview-info {
+  text-align: center;
+  width: 100%;
+}
+.basic-signature {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+  margin-bottom: 4px;
+}
+.basic-logo {
+  margin: 6px 0;
+}
+.basic-logo-img {
+  max-width: 100px;
+  max-height: 36px;
+  object-fit: contain;
+  display: inline-block;
+}
+.basic-title {
+  font-size: 15px;
+  color: var(--el-text-color-secondary);
+  margin-top: 4px;
+}
+.basic-form-card {
+  border-radius: 16px;
+  box-shadow: 0 2px 12px var(--el-box-shadow-lighter);
+  padding: 16px 8px;
+}
+.basic-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.basic-content-card {
+  border-radius: 16px;
+  box-shadow: 0 2px 12px var(--el-box-shadow-lighter);
+  padding: 0 0 16px 0;
+  margin-top: 20px;
+}
+.basic-form-horizontal {
+  padding: 0 8px;
+}
+.form-avatar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.preview-image {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 8px var(--el-box-shadow-lighter);
+}
+.preview-logo {
+  max-width: 72px;
+  max-height: 32px;
+  object-fit: contain;
+  display: inline-block;
+}
+.form-bg-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.bg-preview {
+  width: 100%;
+  min-width: 180px;
+  max-width: 320px;
+  height: 80px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px var(--el-box-shadow-lighter);
+  position: relative;
+  margin-bottom: 8px;
+}
+.preview-bg-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.logo-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.logo-square {
+  width: 72px;
+  height: 72px;
+  background: var(--el-fill-color-blank);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px var(--el-box-shadow-lighter);
+  margin-bottom: 4px;
+}
+.preview-logo-img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: transparent;
+}
+@media (max-width: 900px) {
+  .basic-form-horizontal .el-row {
+    flex-direction: column !important;
+  }
+  .form-avatar-col {
+    margin-bottom: 12px;
+  }
 }
 </style> 
