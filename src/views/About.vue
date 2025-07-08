@@ -123,11 +123,11 @@
                             <span>上传头像</span>
                           </div>
                           <FileSelector
-                            v-model="config.heroAvatar"
                             :visible="showAvatarSelector"
                             @update:visible="val => showAvatarSelector = val"
                             accept="image/*"
                             :limit="1"
+                            @select="onAvatarSelect"
                           />
                         </div>
                       </el-form-item>
@@ -173,11 +173,11 @@
                             <span>上传Logo</span>
                           </div>
                           <FileSelector
-                            v-model="config.introLogo"
                             :visible="showLogoSelector"
                             @update:visible="val => showLogoSelector = val"
                             accept="image/*"
                             :limit="1"
+                            @select="onLogoSelect"
                           />
                         </div>
                       </el-form-item>
@@ -552,10 +552,9 @@
                             </el-button>
                             
                             <FileSelector
-                              v-model="tempImageUrls"
                               :visible="showImageSelector[index] || false"
                               @update:visible="val => showImageSelector[index] = val"
-                              @update:model-value="urls => addImages(index, urls)"
+                              @select="files => addImages(index, files)"
                               accept="image/*"
                               :limit="10"
                               multiple
@@ -672,9 +671,9 @@ const config = ref({
   status: 'active'
 })
 
-const leftTags = ref([])
-const rightTags = ref([])
-const sections = ref([])
+const leftTags = ref<AboutTag[]>([])
+const rightTags = ref<AboutTag[]>([])
+const sections = ref<AboutSection[]>([])
 
 const showAvatarSelector = ref(false)
 const showLogoSelector = ref(false)
@@ -1001,21 +1000,30 @@ const removeSectionContent = (sectionIndex: number, contentIndex: number) => {
 // 图片管理
 const showImageSelector = ref({})
 
-const addImages = (sectionIndex: number, urls: string[]) => {
-  const imageUrls = urls.filter(url => typeof url === 'string')
-  if (imageUrls.length > 0) {
-    if (!sections.value[sectionIndex].images) {
-      sections.value[sectionIndex].images = []
-    }
-    sections.value[sectionIndex].images.push(...imageUrls.map(url => ({
-      src: url,
-      alt: '',
-      caption: '',
-      sort: sections.value[sectionIndex].images.length
-    })))
-    // 关闭图片选择器
-    showImageSelector.value[sectionIndex] = false
+const onAvatarSelect = (file) => {
+  config.value.heroAvatar = Array.isArray(file) ? file[0].url : file.url
+  showAvatarSelector.value = false
+}
+const onLogoSelect = (file) => {
+  config.value.introLogo = Array.isArray(file) ? file[0].url : file.url
+  showLogoSelector.value = false
+}
+const addImages = (sectionIndex: number, files: any[] | any) => {
+  const fileArr = Array.isArray(files) ? files : [files]
+  if (!sections.value[sectionIndex].images) {
+    sections.value[sectionIndex].images = []
   }
+  fileArr.forEach(file => {
+    if (file && file.url) {
+      sections.value[sectionIndex].images.push({
+        src: file.url,
+        alt: '',
+        caption: '',
+        sort: sections.value[sectionIndex].images.length
+      })
+    }
+  })
+  showImageSelector.value[sectionIndex] = false
 }
 
 const removeImage = (sectionIndex: number, imageIndex: number) => {
