@@ -927,162 +927,134 @@ const handleRegister = async () => {
   }
 }
 
-/* 2FA验证对话框样式 */
-.twofa-content {
-  text-align: center;
-  padding: 20px 0;
-}
-
-.twofa-input {
-  margin: 20px 0;
-  text-align: center;
-  letter-spacing: 4px;
-  font-size: 20px;
-}
-
-.twofa-input :deep(input) {
-  text-align: center;
-  letter-spacing: 4px;
-  font-size: 20px;
-}
-
-.twofa-actions {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-top: 20px;
-}
-
+/* 2FA验证对话框全新设计 */
 .twofa-dialog :deep(.el-dialog) {
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(59, 130, 246, 0.12);
+  max-width: 350px;
 }
-
 .twofa-dialog :deep(.el-dialog__header) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: none;
+  color: #1e293b;
   border-bottom: none;
-  padding: 24px 32px;
+  padding: 0 0 0 0;
 }
-
 .twofa-dialog :deep(.el-dialog__title) {
-  font-size: 20px;
-  font-weight: 700;
-  color: white;
+  display: none;
 }
-
 .twofa-dialog :deep(.el-dialog__body) {
-  padding: 32px;
-  background: white;
+  padding: 32px 24px 24px 24px;
+  background: #fff;
 }
-
-.twofa-header {
+.twofa-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  margin-bottom: 32px;
+  padding: 0;
 }
-
+.twofa-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 18px;
+}
 .twofa-icon {
-  margin-bottom: 16px;
-  display: inline-block;
-  padding: 16px;
-  background: rgba(59, 130, 246, 0.1);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
   border-radius: 50%;
-  color: #3b82f6;
 }
-
 .twofa-header h3 {
   font-size: 20px;
   font-weight: 700;
   color: #1e293b;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
-
 .twofa-header p {
   color: #64748b;
-  font-size: 14px;
+  font-size: 13px;
   margin: 0;
 }
-
 .twofa-form {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
-
 .twofa-input {
-  width: 100%;
-  margin: 24px 0;
+  margin: 10px 0 4px 0;
+  width: 160px;
   text-align: center;
-  letter-spacing: 8px;
-  font-size: 24px;
-  font-weight: 600;
 }
-
-.twofa-input :deep(.el-input__wrapper) {
-  border-radius: 12px;
-  box-shadow: 0 0 0 2px #e2e8f0;
-  transition: all 0.2s ease;
-  padding: 16px;
-}
-
-.twofa-input :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 2px #cbd5e1;
-}
-
-.twofa-input :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px #3b82f6;
-}
-
 .twofa-input :deep(input) {
   text-align: center;
-  letter-spacing: 8px;
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: 2px;
   color: #1e293b;
+  padding: 10px 0;
 }
-
+.twofa-input :deep(input::placeholder) {
+  font-size: 14px;
+  color: #b0b4ba;
+  opacity: 1;
+}
 .twofa-actions {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
   width: 100%;
-  margin-top: 24px;
 }
-
+.twofa-actions .el-button {
+  min-width: 90px;
+  height: 38px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
 .backup-button,
 .back-button {
-  color: #3b82f6;
-  font-size: 14px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-.backup-button:hover,
-.back-button:hover {
-  background: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
-}
-
-.verify-button {
-  width: 100%;
-  height: 48px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #64748b;
+  background: #f1f5f9;
   border: none;
-  color: white;
-  transition: all 0.2s ease;
 }
-
+.verify-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #fff;
+  border: none;
+}
 .verify-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.15);
 }
-
-.verify-button:active {
-  transform: translateY(0);
+@media (max-width: 500px) {
+  .twofa-dialog :deep(.el-dialog) {
+    max-width: 95vw;
+  }
+  .twofa-actions {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: stretch;
+  }
+  .twofa-input {
+    width: 100%;
+    font-size: 16px;
+  }
+  .twofa-input :deep(input) {
+    font-size: 16px;
+  }
+  .twofa-actions .el-button {
+    width: 100%;
+    min-width: 0;
+  }
 }
 </style> 
