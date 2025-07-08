@@ -263,6 +263,13 @@ const allMenuItems: MenuItem[] = [
         icon: Lock,
         permission: PERMISSIONS.TWO_FACTOR.READ,
         order: 5
+      },
+      {
+        path: '/admin/system-config',
+        title: '站点配置',
+        icon: Setting,
+        permission: PERMISSIONS.SYSTEM.CONFIG.UPDATE,
+        order: 99
       }
     ]
   },

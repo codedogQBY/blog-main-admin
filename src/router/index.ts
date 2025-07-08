@@ -192,6 +192,12 @@ const router = createRouter({
           name: 'MonitoringTest',
           component: () => import('../views/monitoring/MonitoringTest.vue'),
           meta: { requiresAuth: true, permissions: [PERMISSIONS.LOG.READ] }
+        },
+        {
+          path: 'system-config',
+          name: 'SystemConfig',
+          component: () => import('../views/SystemConfig.vue'),
+          meta: { requiresAuth: true, permissions: [PERMISSIONS.SYSTEM.CONFIG.UPDATE] }
         }
       ]
     },

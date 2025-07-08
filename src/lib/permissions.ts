@@ -153,5 +153,12 @@ export const PERMISSIONS = {
     RECOVERY: 'two_factor.recovery',
     UNLOCK: 'two_factor.unlock',
     STATS: 'two_factor.stats',
-  }
+  },
+
+  // 系统配置权限
+  SYSTEM: {
+    CONFIG: {
+      UPDATE: 'system.config.update',
+    },
+  },
 } as const; 
