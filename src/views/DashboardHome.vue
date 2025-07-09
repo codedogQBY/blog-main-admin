@@ -221,10 +221,13 @@ const fetchTrend = async () => {
 // 更新图表
 const updateChart = () => {
   if (!chartRef.value) return
-  
-  if (!chart.value) {
-    chart.value = echarts.init(chartRef.value)
+
+  // 每次切换类型时，销毁旧实例，重新初始化，避免option缓存
+  if (chart.value) {
+    chart.value.dispose()
+    chart.value = undefined
   }
+  chart.value = echarts.init(chartRef.value)
 
   const data = trend.value[trendType.value]
   if (!data || !Array.isArray(data)) {
@@ -232,9 +235,7 @@ const updateChart = () => {
   }
 
   let series = []
-  
   if (trendType.value === 'interactions') {
-    // 互动数据有comments和likes两个字段
     series = [
       {
         name: '评论',
@@ -254,14 +255,13 @@ const updateChart = () => {
       }
     ]
   } else {
-    // 其他数据只有count字段
     series = [
       {
         data: data.map(d => d.count || 0),
         type: 'line',
         smooth: true,
         areaStyle: {}
-        }
+      }
     ]
   }
 
@@ -282,7 +282,7 @@ const updateChart = () => {
     series
   }
 
-  chart.value.setOption(option)
+  chart.value.setOption(option, true) // 强制覆盖
 }
 
 // 监听趋势类型变化
