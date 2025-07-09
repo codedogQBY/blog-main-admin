@@ -237,32 +237,39 @@ const allMenuItems: MenuItem[] = [
         order: 1
       },
       {
+        path: '/admin/user-info',
+        title: '游客管理',
+        icon: User,
+        permission: PERMISSIONS.USERINFO.READ,
+        order: 2
+      },
+      {
         path: '/admin/roles',
         title: '角色管理', 
         icon: User,
         permission: PERMISSIONS.ROLE.READ,
-        order: 2
+        order: 3
       },
       {
         path: '/admin/permissions',
         title: '权限管理',
         icon: Key,
         permission: PERMISSIONS.PERMISSION.READ,
-        order: 3
+        order: 4
       },
       {
         path: '/admin/permission-groups',
         title: '权限组管理',
         icon: FolderOpened,
         permission: PERMISSIONS.PERMISSION.GROUP.READ,
-        order: 4
+        order: 5
       },
       {
         path: '/admin/two-factor',
         title: '2FA管理',
         icon: Lock,
         permission: PERMISSIONS.TWO_FACTOR.READ,
-        order: 5
+        order: 6
       },
       {
         path: '/admin/system-config',

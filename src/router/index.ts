@@ -56,6 +56,12 @@ const router = createRouter({
           meta: { requiresAuth: true, permissions: [PERMISSIONS.ROLE.READ] }
         },
         {
+          path: 'user-info',
+          name: 'UserInfo',
+          component: () => import('@/views/UserInfo.vue'),
+          meta: { requiresAuth: true, permissions: [PERMISSIONS.USERINFO.READ] }
+        },
+        {
           path: 'permissions',
           name: 'Permissions',
           component: () => import('../views/Permissions.vue'),

@@ -12,6 +12,13 @@ export const PERMISSIONS = {
     DELETE: 'user.delete',
   },
 
+  // 游客管理权限
+  USERINFO: {
+    READ: 'userinfo.read',
+    UPDATE: 'userinfo.update',
+    DELETE: 'userinfo.delete',
+  },
+
   // 角色管理权限
   ROLE: {
     READ: 'role.read',
