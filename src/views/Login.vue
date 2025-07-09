@@ -311,7 +311,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { Edit, Check, User, Message, Lock, Key, Platform, ChatRound } from '@element-plus/icons-vue'
@@ -327,6 +327,7 @@ const rememberMe = ref(false)
 const agreeTerms = ref(false)
 const sendingCode = ref(false)
 const countdown = ref(0)
+let countdownTimer: number | null = null
 
 // 2FA相关状态
 const show2FAModal = ref(false)
@@ -426,10 +427,14 @@ const handleSendCode = async () => {
     
     // 开始倒计时
     countdown.value = 60
-    const timer = setInterval(() => {
+    if (countdownTimer) {
+      clearInterval(countdownTimer)
+    }
+    countdownTimer = window.setInterval(() => {
       countdown.value--
       if (countdown.value <= 0) {
-        clearInterval(timer)
+        clearInterval(countdownTimer!)
+        countdownTimer = null
       }
     }, 1000)
   } catch (error) {
@@ -491,7 +496,9 @@ const verify2FA = async () => {
     
     // 2FA验证成功，保存token并设置登录状态
     if (result.accessToken) {
-      localStorage.setItem('accessToken', result.accessToken)
+      // Import secure token storage
+      const { secureTokenStorage } = await import('../lib/secure-storage')
+      secureTokenStorage.setToken(result.accessToken, 720) // 12 hours
       await authStore.fetchProfile()
       authStore.startTokenCheck()
       ElMessage.success('登录成功')
@@ -525,7 +532,8 @@ const verifyBackupCode = async () => {
     
     // 备用验证码验证成功
     if (result.accessToken) {
-      localStorage.setItem('accessToken', result.accessToken)
+      const { secureTokenStorage } = await import('../lib/secure-storage')
+      secureTokenStorage.setToken(result.accessToken, 720) // 12 hours
       await authStore.fetchProfile()
       authStore.startTokenCheck()
       
@@ -576,6 +584,14 @@ const handleRegister = async () => {
     }
   })
 }
+
+// Cleanup intervals on component unmount
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+})
 </script>
 
 <style scoped>

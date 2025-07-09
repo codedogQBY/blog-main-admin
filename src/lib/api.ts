@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { AxiosResponse } from 'axios'
+import { secureTokenStorage } from './secure-storage'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
 
@@ -333,7 +334,7 @@ class ApiClient {
   constructor() {
     // 请求拦截器：添加token
     this.client.interceptors.request.use((config) => {
-      const token = localStorage.getItem('accessToken')
+      const token = secureTokenStorage.getToken()
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       }
@@ -347,7 +348,7 @@ class ApiClient {
         if (error.response?.status === 401) {
           // 只有在不是登录页面时才清除 token 并跳转
           if (!window.location.pathname.includes('/login')) {
-            localStorage.removeItem('accessToken')
+            secureTokenStorage.removeToken()
             // 使用 Vue Router 进行导航而不是直接修改 location
             if (window.location.pathname !== '/login') {
               console.warn('Token 已过期，正在跳转到登录页面')

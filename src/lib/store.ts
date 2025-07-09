@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { authApi } from './api'
 import type { User } from './api'
+import { secureTokenStorage } from './secure-storage'
 
 export interface MenuConfig {
   id: string
@@ -93,7 +94,7 @@ export const useAuthStore = defineStore('auth', {
         }
         
         if (response.accessToken) {
-          localStorage.setItem('accessToken', response.accessToken)
+          secureTokenStorage.setToken(response.accessToken, 720) // 12 hours expiration
           await this.fetchProfile()
           this.startTokenCheck()
           return true
@@ -194,7 +195,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     logout() {
-      localStorage.removeItem('accessToken')
+      secureTokenStorage.removeToken()
       this.user = null
       this.isAuthenticated = false
       this.permissions = []
@@ -224,7 +225,7 @@ export const useAuthStore = defineStore('auth', {
       // 创建新的认证检查Promise
       this.currentAuthCheck = (async () => {
         try {
-          const token = localStorage.getItem('accessToken')
+          const token = secureTokenStorage.getToken()
           console.log('[Auth Check] Token exists:', !!token)
           
           if (!token) {
@@ -283,7 +284,7 @@ export const useAuthStore = defineStore('auth', {
       this.permissionsLoaded = false
       this.currentAuthCheck = null
       this.needsSetup2FA = false
-      localStorage.removeItem('accessToken')
+      secureTokenStorage.removeToken()
     },
 
     // 启动 token 有效性检查
@@ -293,9 +294,13 @@ export const useAuthStore = defineStore('auth', {
       
       // 每 5 分钟检查一次 token 有效性
       this.tokenCheckInterval = window.setInterval(async () => {
-        const token = localStorage.getItem('accessToken')
+        const token = secureTokenStorage.getToken()
         if (token && this.isAuthenticated) {
           try {
+            // Check if token is expiring soon and needs refresh
+            if (secureTokenStorage.isTokenExpiringSoon()) {
+              console.warn('Token is expiring soon, consider refreshing')
+            }
             await authApi.getProfile()
           } catch (error: any) {
             if (error?.response?.status === 401) {
@@ -303,6 +308,10 @@ export const useAuthStore = defineStore('auth', {
               this.logout()
             }
           }
+        } else if (!token) {
+          // Token is expired or doesn't exist, stop checking
+          this.stopTokenCheck()
+          this.logout()
         }
       }, 5 * 60 * 1000) // 5 分钟
     },

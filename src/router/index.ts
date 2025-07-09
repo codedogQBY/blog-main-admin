@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../lib/store'
 import { PERMISSIONS } from '../lib/permissions'
+import { secureTokenStorage } from '../lib/secure-storage'
 import FriendLinks from '@/views/blog/FriendLinks.vue'
 import Login from '@/views/Login.vue'
 import Dashboard from '@/views/Dashboard.vue'
@@ -219,8 +220,8 @@ router.beforeEach(async (to, from, next) => {
   
   // 检查是否需要认证
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    // 尝试从localStorage获取token并验证
-    const token = localStorage.getItem('accessToken')
+    // 尝试从secure storage获取token并验证
+    const token = secureTokenStorage.getToken()
     if (token) {
       try {
         await authStore.checkAuth()
