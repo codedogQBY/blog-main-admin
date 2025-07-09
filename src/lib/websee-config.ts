@@ -5,10 +5,12 @@ import recordscreen from '@websee/recordscreen';
 // 全局变量存储 webSee 实例
 let webseeInstance: any = null;
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
+
 // web-see 配置
 export const webseeConfig = {
   // 基础配置
-  dsn: 'http://localhost:3001/logs/report',
+  dsn: API_BASE_URL + '/logs/report',
   apikey: 'blog-admin',
   userId: 'anonymous',
   
