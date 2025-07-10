@@ -781,7 +781,7 @@ class ApiClient {
   // 图库分类管理
   async getGalleryCategories(params?: { name?: string; isEnabled?: boolean }): Promise<GalleryCategory[]> {
     // 暂时使用公开接口，避免认证问题
-    const response = await this.client.get('/gallery-categories', { params })
+    const response = await this.client.get('/gallery-categories/admin/list', { params })
     return response.data
   }
 

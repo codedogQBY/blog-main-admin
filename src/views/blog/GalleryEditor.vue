@@ -263,6 +263,7 @@ import { ArrowLeft, Plus, Picture, Star, Edit, Delete } from '@element-plus/icon
 import PermissionCheck from '../../components/PermissionCheck.vue'
 import FileSelector, { type FileType } from '../../components/FileSelector.vue'
 import { galleryApi } from '../../api'
+import { api } from '../../lib/api'
 import type { Gallery, GalleryImage, GalleryCategory } from '../../api'
 
 // 编辑器中使用的图片类型
@@ -330,18 +331,8 @@ const isEditing = computed(() => Boolean(route.params.id))
 // 加载分类列表
 const loadCategories = async () => {
   try {
-    const response = await galleryApi.getList()
-    if (response?.items) {
-      categories.value = response.items.map(item => ({
-        name: item.category || '',
-        description: item.description,
-        isEnabled: item.status === 'published',
-        sort: item.sort,
-        imageCount: item.images?.length,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt
-      }))
-    }
+    const response = await api.getGalleryCategories()
+    categories.value = response?.filter(item => item.isEnabled) || []
   } catch (error) {
     console.error('加载分类列表失败:', error)
     ElMessage.error('加载分类列表失败')

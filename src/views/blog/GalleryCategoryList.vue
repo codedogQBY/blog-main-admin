@@ -82,6 +82,7 @@
       <el-table-column prop="enabled" label="状态" width="100" align="center">
         <template #default="scope">
           <el-switch
+            :disabled="scope.row.imageCount > 0"
             v-model="scope.row.enabled"
             @change="toggleCategoryStatus(scope.row)"
           />
@@ -164,7 +165,7 @@
         </el-form-item>
 
         <el-form-item label="状态" prop="enabled">
-          <el-radio-group v-model="formData.enabled">
+          <el-radio-group v-model="formData.enabled" :disabled="!!editingCategory">
             <el-radio :value="true">启用</el-radio>
             <el-radio :value="false">禁用</el-radio>
           </el-radio-group>
@@ -262,7 +263,7 @@ const editCategory = (category: any) => {
     name: category.name,
     description: category.description || '',
     sort: category.sort || 0,
-    enabled: category.enabled
+    isEnabled: category.enabled
   })
   showCreateDialog.value = true
 }
@@ -302,7 +303,7 @@ const toggleCategoryStatus = async (category: any) => {
       name: category.name,
       description: category.description,
       sort: category.sort || 0,
-      enabled: category.enabled
+      isEnabled: category.enabled
     }
     
     await api.updateGalleryCategory(category.name, updateData)
