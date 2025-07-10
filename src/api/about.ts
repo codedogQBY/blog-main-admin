@@ -30,6 +30,7 @@ export interface AboutSection {
   sort: number
   aboutId: string
   images?: AboutImage[]
+  expanded?: boolean
 }
 
 export interface AboutImage {

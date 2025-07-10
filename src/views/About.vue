@@ -50,14 +50,13 @@
                       <div class="modern-upload">
                         <div class="upload-preview bg-preview" v-if="config.heroAvatar">
                           <el-image :src="config.heroAvatar" fit="cover" class="preview-bg-image" />
-                          <div class="upload-overlay">
-                            <el-button type="primary" text @click="showAvatarSelector = true">
-                              <el-icon><Edit /></el-icon>更换背景
-                            </el-button>
-                          </div>
                         </div>
-                        <div v-else class="upload-placeholder" @click="showAvatarSelector = true">
-                          <el-icon><Plus /></el-icon><span>上传背景</span>
+                        <div  class="upload-placeholder" @click="showAvatarSelector = true">
+                          <el-button type="primary" text>
+                            <el-icon><Plus /></el-icon><span>
+                            {{ config.heroAvatar ? '更换背景' : '上传背景' }}
+                          </span>
+                        </el-button>
                         </div>
                         <FileSelector :visible="showAvatarSelector" @update:visible="val => showAvatarSelector = val" accept="image/*" :limit="1" @select="onAvatarSelect" />
                       </div>
@@ -84,7 +83,7 @@
                         <div v-else class="upload-placeholder" @click="showLogoSelector = true">
                           <el-icon><Plus /></el-icon><span>上传Logo</span>
                         </div>
-                        <FileSelector :visible="showLogoSelector" @update:visible="val => showLogoSelector = val" accept="image/*" :limit="1" @select="onLogoSelect" />
+                        <FileSelector  :visible="showLogoSelector" @update:visible="val => showLogoSelector = val" accept="image/*" :limit="1" @select="onLogoSelect" />
                       </div>
                     </el-form-item>
                   </el-col>
@@ -543,21 +542,13 @@ import {
   getAboutList,
   createAbout,
   updateAbout,
-  createAboutTag,
-  updateAboutTag,
   deleteAboutTag,
   createAboutSection,
-  updateAboutSection,
   deleteAboutSection,
-  createAboutImage,
-  updateAboutImage,
-  deleteAboutImage,
   batchCreateAboutTags,
   batchCreateAboutImages,
-  type AboutConfig,
   type AboutTag,
   type AboutSection,
-  type AboutImage
 } from '../api/about'
 import PermissionCheck from '@/components/PermissionCheck.vue'
 
@@ -579,13 +570,14 @@ const config = ref({
   status: 'active'
 })
 
+
+
 const leftTags = ref<AboutTag[]>([])
 const rightTags = ref<AboutTag[]>([])
 const sections = ref<AboutSection[]>([])
 
 const showAvatarSelector = ref(false)
 const showLogoSelector = ref(false)
-const tempImageUrls = ref([])
 
 // 获取当前数据的序列化版本
 const getCurrentData = () => {
@@ -611,6 +603,18 @@ const initData = () => {
   rightTags.value = []
   sections.value = []
 }
+
+
+const generateId = (): string => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
+      /[xy]/g,
+      function (c) {
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      },
+    );
+  }
 
 // 加载配置
 const loadConfig = async () => {
@@ -876,7 +880,7 @@ const addSection = () => {
   sections.value.push({
     id: '',
     title: '',
-    content: [''],
+    content: '',
     sort: sections.value.length,
     aboutId: aboutId.value || '',
     expanded: true,
@@ -912,13 +916,13 @@ const removeSectionContent = (sectionIndex: number, contentIndex: number) => {
 }
 
 // 图片管理
-const showImageSelector = ref({})
+const showImageSelector = ref<Record<number, boolean>>({})
 
-const onAvatarSelect = (file) => {
+const onAvatarSelect = (file: any) => {
   config.value.heroAvatar = Array.isArray(file) ? file[0].url : file.url
   showAvatarSelector.value = false
 }
-const onLogoSelect = (file) => {
+const onLogoSelect = (file: any) => {
   config.value.introLogo = Array.isArray(file) ? file[0].url : file.url
   showLogoSelector.value = false
 }
@@ -929,11 +933,13 @@ const addImages = (sectionIndex: number, files: any[] | any) => {
   }
   fileArr.forEach(file => {
     if (file && file.url) {
-      sections.value[sectionIndex].images.push({
+      sections.value?.[sectionIndex]?.images?.push({
+        id: generateId(), // 需要生成唯一ID
         src: file.url,
         alt: '',
         caption: '',
-        sort: sections.value[sectionIndex].images.length
+        sort: sections.value[sectionIndex].images.length,
+        sectionId: sections.value[sectionIndex].id
       })
     }
   })
@@ -941,7 +947,7 @@ const addImages = (sectionIndex: number, files: any[] | any) => {
 }
 
 const removeImage = (sectionIndex: number, imageIndex: number) => {
-  sections.value[sectionIndex].images.splice(imageIndex, 1)
+  sections?.value?.[sectionIndex]?.images?.splice(imageIndex, 1)
 }
 
 const openImageSelector = (sectionIndex: number) => {

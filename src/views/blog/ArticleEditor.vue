@@ -386,7 +386,6 @@
 
     <!-- 文件选择器 -->
     <FileSelector
-      :model-value="selectedCoverImage"
       :visible="coverImagePickerVisible"
       @update:model-value="selectedCoverImage = $event"
       @update:visible="coverImagePickerVisible = $event"

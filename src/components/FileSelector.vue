@@ -308,7 +308,7 @@ interface FolderType {
 
 // Props
 interface Props {
-  modelValue: string | string[]
+  modelValue?: string | string[] | FileType | FileType[] | null
   visible: boolean
   title?: string
   multiple?: boolean
@@ -561,7 +561,13 @@ const handlePreview = (file: FileType) => {
 // 文件选择和上传
 const handleFileChange = (file: any, fileList: any[]) => {
   console.log('File changed:', file, fileList)
-  uploadFileList.value = fileList
+  
+  // 去重逻辑：只保留唯一的文件（基于 uid）
+  const uniqueFiles = fileList.filter((file, index, self) => 
+    index === self.findIndex(f => f.uid === file.uid)
+  )
+  
+  uploadFileList.value = uniqueFiles
 }
 
 const submitUpload = async () => {
@@ -570,7 +576,25 @@ const submitUpload = async () => {
     return
   }
 
-  const uploadPromises = uploadFileList.value.map(async (fileInfo) => {
+  // 再次去重：基于文件名和大小
+  const uniqueFiles = uploadFileList.value.filter((file, index, self) => 
+    index === self.findIndex(f => 
+      f.name === file.name && f.size === file.size
+    )
+  )
+
+  // 显示确认对话框
+  try {
+    await ElMessageBox.confirm(
+      `确定要上传 ${uniqueFiles.length} 个文件吗？`,
+      '确认上传',
+      { type: 'warning' }
+    )
+  } catch {
+    return // 用户取消
+  }
+
+  const uploadPromises = uniqueFiles.map(async (fileInfo) => {
     try {
       // 添加到上传列表
       const uid = Math.random().toString(36).substring(2)
@@ -682,13 +706,6 @@ const handleFileSelect = (file: FileType) => {
     }
   } else {
     selectedFileIds.value = [file.id]
-  }
-}
-
-const handleFileDoubleClick = (file: FileType) => {
-  if (props.onSelect) {
-    props.onSelect([file])
-    dialogVisible.value = false
   }
 }
 

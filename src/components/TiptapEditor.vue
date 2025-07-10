@@ -188,7 +188,6 @@
 
     <!-- 文件选择器 -->
     <FileSelector
-      :model-value="selectedImage"
       :visible="imagePickerVisible"
       @update:model-value="selectedImage = $event"
       @update:visible="imagePickerVisible = $event"
@@ -402,9 +401,9 @@ const addImage = () => {
 }
 
 // 处理图片选择
-const handleImageSelect = (file: FileType) => {
+const handleImageSelect = (file: FileType | FileType[]) => {
   if (file && editor.value) {
-    editor.value.chain().focus().setImage({ src: file.url }).run()
+    editor.value.chain().focus().setImage({ src: (file as FileType).url }).run()
   }
 }
 

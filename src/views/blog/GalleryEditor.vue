@@ -214,21 +214,8 @@
       </el-row>
     </div>
 
-    <!-- 封面图片选择器 -->
-    <FileSelector
-      v-model="selectedCoverImage"
-      :visible="coverImagePickerVisible"
-      @update:visible="coverImagePickerVisible = $event"
-      title="选择封面图片"
-      :multiple="false"
-      :max-files="1"
-      fileType="image"
-      @select="handleCoverImageSelect"
-    />
-
     <!-- 图片选择器 -->
     <FileSelector
-      v-model="selectedImages"
       :visible="imagePickerVisible"
       @update:visible="imagePickerVisible = $event"
       title="选择图片"
@@ -476,10 +463,10 @@ const addImages = () => {
 }
 
 // 处理封面图片选择
-const handleCoverImageSelect = (value: string | string[]) => {
-  const imageUrl = Array.isArray(value) ? value[0] : value
+const handleCoverImageSelect = (value: FileType | FileType[]) => {
+  const imageUrl = Array.isArray(value) ? value[0] : (value as FileType).url
   if (imageUrl && formData.images[coverImageIndex.value]) {
-    formData.images[coverImageIndex.value].imageUrl = imageUrl
+    formData.images[coverImageIndex.value].imageUrl = imageUrl as string
   }
   coverImagePickerVisible.value = false
 }

@@ -161,7 +161,6 @@ const handleSubmit = async () => {
               </div>
             </div>
             <FileSelector
-              v-model="selectedFileId"
               v-model:visible="fileSelectorVisible"
               :multiple="false"
               file-type="image"
