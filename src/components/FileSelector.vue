@@ -514,9 +514,7 @@ const handleConfirm = () => {
   const result = props.multiple ? selectedFiles : selectedFiles[0]
   emit('update:modelValue', props.multiple ? selectedFiles.map(f => f.id) : selectedFiles[0].id)
   emit('select', result)
-  if (props.onSelect) {
-    props.onSelect(result)
-  }
+  // 移除 props.onSelect 的重复调用，只保留 emit('select')
   handleClose()
 }
 
