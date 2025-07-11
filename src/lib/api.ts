@@ -876,6 +876,10 @@ export const authApi = {
   register: apiClient.register.bind(apiClient),
   sendCode: apiClient.sendCode.bind(apiClient),
   getProfile: apiClient.getProfile.bind(apiClient),
+  updateProfile: async (data: { name?: string; password?: string }) => {
+    const response = await apiClient.client.put('/profile', data)
+    return response.data
+  }
 }
 
 export const userApi = {

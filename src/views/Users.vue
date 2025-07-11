@@ -489,6 +489,29 @@ const submitForm = async () => {
   
   try {
     await userFormRef.value.validate()
+    
+    // 检查是否是超级管理员降权操作
+    if (isEdit.value && authStore.user?.id === userForm.id) {
+      // 如果是修改自己的信息，且当前是超级管理员，要取消超级管理员状态
+      if (authStore.user?.isSuperAdmin && userForm.isSuperAdmin === false) {
+        try {
+          await ElMessageBox.confirm(
+            '您正在取消自己的超级管理员权限！\n\n警告：\n• 您将失去所有超级管理员特权\n• 可能无法访问某些管理功能\n• 此操作不可轻易恢复\n\n确定要继续吗？',
+            '超级管理员降权警告',
+            {
+              confirmButtonText: '确定降权',
+              cancelButtonText: '取消',
+              type: 'warning',
+              customClass: 'superadmin-warning-dialog'
+            }
+          )
+        } catch {
+          // 用户取消操作
+          return
+        }
+      }
+    }
+    
     submitting.value = true
     
     const userData = { ...userForm }
@@ -498,6 +521,15 @@ const submitForm = async () => {
     if (isEdit.value) {
       await userApi.update(userData.id, finalUserData)
       ElMessage.success('更新成功')
+      
+      // 如果修改的是自己的信息，需要重新获取用户信息
+      if (authStore.user?.id === userData.id) {
+        await authStore.fetchProfile()
+        // 如果取消了超级管理员权限，提醒用户可能需要重新登录
+        if (authStore.user?.isSuperAdmin === false && userData.isSuperAdmin === false) {
+          ElMessage.warning('您的权限已更改，建议重新登录以确保功能正常')
+        }
+      }
     } else {
       // 确保新用户创建时有密码
       await userApi.create(userData)
@@ -993,6 +1025,44 @@ const formatDate = (date: string | Date) => {
 
   .stats-section .stats-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+// 超级管理员降权警告对话框样式
+:deep(.superadmin-warning-dialog) {
+  .el-message-box__header {
+    background: #fef0f0;
+    border-bottom: 1px solid #fde2e2;
+    border-radius: 8px 8px 0 0;
+  }
+  
+  .el-message-box__title {
+    color: #f56c6c;
+    font-weight: 600;
+  }
+  
+  .el-message-box__content {
+    padding: 20px;
+    
+    .el-message-box__message {
+      color: #606266;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+  }
+  
+  .el-message-box__btns {
+    padding: 15px 20px 20px;
+    
+    .el-button--warning {
+      background: #f56c6c;
+      border-color: #f56c6c;
+      
+      &:hover {
+        background: #f78989;
+        border-color: #f78989;
+      }
+    }
   }
 }
 </style> 

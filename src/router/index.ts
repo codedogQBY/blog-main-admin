@@ -74,6 +74,12 @@ const router = createRouter({
           meta: { requiresAuth: true, permissions: [PERMISSIONS.PERMISSION.GROUP.READ] }
         },
         {
+          path: 'profile',
+          name: 'Profile',
+          component: () => import('../views/Profile.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
           path: 'two-factor',
           name: 'TwoFactorManagement',
           component: () => import('../views/TwoFactorManagement.vue'),

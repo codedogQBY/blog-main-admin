@@ -287,16 +287,25 @@ const allMenuItems: MenuItem[] = [
     path: '/admin/friend-links',
     icon: Link,
     permission: PERMISSIONS.FRIEND_LINK.READ,
+    order: 7
+  },
+  
+  // 8. 个人信息
+  {
+    title: '个人信息',
+    path: '/admin/profile',
+    icon: User,
+    permission: '',
     order: 8
   },
   
-  // 8. 系统监控
+  // 9. 系统监控
   {
     path: '/admin/monitoring',
     title: '系统监控',
     icon: Warning,
     permission: '',
-    order: 7,
+    order: 9,
     children: [
       {
         path: '/admin/monitoring/logs',

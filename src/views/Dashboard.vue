@@ -85,9 +85,9 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu class="user-menu">
-                <el-dropdown-item command="settings">
+                <el-dropdown-item command="profile">
                   <el-icon><Setting /></el-icon>
-                  系统设置
+                  个人信息
                 </el-dropdown-item>
                 <el-dropdown-item divided command="logout">
                   <el-icon><SwitchButton /></el-icon>
@@ -228,8 +228,8 @@ const toggleSidebar = () => {
 // 处理用户下拉菜单命令
 const handleUserCommand = async (command: string) => {
   switch (command) {
-    case 'settings':
-      ElMessage.info('系统设置功能开发中...')
+    case 'profile':
+      router.push('/admin/profile')
       break
     case 'logout':
       try {
