@@ -877,7 +877,7 @@ export const authApi = {
   sendCode: apiClient.sendCode.bind(apiClient),
   getProfile: apiClient.getProfile.bind(apiClient),
   updateProfile: async (data: { name?: string; password?: string }) => {
-    const response = await apiClient.client.put('/profile', data)
+    const response = await apiClient.put('/profile', data)
     return response.data
   }
 }
