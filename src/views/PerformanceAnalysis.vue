@@ -32,7 +32,7 @@
         </div>
       </template>
       <div class="chart-container">
-        <div ref="chartRef" style="width: 100%; height: 300px;"></div>
+        <div ref="chartRef" :style="{width: '100%', height: chartHeight + 'px'}"></div>
       </div>
     </el-card>
 
@@ -199,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/lib/api'
 import * as echarts from 'echarts'
@@ -278,6 +278,7 @@ const cleanForm = reactive({
 // 图表相关
 const chartRef = ref<HTMLElement>()
 const chartType = ref('largestContentfulPaint')
+const chartHeight = ref(300)
 let chart: echarts.ECharts | null = null
 
 // 获取性能数据列表
@@ -455,12 +456,43 @@ const updateChart = async () => {
   if (!chart) return
   
   try {
-    // 获取图表数据
-    const response = await api.get(`/performance?limit=100&type=${chartType.value}`)
-    const data = response.data.data
+    // 获取图表数据，按时间正序排列
+    const response = await api.get(`/performance?limit=100&type=${chartType.value}&sortBy=timestamp&sortOrder=asc`)
+    let data = response.data.data
     
-    const xData = data.map((item: PerformanceData) => formatDate(item.timestamp))
-    const yData = data.map((item: PerformanceData) => item.value || item.duration || 0)
+    // 如果API不支持排序参数，在前端进行排序
+    if (!data || data.length === 0) {
+      const fallbackResponse = await api.get(`/performance?limit=100&type=${chartType.value}`)
+      data = fallbackResponse.data.data
+    }
+    
+    // 确保按时间正序排序（最早的在左边）
+    const sortedData = data.sort((a: PerformanceData, b: PerformanceData) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    )
+    
+    // 根据数据点数量调整图表高度和标签显示
+    const dataLength = sortedData.length
+    chartHeight.value = Math.max(300, Math.min(500, 300 + dataLength * 2))
+    
+    // 计算标签显示间隔
+    let labelInterval = 0
+    if (dataLength > 50) {
+      labelInterval = Math.floor(dataLength / 20)
+    } else if (dataLength > 20) {
+      labelInterval = Math.floor(dataLength / 15)
+    }
+    
+    // 格式化时间，显示完整信息
+    const xData = sortedData.map((item: PerformanceData) => {
+      const date = new Date(item.timestamp)
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      const day = date.getDate().toString().padStart(2, '0')
+      const hours = date.getHours().toString().padStart(2, '0')
+      const minutes = date.getMinutes().toString().padStart(2, '0')
+      return `${month}-${day} ${hours}:${minutes}`
+    })
+    const yData = sortedData.map((item: PerformanceData) => item.value || item.duration || 0)
     
     const option = {
       title: {
@@ -468,24 +500,66 @@ const updateChart = async () => {
         left: 'center'
       },
       tooltip: {
-        trigger: 'axis'
+        trigger: 'axis',
+        formatter: function(params: any) {
+          const point = params[0]
+          const originalData = sortedData[point.dataIndex]
+          return `时间: ${formatDate(originalData.timestamp)}<br/>
+                  ${getTypeDisplayName(chartType.value)}: ${formatValue(point.value, chartType.value)}`
+        }
+      },
+      grid: {
+        left: '60px',
+        right: '60px',
+        bottom: '60px',
+        top: '60px',
+        containLabel: true
       },
       xAxis: {
         type: 'category',
         data: xData,
         axisLabel: {
-          rotate: 45
+          rotate: 0,
+          interval: labelInterval,
+          fontSize: 11,
+          margin: 12,
+          showMaxLabel: true,
+          showMinLabel: true,
+          overflow: 'none'
+        },
+        axisTick: {
+          alignWithLabel: true
         }
       },
       yAxis: {
         type: 'value',
-        name: chartType.value === 'layoutShift' ? '偏移值' : '时间(ms)'
+        name: chartType.value === 'layoutShift' ? '偏移值' : '时间(ms)',
+        nameTextStyle: {
+          fontSize: 12
+        },
+        axisLabel: {
+          fontSize: 12,
+          formatter: function(value: number) {
+            if (chartType.value === 'layoutShift') {
+              return value.toFixed(3)
+            }
+            return value >= 1000 ? (value / 1000).toFixed(1) + 's' : value + 'ms'
+          }
+        }
       },
       series: [{
         data: yData,
         type: 'line',
         smooth: true,
-        name: getTypeDisplayName(chartType.value)
+        name: getTypeDisplayName(chartType.value),
+        symbol: 'circle',
+        symbolSize: 6,
+        lineStyle: {
+          width: 2
+        },
+        itemStyle: {
+          color: '#409eff'
+        }
       }]
     }
     
@@ -501,6 +575,11 @@ onMounted(() => {
   nextTick(() => {
     initChart()
   })
+})
+
+// 监听图表类型变化，自动更新图表
+watch(chartType, () => {
+  updateChart()
 })
 </script>
 
