@@ -476,7 +476,7 @@ import PermissionCheck from '@/components/PermissionCheck.vue'
 const authStore = useAuthStore()
 const loading = ref(false)
 const files = ref<any[]>([])
-const folders = ref([])
+const folders = ref<any[]>([])
 const currentFolderId = ref<string | null>(null)
 const searchKeyword = ref('')
 const showUploadDialog = ref(false)
@@ -655,7 +655,7 @@ const loadBreadcrumbPath = async (folderId: string | null) => {
     
     while (currentId) {
       const allFolders = await fileApi.getFolders()
-      const folder = allFolders.find(f => f.id === currentId)
+      const folder = allFolders.find((f: any) => f.id === currentId)
       if (folder) {
         path.unshift(folder)
         currentId = folder.parentId

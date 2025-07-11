@@ -178,7 +178,7 @@
                   type="danger" 
                   size="small" 
                   @click="deleteCategory(category)"
-                  :disabled="category.articleCount > 0"
+                  :disabled="(category.articleCount || 0) > 0"
                 >
                   <el-icon><Delete /></el-icon>
                   删除
@@ -399,7 +399,7 @@ const loadCategories = async () => {
     
     const data = await categoryApi.getAdminList(params)
     categories.value = Array.isArray(data) ? data : data.data || []
-    total.value = typeof data === 'object' ? data.total || 0 : categories.value.length
+    total.value = typeof data === 'object' && 'total' in data ? (data as any).total || 0 : categories.value.length
   } catch (error) {
     ElMessage.error('加载分类列表失败')
     console.error(error)
@@ -462,7 +462,7 @@ const editCategory = (category: Category) => {
 
 // 删除分类
 const deleteCategory = async (category: Category) => {
-  if (category.articleCount > 0) {
+  if ((category.articleCount || 0) > 0) {
     ElMessage.warning('该分类下还有文章，无法删除')
     return
   }
@@ -501,7 +501,7 @@ const submitForm = async () => {
     
     // 处理parentId：如果为空字符串，则设置为null
     if (!categoryData.parentId || categoryData.parentId === '') {
-      categoryData.parentId = null
+      (categoryData as any).parentId = null
     }
     
     if (isEdit.value) {

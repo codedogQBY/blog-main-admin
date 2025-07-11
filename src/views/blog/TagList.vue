@@ -191,7 +191,7 @@
                   type="danger" 
                   size="small" 
                   @click="deleteTag(tag)"
-                  :disabled="tag.articleCount > 0"
+                  :disabled="(tag.articleCount || 0) > 0"
                 >
                   <el-icon><Delete /></el-icon>
                   删除
@@ -416,7 +416,7 @@ const loadTags = async () => {
     
     const data = await tagApi.getList(params)
     tags.value = Array.isArray(data) ? data : data.data || []
-    total.value = typeof data === 'object' ? data.total || 0 : tags.value.length
+    total.value = typeof data === 'object' && 'total' in data ? (data as any).total || 0 : tags.value.length
   } catch (error) {
     ElMessage.error('加载标签列表失败')
     console.error(error)
@@ -478,7 +478,7 @@ const editTag = (tag: Tag) => {
 
 // 删除标签
 const deleteTag = async (tag: Tag) => {
-  if (tag.articleCount > 0) {
+  if ((tag.articleCount || 0) > 0) {
     ElMessage.warning('该标签下还有文章，无法删除')
     return
   }

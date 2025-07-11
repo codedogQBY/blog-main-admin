@@ -133,10 +133,10 @@ const stats = ref([
   { label: '用户数', value: 0, icon: markRaw(User), color: 'red' },
 ])
 
-const recentActivities = ref([])
-const recentArticles = ref([])
-const recentComments = ref([])
-const trend = ref({})
+const recentActivities = ref<any[]>([])
+const recentArticles = ref<any[]>([])
+const recentComments = ref<any[]>([])
+const trend = ref<any>({})
 
 // 获取统计数据
 const fetchStats = async () => {
@@ -161,13 +161,13 @@ const fetchRecentActivities = async () => {
     
     // 合并活动并按时间排序
     const activities = [
-      ...(data.articles || []).map(a => ({
+      ...(data.articles || []).map((a: any) => ({
         id: `article-${a.id}`,
         content: `发布了文章《${a.title}》`,
         time: a.createdAt,
         type: 'primary'
       })),
-      ...(data.comments || []).map(c => ({
+      ...(data.comments || []).map((c: any) => ({
         id: `comment-${c.id}`,
         content: c.targetType === 'article' 
           ? `评论了文章《${c.targetInfo?.title || '未知文章'}》`
@@ -177,7 +177,7 @@ const fetchRecentActivities = async () => {
         time: c.createdAt,
         type: 'success'
       })),
-      ...(data.likes || []).map(l => ({
+      ...(data.likes || []).map((l: any) => ({
         id: `like-${l.id}`,
         content: l.targetType === 'article' 
           ? `点赞了文章《${l.targetInfo?.title || '未知文章'}》`

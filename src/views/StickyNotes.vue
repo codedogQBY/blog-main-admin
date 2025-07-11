@@ -297,8 +297,8 @@ import { stickyNoteApi } from '@/lib/api'
 
 // 响应式数据
 const loading = ref(false)
-const stickyNotes = ref([])
-const categories = ref([])
+const stickyNotes = ref<any[]>([])
+const categories = ref<any[]>([])
 const stats = ref({
   totalNotes: 0,
   totalLikes: 0,
@@ -319,20 +319,20 @@ const pagination = reactive({
 
 const detailDialog = reactive({
   visible: false,
-  data: null
+  data: null as any
 })
 
 const editDialog = reactive({
   visible: false,
-  data: null,
+  data: null as any,
   loading: false
 })
 
 const defaultCategories = ['留言', '目标', '理想', '过去', '将来', '爱情', '亲情', '友情', '秘密', '信条', '无题']
 
 // 颜色类型映射
-const getColorType = (color) => {
-  const colorMap = {
+const getColorType = (color: any) => {
+  const colorMap: { [key: string]: string } = {
     pink: 'danger',
     yellow: 'warning',
     blue: 'primary',
@@ -343,14 +343,14 @@ const getColorType = (color) => {
 }
 
 // 格式化时间
-const formatDateTime = (dateString) => {
+const formatDateTime = (dateString: any) => {
   return new Date(dateString).toLocaleString('zh-CN')
 }
 
-const formatRelativeTime = (dateString) => {
+const formatRelativeTime = (dateString: any) => {
   const now = new Date()
   const date = new Date(dateString)
-  const diff = now - date
+  const diff = now.getTime() - date.getTime()
   const minutes = Math.floor(diff / (1000 * 60))
   const hours = Math.floor(diff / (1000 * 60 * 60))
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -405,13 +405,13 @@ const loadStats = async () => {
 }
 
 // 查看详情
-const viewDetail = (row) => {
+const viewDetail = (row: any) => {
   detailDialog.data = { ...row }
   detailDialog.visible = true
 }
 
 // 编辑留言
-const editStickyNote = (row) => {
+const editStickyNote = (row: any) => {
   editDialog.data = { ...row }
   editDialog.visible = true
 }
@@ -441,7 +441,7 @@ const saveEdit = async () => {
 }
 
 // 删除留言
-const deleteStickyNote = async (row) => {
+const deleteStickyNote = async (row: any) => {
   try {
     await ElMessageBox.confirm(
       `确定要删除 ${row.author} 的留言吗？此操作不可恢复。`,

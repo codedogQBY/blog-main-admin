@@ -171,7 +171,7 @@ import { api } from '../lib/api'
 // 响应式数据
 const loading = ref(false)
 const saving = ref(false)
-const signatures = ref([])
+const signatures = ref<any[]>([])
 
 // 弹窗相关
 const dialogVisible = ref(false)
@@ -234,13 +234,13 @@ const handleCreate = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (signature) => {
+const handleEdit = (signature: any) => {
   dialogMode.value = 'edit'
   Object.assign(signatureForm, signature)
   dialogVisible.value = true
 }
 
-const handleActivate = async (signature) => {
+const handleActivate = async (signature: any) => {
   try {
     await api.patch(`/diary/admin/signatures/${signature.id}`, {
       isActive: true
@@ -253,7 +253,7 @@ const handleActivate = async (signature) => {
   }
 }
 
-const handleDelete = async (signature) => {
+const handleDelete = async (signature: any) => {
   try {
     await ElMessageBox.confirm(
       `确定要删除签名"${signature.signatureName}"吗？`,
@@ -326,7 +326,7 @@ const resetSignatureForm = () => {
 }
 
 const getFontSizeValue = (size: string) => {
-  const sizeMap = {
+  const sizeMap: { [key: string]: string } = {
     sm: '14px',
     base: '16px',
     lg: '18px',
@@ -338,7 +338,7 @@ const getFontSizeValue = (size: string) => {
 }
 
 const getColorValue = (color: string) => {
-  const colorMap = {
+  const colorMap: { [key: string]: string } = {
     'gray-400': '#9ca3af',
     'blue-400': '#60a5fa',
     'green-400': '#4ade80',

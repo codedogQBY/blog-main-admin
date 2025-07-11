@@ -192,9 +192,9 @@ import { api } from '../../lib/api'
 // 响应式数据
 const loading = ref(false)
 const submitting = ref(false)
-const categories = ref([])
+const categories = ref<any[]>([])
 const showCreateDialog = ref(false)
-const editingCategory = ref(null)
+const editingCategory = ref<any>(null)
 const formRef = ref()
 
 // 搜索表单
@@ -234,7 +234,7 @@ const loadCategories = async () => {
       const backendData = category as any
       return {
         ...category,
-        enabled: backendData.isEnabled !== undefined ? backendData.isEnabled : category.enabled
+        enabled: backendData.isEnabled !== undefined ? backendData.isEnabled : (category as any).enabled
       }
     }).sort((a, b) => (a.sort || 0) - (b.sort || 0))
   } catch (error) {

@@ -8,7 +8,7 @@
 import { computed } from 'vue'
 import { useAuthStore } from '../lib/store'
 
-interface Props {
+export interface Props {
   permission?: string
   permissions?: string[]
   requireAll?: boolean

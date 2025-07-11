@@ -235,8 +235,8 @@ import { api } from '../lib/api'
 // 响应式数据
 const loading = ref(false)
 const saving = ref(false)
-const notes = ref([])
-const stats = ref(null)
+const notes = ref<any[]>([])
+const stats = ref<any>(null)
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
@@ -277,7 +277,7 @@ const noteRules: FormRules = {
 
 // 计算属性
 const dialogTitle = computed(() => {
-  const titles = {
+  const titles: { [key: string]: string } = {
     create: '新建随记',
     edit: '编辑随记',
     view: '查看随记'
@@ -331,7 +331,7 @@ const handleCreate = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row) => {
+const handleEdit = (row: any) => {
   dialogMode.value = 'edit'
   Object.assign(noteForm, {
     ...row,
@@ -340,7 +340,7 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
-const handleView = (row) => {
+const handleView = (row: any) => {
   dialogMode.value = 'view'
   Object.assign(noteForm, {
     ...row,
@@ -349,7 +349,7 @@ const handleView = (row) => {
   dialogVisible.value = true
 }
 
-const handleDelete = async (row) => {
+const handleDelete = async (row: any) => {
   try {
     await ElMessageBox.confirm(
       `确定要删除随记"${row.title}"吗？删除后无法恢复。`,
@@ -381,15 +381,14 @@ const handleSave = async () => {
     saving.value = true
 
     const data = { ...noteForm }
-    if (data.images && data.images.length === 0) {
-      delete data.images
-    }
+    const { images, ...dataWithoutImages } = data
+    const finalData = data.images && data.images.length > 0 ? data : dataWithoutImages
 
     if (dialogMode.value === 'create') {
-      await api.post('/diary/admin/notes', data)
+      await api.post('/diary/admin/notes', finalData)
       ElMessage.success('创建成功')
     } else {
-      await api.patch(`/diary/admin/notes/${data.id}`, data)
+      await api.patch(`/diary/admin/notes/${data.id}`, finalData)
       ElMessage.success('更新成功')
     }
 
@@ -404,7 +403,7 @@ const handleSave = async () => {
   }
 }
 
-const handleSortChange = ({ prop, order }) => {
+const handleSortChange = ({ prop, order }: any) => {
   sortBy.value = prop || 'createdAt'
   sortOrder.value = order === 'ascending' ? 'asc' : 'desc'
   loadData()
@@ -439,7 +438,7 @@ const resetNoteForm = () => {
 }
 
 const getWeatherName = (weather: string) => {
-  const weatherMap = {
+  const weatherMap: { [key: string]: string } = {
     sunny: '晴天',
     cloudy: '多云',
     rainy: '雨天',

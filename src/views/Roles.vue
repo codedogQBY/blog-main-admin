@@ -337,7 +337,7 @@ const pageSize = ref(10)
 const searchText = ref('')
 
 // 搜索防抖
-let searchTimeout: number | null = null
+let searchTimeout: any = null
 
 // 对话框状态
 const dialogVisible = ref(false)

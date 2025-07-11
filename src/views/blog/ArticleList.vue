@@ -498,8 +498,8 @@ const loadArticles = async () => {
     const data = await articleApi.getAdminList(params)
     
     if (data && typeof data === 'object') {
-      articles.value = data.data || data.articles || []
-      pagination.total = data.total || data.pagination?.total || 0
+      articles.value = data.data || (data as any).articles || []
+      pagination.total = data.total || (data as any).pagination?.total || 0
     } else {
       articles.value = Array.isArray(data) ? data : []
       pagination.total = articles.value.length
@@ -598,14 +598,13 @@ const handleCommand = async (command: string) => {
 const handleCopy = async (id: string) => {
   try {
     const article = await articleApi.getById(id)
+    const { id: articleId, createdAt, updatedAt, ...articleData } = article
     const newArticle = {
-      ...article,
+      ...articleData,
       title: `${article.title} - 副本`,
-      published: false
+      published: false,
+      tags: article.tags?.map((tag: any) => tag.tag?.name || tag.name || tag) || []
     }
-    delete newArticle.id
-    delete newArticle.createdAt
-    delete newArticle.updatedAt
     
     await articleApi.create(newArticle)
     ElMessage.success('文章复制成功')

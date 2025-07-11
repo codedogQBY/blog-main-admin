@@ -269,7 +269,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, defineProps, defineEmits, onMounted, withDefaults } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   HomeFilled, 
   Search, 
@@ -299,7 +299,7 @@ export interface FileType {
   folderId?: string | null
 }
 
-interface FolderType {
+export interface FolderType {
   id: string
   name: string
   parentId: string | null
@@ -307,7 +307,7 @@ interface FolderType {
 }
 
 // Props
-interface Props {
+export interface Props {
   modelValue?: string | string[] | FileType | FileType[] | null
   visible: boolean
   title?: string

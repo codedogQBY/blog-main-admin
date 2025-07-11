@@ -26,15 +26,15 @@ app.use(ElementPlus)
 const authStore = useAuthStore()
 
 // 等待权限检查完成后再挂载应用
-await authStore.checkAuth()
-
-// 初始化web-see监控
-initWebSee(authStore.user?.id)
-
-// 设置Vue错误处理器
-setupVueErrorHandler(app)
-
-// 设置全局错误处理器
-setupGlobalErrorHandlers()
-
-app.mount('#app')
+authStore.checkAuth().then(() => {
+  // 初始化web-see监控
+  initWebSee(authStore.user?.id)
+  
+  // 设置Vue错误处理器
+  setupVueErrorHandler(app)
+  
+  // 设置全局错误处理器
+  setupGlobalErrorHandlers()
+  
+  app.mount('#app')
+})

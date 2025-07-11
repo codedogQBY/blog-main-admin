@@ -72,7 +72,7 @@
             <div class="user-info">
               <el-avatar 
                 :size="36" 
-                :src="userStore.user?.avatar" 
+                :src="(userStore.user as any)?.avatar" 
                 class="user-avatar"
               >
                 {{ userStore.user?.name?.charAt(0) }}

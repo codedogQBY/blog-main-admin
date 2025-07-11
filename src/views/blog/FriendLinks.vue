@@ -372,7 +372,10 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     if (dialogType.value === 'add') {
-      await createFriendLink(form.value)
+      await createFriendLink({
+        ...form.value,
+        auditStatus: 1 // 默认待审核状态
+      })
       ElMessage.success('添加成功')
     } else {
       const currentLink = friendLinks.value.find(item => 
@@ -466,7 +469,8 @@ const handleSelectFile = () => {
   fileSelectorVisible.value = true
 }
 
-const handleFileSelected = (file: FileType) => {
+const handleFileSelected = (files: FileType | FileType[]) => {
+  const file = Array.isArray(files) ? files[0] : files
   form.value.logo = file.url
   fileSelectorVisible.value = false
 }

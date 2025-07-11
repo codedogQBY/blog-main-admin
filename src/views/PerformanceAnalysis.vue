@@ -140,7 +140,7 @@
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="数值">
-            {{ formatValue(selectedData.value, selectedData.type) }}
+            {{ formatValue(selectedData.value || 0, selectedData.type) }}
           </el-descriptions-item>
           <el-descriptions-item label="持续时间">
             {{ selectedData.duration ? `${selectedData.duration}ms` : '-' }}

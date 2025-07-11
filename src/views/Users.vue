@@ -135,7 +135,7 @@
             <div class="user-avatar">
               <el-avatar 
                 :size="56" 
-                :src="user.avatar"
+                :src="(user as any).avatar"
                 class="avatar"
               >
                 {{ user.name?.charAt(0) }}
@@ -387,9 +387,9 @@ const loadUsers = async () => {
       roleId: roleFilter.value || undefined
     }
     
-    const data = await userApi.getList(params)
+    const data = await userApi.getList(params as any)
     users.value = Array.isArray(data) ? data : data.data || []
-    total.value = typeof data === 'object' ? data.total || 0 : users.value.length
+    total.value = typeof data === 'object' && 'total' in data ? (data as any).total || 0 : users.value.length
   } catch (error) {
     ElMessage.error('加载用户列表失败')
     console.error(error)
@@ -402,7 +402,7 @@ const loadUsers = async () => {
 const loadRoles = async () => {
   try {
     const data = await roleApi.getList()
-    roles.value = Array.isArray(data) ? data : data.data || []
+    roles.value = Array.isArray(data) ? data : (data as any).data || []
   } catch (error) {
     console.error('加载角色列表失败:', error)
   }
@@ -453,7 +453,7 @@ const editUser = (user: User) => {
     name: user.name,
     mail: user.mail,
     password: '',
-    roleId: user.roleId || '',
+    roleId: (user as any).roleId || user.role?.id || '',
     isSuperAdmin: user.isSuperAdmin || false
   })
   dialogVisible.value = true
@@ -492,14 +492,14 @@ const submitForm = async () => {
     submitting.value = true
     
     const userData = { ...userForm }
-    if (isEdit.value && !userData.password) {
-      delete userData.password
-    }
+    const { password, ...userDataWithoutPassword } = userData
+    const finalUserData = isEdit.value && !userData.password ? userDataWithoutPassword : userData
     
     if (isEdit.value) {
-      await userApi.update(userData.id, userData)
+      await userApi.update(userData.id, finalUserData)
       ElMessage.success('更新成功')
     } else {
+      // 确保新用户创建时有密码
       await userApi.create(userData)
       ElMessage.success('创建成功')
     }
