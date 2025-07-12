@@ -68,7 +68,13 @@ declare module 'vue' {
     RecordScreenPlayer: typeof import('./src/components/RecordScreenPlayer.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
-    TiptapEditor: typeof import('./src/components/TiptapEditor.vue')['default']
+    TiptapEditor: typeof import('./src/components/editor/TiptapEditor.vue')['default']
+    TiptapEditorEmojiPicker: typeof import('./src/components/editor/TiptapEditorEmojiPicker.vue')['default']
+    TiptapEditorSearchBar: typeof import('./src/components/editor/TiptapEditorSearchBar.vue')['default']
+    TiptapEditorTableContextMenu: typeof import('./src/components/editor/TiptapEditorTableContextMenu.vue')['default']
+    TiptapEditorTableOfContents: typeof import('./src/components/editor/TiptapEditorTableOfContents.vue')['default']
+    TiptapEditorTableToolbar: typeof import('./src/components/editor/TiptapEditorTableToolbar.vue')['default']
+    TiptapEditorToolbar: typeof import('./src/components/editor/TiptapEditorToolbar.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

@@ -427,7 +427,7 @@ import {
   Lock,
   Unlock
 } from '@element-plus/icons-vue'
-import TiptapEditor from '@/components/TiptapEditor.vue'
+import TiptapEditor from '@/components/editor/TiptapEditor.vue'
 import FileSelector, {type FileType} from '@/components/FileSelector.vue'
 import { articleApi, categoryApi, tagApi, fileApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'

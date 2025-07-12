@@ -36,9 +36,16 @@ src/
 │   ├── index.ts          # 通用 API
 │   └── interactions.ts   # 互动管理 API
 ├── components/           # 组件目录
+│   ├── editor/           # 富文本编辑器模块
+│   │   ├── TiptapEditor.vue          # 主编辑器组件
+│   │   ├── TiptapEditorToolbar.vue   # 工具栏组件
+│   │   ├── TiptapEditorTableToolbar.vue  # 表格工具栏
+│   │   ├── TiptapEditorSearchBar.vue     # 搜索替换栏
+│   │   ├── TiptapEditorTableOfContents.vue # 目录组件
+│   │   ├── TiptapEditorEmojiPicker.vue   # 表情选择器
+│   │   └── tiptap-utils.ts               # 工具函数库
 │   ├── DynamicMenu.vue   # 动态菜单组件
-│   ├── PermissionCheck.vue # 权限检查组件
-│   └── TiptapEditor.vue  # 富文本编辑器
+│   └── PermissionCheck.vue # 权限检查组件
 ├── lib/                  # 工具库
 │   ├── api.ts           # API 客户端
 │   └── store.ts         # Pinia 状态管理
