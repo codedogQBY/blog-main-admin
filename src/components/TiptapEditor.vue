@@ -1,204 +1,382 @@
 <template>
-  <div class="tiptap-editor">
+  <div class="tiptap-editor" :class="{ 'fullscreen': isFullscreen }">
     <!-- 工具栏 -->
     <div class="editor-toolbar" v-if="editor">
-      <div class="toolbar-group">
-        <button
-          @click="editor.chain().focus().toggleBold().run()"
-          :class="{ 'is-active': editor.isActive('bold') }"
-          class="toolbar-button"
-          title="粗体 (Ctrl+B)"
-        >
-          <el-icon><Bold /></el-icon>
-        </button>
-        <button
-          @click="editor.chain().focus().toggleItalic().run()"
-          :class="{ 'is-active': editor.isActive('italic') }"
-          class="toolbar-button"
-          title="斜体 (Ctrl+I)"
-        >
-          <el-icon><Italic /></el-icon>
-        </button>
-        <button
-          @click="editor.chain().focus().toggleStrike().run()"
-          :class="{ 'is-active': editor.isActive('strike') }"
-          class="toolbar-button"
-          title="删除线"
-        >
-          <el-icon><Strikethrough /></el-icon>
-        </button>
-        <button
-          @click="editor.chain().focus().toggleCode().run()"
-          :class="{ 'is-active': editor.isActive('code') }"
-          class="toolbar-button"
-          title="行内代码"
-        >
-          <span style="font-family: monospace; font-weight: bold;">`</span>
-        </button>
+      <!-- 第一行工具栏 -->
+      <div class="toolbar-row">
+        <div class="toolbar-group">
+          <button
+            @click="editor.chain().focus().toggleBold().run()"
+            :class="{ 'is-active': editor.isActive('bold') }"
+            class="toolbar-button"
+            title="粗体 (Ctrl+B)"
+          >
+            <el-icon><Bold /></el-icon>
+          </button>
+          <button
+            @click="editor.chain().focus().toggleItalic().run()"
+            :class="{ 'is-active': editor.isActive('italic') }"
+            class="toolbar-button"
+            title="斜体 (Ctrl+I)"
+          >
+            <el-icon><Italic /></el-icon>
+          </button>
+          <button
+            @click="editor.chain().focus().toggleStrike().run()"
+            :class="{ 'is-active': editor.isActive('strike') }"
+            class="toolbar-button"
+            title="删除线"
+          >
+            <el-icon><Strikethrough /></el-icon>
+          </button>
+          <button
+            @click="editor.chain().focus().toggleCode().run()"
+            :class="{ 'is-active': editor.isActive('code') }"
+            class="toolbar-button"
+            title="行内代码"
+          >
+            <span style="font-family: monospace; font-weight: bold;">`</span>
+          </button>
+        </div>
+
+        <div class="toolbar-separator"></div>
+
+        <div class="toolbar-group">
+          <button
+            @click="editor.chain().focus().toggleHeading({ level: 1 }).run()"
+            :class="{ 'is-active': editor.isActive('heading', { level: 1 }) }"
+            class="toolbar-button"
+            title="标题1"
+          >
+            H1
+          </button>
+          <button
+            @click="editor.chain().focus().toggleHeading({ level: 2 }).run()"
+            :class="{ 'is-active': editor.isActive('heading', { level: 2 }) }"
+            class="toolbar-button"
+            title="标题2"
+          >
+            H2
+          </button>
+          <button
+            @click="editor.chain().focus().toggleHeading({ level: 3 }).run()"
+            :class="{ 'is-active': editor.isActive('heading', { level: 3 }) }"
+            class="toolbar-button"
+            title="标题3"
+          >
+            H3
+          </button>
+        </div>
+
+        <div class="toolbar-separator"></div>
+
+        <div class="toolbar-group">
+          <button
+            @click="editor.chain().focus().toggleBulletList().run()"
+            :class="{ 'is-active': editor.isActive('bulletList') }"
+            class="toolbar-button"
+            title="无序列表"
+          >
+            <el-icon><List /></el-icon>
+          </button>
+          <button
+            @click="editor.chain().focus().toggleOrderedList().run()"
+            :class="{ 'is-active': editor.isActive('orderedList') }"
+            class="toolbar-button"
+            title="有序列表"
+          >
+            <el-icon><ListOrdered /></el-icon>
+          </button>
+          <button
+            @click="editor.chain().focus().toggleTaskList().run()"
+            :class="{ 'is-active': editor.isActive('taskList') }"
+            class="toolbar-button"
+            title="任务列表"
+          >
+            <el-icon><CheckSquare /></el-icon>
+          </button>
+          <button
+            @click="editor.chain().focus().toggleBlockquote().run()"
+            :class="{ 'is-active': editor.isActive('blockquote') }"
+            class="toolbar-button"
+            title="引用"
+          >
+            <el-icon><Quote /></el-icon>
+          </button>
+        </div>
+
+        <div class="toolbar-separator"></div>
+
+        <div class="toolbar-group">
+          <button
+            @click="insertTable"
+            class="toolbar-button"
+            title="插入表格"
+          >
+            <el-icon><Grid3X3 /></el-icon>
+          </button>
+          <button
+            v-if="editor.isActive('table')"
+            @click="editor.chain().focus().addColumnBefore().run()"
+            class="toolbar-button"
+            title="插入列"
+          >
+            <el-icon><Plus /></el-icon>列
+          </button>
+          <button
+            v-if="editor.isActive('table')"
+            @click="editor.chain().focus().deleteColumn().run()"
+            class="toolbar-button"
+            title="删除列"
+          >
+            <el-icon><Minus /></el-icon>列
+          </button>
+          <button
+            v-if="editor.isActive('table')"
+            @click="editor.chain().focus().addRowBefore().run()"
+            class="toolbar-button"
+            title="插入行"
+          >
+            <el-icon><Plus /></el-icon>行
+          </button>
+          <button
+            v-if="editor.isActive('table')"
+            @click="editor.chain().focus().deleteRow().run()"
+            class="toolbar-button"
+            title="删除行"
+          >
+            <el-icon><Minus /></el-icon>行
+          </button>
+          <button
+            v-if="editor.isActive('table')"
+            @click="editor.chain().focus().deleteTable().run()"
+            class="toolbar-button"
+            title="删除表格"
+          >
+            <el-icon><Trash2 /></el-icon>
+          </button>
+        </div>
+
+        <div class="toolbar-separator"></div>
+
+        <div class="toolbar-group">
+          <button
+            @click="editor.chain().focus().toggleCodeBlock().run()"
+            :class="{ 'is-active': editor.isActive('codeBlock') }"
+            class="toolbar-button"
+            title="代码块"
+          >
+            <el-icon><Code /></el-icon>
+          </button>
+          <button
+            @click="editor.chain().focus().setHorizontalRule().run()"
+            class="toolbar-button"
+            title="水平分割线"
+          >
+            <span style="font-weight: bold;">---</span>
+          </button>
+          <el-select
+            v-if="editor.isActive('codeBlock')"
+            :model-value="getCurrentLanguage()"
+            @change="setCodeBlockLanguage"
+            size="small"
+            class="language-select"
+            placeholder="选择语言"
+            filterable
+          >
+            <el-option label="JavaScript" value="javascript" />
+            <el-option label="TypeScript" value="typescript" />
+            <el-option label="Python" value="python" />
+            <el-option label="Java" value="java" />
+            <el-option label="C++" value="cpp" />
+            <el-option label="C#" value="csharp" />
+            <el-option label="Go" value="go" />
+            <el-option label="Rust" value="rust" />
+            <el-option label="PHP" value="php" />
+            <el-option label="Ruby" value="ruby" />
+            <el-option label="CSS" value="css" />
+            <el-option label="SCSS" value="scss" />
+            <el-option label="HTML" value="html" />
+            <el-option label="Vue" value="vue" />
+            <el-option label="React (JSX)" value="jsx" />
+            <el-option label="JSON" value="json" />
+            <el-option label="XML" value="xml" />
+            <el-option label="SQL" value="sql" />
+            <el-option label="Bash" value="bash" />
+            <el-option label="PowerShell" value="powershell" />
+            <el-option label="Dockerfile" value="dockerfile" />
+            <el-option label="YAML" value="yaml" />
+            <el-option label="Markdown" value="markdown" />
+            <el-option label="纯文本" value="text" />
+          </el-select>
+        </div>
+
+        <div class="toolbar-separator"></div>
+
+        <div class="toolbar-group">
+          <button
+            @click="addImage"
+            class="toolbar-button"
+            title="插入图片"
+          >
+            <el-icon><ImageIcon /></el-icon>
+          </button>
+          <button
+            @click="addLink"
+            class="toolbar-button"
+            title="插入链接"
+          >
+            <el-icon><LinkIcon /></el-icon>
+          </button>
+          <button
+            @click="addYouTubeVideo"
+            class="toolbar-button"
+            title="插入YouTube视频"
+          >
+            <el-icon><Video /></el-icon>
+          </button>
+          <button
+            @click="showEmojiPicker = !showEmojiPicker"
+            class="toolbar-button"
+            title="插入表情"
+          >
+            😊
+          </button>
+        </div>
+
+        <div class="toolbar-separator"></div>
+
+        <div class="toolbar-group">
+          <button
+            @click="editor.chain().focus().undo().run()"
+            :disabled="!editor.can().chain().focus().undo().run()"
+            class="toolbar-button"
+            title="撤销"
+          >
+            <el-icon><Undo /></el-icon>
+          </button>
+          <button
+            @click="editor.chain().focus().redo().run()"
+            :disabled="!editor.can().chain().focus().redo().run()"
+            class="toolbar-button"
+            title="重做"
+          >
+            <el-icon><Redo /></el-icon>
+          </button>
+        </div>
+
+        <div class="toolbar-separator"></div>
+
+        <div class="toolbar-group">
+          <button
+            @click="showSearchReplace = !showSearchReplace"
+            class="toolbar-button"
+            title="搜索替换"
+          >
+            <el-icon><Search /></el-icon>
+          </button>
+          <button
+            @click="showTableOfContents = !showTableOfContents"
+            class="toolbar-button"
+            title="目录"
+          >
+            <el-icon><BookOpen /></el-icon>
+          </button>
+          <button
+            @click="toggleFullscreen"
+            class="toolbar-button"
+            title="全屏模式"
+          >
+            <el-icon><Maximize2 v-if="!isFullscreen" /><Minimize2 v-else /></el-icon>
+          </button>
+        </div>
+
+        <!-- 字数统计 -->
+        <div class="character-count" v-if="editor">
+          {{ editor.storage.characterCount.characters() }} 字符
+          {{ editor.storage.characterCount.words() }} 单词
+        </div>
       </div>
 
-      <div class="toolbar-separator"></div>
-
-      <div class="toolbar-group">
-        <button
-          @click="editor.chain().focus().toggleHeading({ level: 1 }).run()"
-          :class="{ 'is-active': editor.isActive('heading', { level: 1 }) }"
-          class="toolbar-button"
-          title="标题1"
-        >
-          H1
-        </button>
-        <button
-          @click="editor.chain().focus().toggleHeading({ level: 2 }).run()"
-          :class="{ 'is-active': editor.isActive('heading', { level: 2 }) }"
-          class="toolbar-button"
-          title="标题2"
-        >
-          H2
-        </button>
-        <button
-          @click="editor.chain().focus().toggleHeading({ level: 3 }).run()"
-          :class="{ 'is-active': editor.isActive('heading', { level: 3 }) }"
-          class="toolbar-button"
-          title="标题3"
-        >
-          H3
-        </button>
-      </div>
-
-      <div class="toolbar-separator"></div>
-
-      <div class="toolbar-group">
-        <button
-          @click="editor.chain().focus().toggleBulletList().run()"
-          :class="{ 'is-active': editor.isActive('bulletList') }"
-          class="toolbar-button"
-          title="无序列表"
-        >
-          <el-icon><List /></el-icon>
-        </button>
-        <button
-          @click="editor.chain().focus().toggleOrderedList().run()"
-          :class="{ 'is-active': editor.isActive('orderedList') }"
-          class="toolbar-button"
-          title="有序列表"
-        >
-          <el-icon><ListOrdered /></el-icon>
-        </button>
-        <button
-          @click="editor.chain().focus().toggleBlockquote().run()"
-          :class="{ 'is-active': editor.isActive('blockquote') }"
-          class="toolbar-button"
-          title="引用"
-        >
-          <el-icon><Quote /></el-icon>
-        </button>
-      </div>
-
-      <div class="toolbar-separator"></div>
-
-      <div class="toolbar-group">
-        <button
-          @click="editor.chain().focus().toggleCodeBlock().run()"
-          :class="{ 'is-active': editor.isActive('codeBlock') }"
-          class="toolbar-button"
-          title="代码块"
-        >
-          <el-icon><Code /></el-icon>
-        </button>
-        <button
-          @click="editor.chain().focus().setHorizontalRule().run()"
-          class="toolbar-button"
-          title="水平分割线"
-        >
-          <span style="font-weight: bold;">---</span>
-        </button>
-        <el-select
-          v-if="editor.isActive('codeBlock')"
-          :model-value="getCurrentLanguage()"
-          @change="setCodeBlockLanguage"
-          size="small"
-          class="language-select"
-          placeholder="选择语言"
-          filterable
-        >
-          <el-option label="JavaScript" value="javascript" />
-          <el-option label="TypeScript" value="typescript" />
-          <el-option label="Python" value="python" />
-          <el-option label="Java" value="java" />
-          <el-option label="C++" value="cpp" />
-          <el-option label="C#" value="csharp" />
-          <el-option label="Go" value="go" />
-          <el-option label="Rust" value="rust" />
-          <el-option label="PHP" value="php" />
-          <el-option label="Ruby" value="ruby" />
-          <el-option label="CSS" value="css" />
-          <el-option label="SCSS" value="scss" />
-          <el-option label="HTML" value="html" />
-          <el-option label="Vue" value="vue" />
-          <el-option label="React (JSX)" value="jsx" />
-          <el-option label="JSON" value="json" />
-          <el-option label="XML" value="xml" />
-          <el-option label="SQL" value="sql" />
-          <el-option label="Bash" value="bash" />
-          <el-option label="PowerShell" value="powershell" />
-          <el-option label="Dockerfile" value="dockerfile" />
-          <el-option label="YAML" value="yaml" />
-          <el-option label="Markdown" value="markdown" />
-          <el-option label="纯文本" value="text" />
-        </el-select>
-        <button
-          @click="addImage"
-          class="toolbar-button"
-          title="插入图片"
-        >
-          <el-icon><ImageIcon /></el-icon>
-        </button>
-        <button
-          @click="addLink"
-          class="toolbar-button"
-          title="插入链接"
-        >
-          <el-icon><LinkIcon /></el-icon>
-        </button>
-      </div>
-
-      <div class="toolbar-separator"></div>
-
-      <div class="toolbar-group">
-        <button
-          @click="editor.chain().focus().undo().run()"
-          :disabled="!editor.can().chain().focus().undo().run()"
-          class="toolbar-button"
-          title="撤销"
-        >
-          <el-icon><Undo /></el-icon>
-        </button>
-        <button
-          @click="editor.chain().focus().redo().run()"
-          :disabled="!editor.can().chain().focus().redo().run()"
-          class="toolbar-button"
-          title="重做"
-        >
-          <el-icon><Redo /></el-icon>
-        </button>
-      </div>
-
-      <!-- 字数统计 -->
-      <div class="character-count" v-if="editor">
-        {{ editor.storage.characterCount.characters() }} 字符
-        {{ editor.storage.characterCount.words() }} 单词
+      <!-- 搜索替换栏 -->
+      <div v-if="showSearchReplace" class="search-replace-bar">
+        <div class="search-replace-group">
+          <el-input
+            v-model="searchText"
+            placeholder="搜索..."
+            size="small"
+            class="search-input"
+            @keyup.enter="findNext"
+          >
+            <template #append>
+              <el-button @click="findNext" size="small">下一个</el-button>
+            </template>
+          </el-input>
+          <el-input
+            v-model="replaceText"
+            placeholder="替换为..."
+            size="small"
+            class="replace-input"
+          >
+            <template #append>
+              <el-button @click="replaceOne" size="small">替换</el-button>
+            </template>
+          </el-input>
+          <el-button @click="replaceAll" size="small" type="primary">全部替换</el-button>
+          <el-button @click="showSearchReplace = false" size="small">
+            <el-icon><X /></el-icon>
+          </el-button>
+        </div>
       </div>
     </div>
 
-    <!-- 编辑器内容 -->
-    <div class="editor-content">
-      <editor-content :editor="editor" />
+    <!-- 主要内容区域 -->
+    <div class="editor-main">
+      <!-- 侧边栏：目录 -->
+      <div v-if="showTableOfContents" class="table-of-contents">
+        <div class="toc-header">
+          <h4>目录</h4>
+          <el-button @click="showTableOfContents = false" size="small" text>
+            <el-icon><X /></el-icon>
+          </el-button>
+        </div>
+        <div class="toc-content">
+          <div 
+            v-for="item in tableOfContents" 
+            :key="item.id"
+            :class="['toc-item', `toc-level-${item.level}`]"
+            @click="scrollToHeading(item.id)"
+          >
+            {{ item.text }}
+          </div>
+        </div>
+      </div>
+
+      <!-- 编辑器内容 -->
+      <div class="editor-content">
+        <editor-content :editor="editor" />
+      </div>
+
+      <!-- 预览模式 -->
+      <div v-if="showPreview" class="editor-preview">
+        <div class="preview-content" v-html="previewHtml"></div>
+      </div>
     </div>
 
-    <!-- 预览模式 -->
-    <div v-if="showPreview" class="editor-preview">
-      <div class="preview-content" v-html="previewHtml"></div>
+    <!-- 表情选择器 -->
+    <div v-if="showEmojiPicker" class="emoji-picker-overlay" @click="showEmojiPicker = false">
+      <div class="emoji-picker" @click.stop>
+        <div class="emoji-grid">
+          <span 
+            v-for="emoji in commonEmojis" 
+            :key="emoji"
+            @click="insertEmoji(emoji)"
+            class="emoji-item"
+          >
+            {{ emoji }}
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- 文件选择器 -->
@@ -224,6 +402,13 @@ import TiptapLink from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import Table from '@tiptap/extension-table'
+import TableRow from '@tiptap/extension-table-row'
+import TableHeader from '@tiptap/extension-table-header'
+import TableCell from '@tiptap/extension-table-cell'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
+import YouTube from '@tiptap/extension-youtube'
 import { createLowlight } from 'lowlight'
 // 导入常用语言支持
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -261,10 +446,21 @@ import {
   Redo,
   Bold,
   Italic,
-  Strikethrough
+  Strikethrough,
+  CheckSquare,
+  Grid3X3,
+  Plus,
+  Minus,
+  Trash2,
+  Video,
+  Search,
+  BookOpen,
+  Maximize2,
+  Minimize2,
+  X
 } from 'lucide-vue-next'
 import {
-  Search,
+  Search as ElSearch,
   Refresh,
   Picture
 } from '@element-plus/icons-vue'
@@ -293,6 +489,33 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 const previewHtml = ref('')
+
+// 新增状态
+const isFullscreen = ref(false)
+const showSearchReplace = ref(false)
+const showTableOfContents = ref(false)
+const showEmojiPicker = ref(false)
+const searchText = ref('')
+const replaceText = ref('')
+const tableOfContents = ref<Array<{id: string, text: string, level: number}>>([])
+
+// 常用表情
+const commonEmojis = [
+  '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
+  '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
+  '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩',
+  '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
+  '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬',
+  '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗',
+  '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯',
+  '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐',
+  '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈',
+  '👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉',
+  '👆', '🖕', '👇', '☝️', '👋', '🤚', '🖐', '✋', '🖖', '👏',
+  '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💪', '🦾', '🦿', '🦵',
+  '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀',
+  '👁', '👅', '👄', '💋', '🩸', '👶', '🧒', '👦', '👧', '🧑'
+]
 
 // 创建 lowlight 实例
 const lowlight = createLowlight()
@@ -352,6 +575,20 @@ const editor = useEditor({
       },
       horizontalRule: {},
     }),
+    Table.configure({
+      resizable: true,
+    }),
+    TableRow,
+    TableHeader,
+    TableCell,
+    TaskList,
+    TaskItem.configure({
+      nested: true,
+    }),
+    YouTube.configure({
+      controls: false,
+      nocookie: true,
+    }),
     TiptapImage.configure({
       inline: true,
       allowBase64: true,
@@ -379,6 +616,7 @@ const editor = useEditor({
     emit('update:modelValue', html)
     emit('change', html)
     updatePreview(html)
+    updateTableOfContents()
   },
   // 添加键盘快捷键支持
   editorProps: {
@@ -439,6 +677,12 @@ const editor = useEditor({
             .toggleBulletList()
             .run()
           return true
+        } else if (textBefore === '- [ ]' || textBefore === '- [x]') {
+          editor.value?.chain().focus()
+            .deleteRange({ from: $from.pos - textBefore.length, to: $from.pos })
+            .toggleTaskList()
+            .run()
+          return true
         } else if (/^(\d+)\./.test(textBefore)) {
           const match = textBefore.match(/^(\d+)\./)
           if (match) {
@@ -479,6 +723,21 @@ const updatePreview = (html: string) => {
   previewHtml.value = html
 }
 
+// 全屏模式
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value
+  if (isFullscreen.value) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+}
+
+// 表格相关功能
+const insertTable = () => {
+  editor.value?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+}
+
 // 图片选择器相关
 const imagePickerVisible = ref(false)
 const selectedImage = ref('')
@@ -510,6 +769,7 @@ const setCodeBlockLanguage = (language: string) => {
   }
 }
 
+// 添加链接
 const addLink = () => {
   const previousUrl = editor.value?.getAttributes('link').href
 
@@ -534,15 +794,118 @@ const addLink = () => {
   })
 }
 
+// 添加YouTube视频
+const addYouTubeVideo = () => {
+  ElMessageBox.prompt('请输入YouTube视频URL', '插入视频', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    inputPattern: /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+/,
+    inputErrorMessage: '请输入有效的YouTube URL'
+  }).then(({ value }) => {
+    if (value && editor.value) {
+      editor.value.chain().focus().setYoutubeVideo({ src: value }).run()
+    }
+  }).catch(() => {
+    // 用户取消
+  })
+}
+
+// 插入表情
+const insertEmoji = (emoji: string) => {
+  if (editor.value) {
+    editor.value.chain().focus().insertContent(emoji).run()
+  }
+  showEmojiPicker.value = false
+}
+
+// 搜索替换功能
+const findNext = () => {
+  if (!searchText.value || !editor.value) return
+  
+  const { from, to } = editor.value.state.selection
+  const doc = editor.value.state.doc
+  const text = doc.textBetween(0, doc.content.size, ' ')
+  
+  const index = text.indexOf(searchText.value, to)
+  if (index !== -1) {
+    editor.value.chain().focus().setTextSelection({ from: index, to: index + searchText.value.length }).run()
+  } else {
+    // 如果没找到，从头开始搜索
+    const firstIndex = text.indexOf(searchText.value)
+    if (firstIndex !== -1) {
+      editor.value.chain().focus().setTextSelection({ from: firstIndex, to: firstIndex + searchText.value.length }).run()
+    } else {
+      ElMessage.info('未找到匹配内容')
+    }
+  }
+}
+
+const replaceOne = () => {
+  if (!editor.value || !searchText.value) return
+  
+  const { from, to } = editor.value.state.selection
+  const selectedText = editor.value.state.doc.textBetween(from, to)
+  
+  if (selectedText === searchText.value) {
+    editor.value.chain().focus().insertContentAt({ from, to }, replaceText.value).run()
+    findNext()
+  } else {
+    findNext()
+  }
+}
+
+const replaceAll = () => {
+  if (!editor.value || !searchText.value) return
+  
+  const doc = editor.value.state.doc
+  const text = doc.textBetween(0, doc.content.size, ' ')
+  const newText = text.replace(new RegExp(searchText.value, 'g'), replaceText.value)
+  
+  editor.value.chain().focus().setContent(newText).run()
+  ElMessage.success('替换完成')
+}
+
+// 目录功能
+const updateTableOfContents = () => {
+  if (!editor.value) return
+  
+  const toc: Array<{id: string, text: string, level: number}> = []
+  const doc = editor.value.state.doc
+  
+  doc.descendants((node, pos) => {
+    if (node.type.name === 'heading') {
+      const id = `heading-${pos}`
+      const text = node.textContent
+      const level = node.attrs.level
+      
+      toc.push({ id, text, level })
+    }
+  })
+  
+  tableOfContents.value = toc
+}
+
+const scrollToHeading = (id: string) => {
+  const element = document.querySelector(`[data-id="${id}"]`)
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth' })
+  }
+}
+
 onMounted(() => {
   if (props.modelValue && editor.value) {
     updatePreview(props.modelValue)
+    updateTableOfContents()
   }
 })
 
 onBeforeUnmount(() => {
   if (editor.value) {
     editor.value.destroy()
+  }
+  // 恢复body滚动
+  if (isFullscreen.value) {
+    document.body.style.overflow = ''
   }
 })
 </script>
@@ -556,86 +919,197 @@ onBeforeUnmount(() => {
   background: white;
   border-radius: 12px;
   overflow: hidden;
+  position: relative;
+
+  &.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    border-radius: 0;
+    height: 100vh;
+  }
 
   /* 工具栏 */
   .editor-toolbar {
-    padding: 12px 16px;
     border-bottom: 1px solid #e2e8f0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
     background: #f8fafc;
     position: sticky;
     top: 0;
     z-index: 2;
 
-    .toolbar-group {
+    .toolbar-row {
+      padding: 8px 16px; /* 减少了顶部间距 */
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 8px;
+      flex-wrap: wrap;
+      min-height: 48px; /* 固定高度 */
 
-      .toolbar-button {
-        display: inline-flex;
+      .toolbar-group {
+        display: flex;
         align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
-        border: none;
-        background: transparent;
-        border-radius: 6px;
-        color: #64748b;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-size: 15px;
-        padding: 0;
+        gap: 4px;
 
-        &:hover {
-          background: #e2e8f0;
-          color: #334155;
-        }
-
-        &.is-active {
-          background: #e0e7ff;
-          color: #4f46e5;
-        }
-
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+        .toolbar-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 36px;
+          height: 36px;
+          border: none;
+          background: transparent;
+          border-radius: 6px;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-size: 13px;
+          padding: 0 8px;
+          white-space: nowrap;
 
           &:hover {
-            background: transparent;
+            background: #e2e8f0;
+            color: #334155;
+          }
+
+          &.is-active {
+            background: #e0e7ff;
+            color: #4f46e5;
+          }
+
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+
+            &:hover {
+              background: transparent;
+            }
+          }
+
+          .el-icon {
+            font-size: 16px;
           }
         }
 
-        .el-icon {
-          font-size: 18px;
+        .language-select {
+          width: 140px;
+          margin-left: 8px;
+          
+          :deep(.el-input__inner) {
+            font-size: 13px;
+          }
         }
       }
 
-      .language-select {
-        width: 140px;
-        margin-left: 8px;
-        
-        :deep(.el-input__inner) {
-          font-size: 13px;
-        }
+      .toolbar-separator {
+        width: 1px;
+        height: 24px;
+        background: #e2e8f0;
+        margin: 0 4px;
+      }
+
+      .character-count {
+        margin-left: auto;
+        font-size: 13px;
+        color: #64748b;
+        white-space: nowrap;
       }
     }
 
-    .toolbar-separator {
-      width: 1px;
-      height: 24px;
-      background: #e2e8f0;
-      margin: 0 4px;
+    /* 搜索替换栏 */
+    .search-replace-bar {
+      padding: 8px 16px;
+      border-top: 1px solid #e2e8f0;
+      background: #f1f5f9;
+
+      .search-replace-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+
+        .search-input,
+        .replace-input {
+          width: 200px;
+        }
+      }
+    }
+  }
+
+  /* 主要内容区域 */
+  .editor-main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* 目录侧边栏 */
+  .table-of-contents {
+    width: 250px;
+    border-right: 1px solid #e2e8f0;
+    background: #f8fafc;
+    overflow-y: auto;
+
+    .toc-header {
+      padding: 16px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      h4 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #374151;
+      }
     }
 
-    .character-count {
-      margin-left: auto;
-      font-size: 13px;
-      color: #64748b;
-      white-space: nowrap;
+    .toc-content {
+      padding: 8px;
+
+      .toc-item {
+        padding: 6px 12px;
+        font-size: 13px;
+        color: #64748b;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        border-left: 2px solid transparent;
+
+        &:hover {
+          background: #e2e8f0;
+          color: #374151;
+        }
+
+        &.toc-level-1 {
+          font-weight: 600;
+          color: #374151;
+        }
+
+        &.toc-level-2 {
+          padding-left: 20px;
+          font-weight: 500;
+        }
+
+        &.toc-level-3 {
+          padding-left: 28px;
+        }
+
+        &.toc-level-4 {
+          padding-left: 36px;
+        }
+
+        &.toc-level-5 {
+          padding-left: 44px;
+        }
+
+        &.toc-level-6 {
+          padding-left: 52px;
+        }
+      }
     }
   }
 
@@ -643,10 +1117,10 @@ onBeforeUnmount(() => {
   .editor-content {
     flex: 1;
     overflow-y: auto;
-    padding: 24px 32px;
+    padding: 16px 24px; /* 减少了顶部间距 */
 
     :deep(.ProseMirror) {
-      min-height: 500px;
+      min-height: 400px; /* 减少了最小高度 */
       outline: none;
       font-size: 16px;
       line-height: 1.8;
@@ -657,14 +1131,14 @@ onBeforeUnmount(() => {
       }
 
       p {
-        margin: 1em 0;
+        margin: 0.8em 0; /* 减少了段落间距 */
       }
 
       h1 {
         font-size: 2.25em;
         font-weight: 700;
         line-height: 1.3;
-        margin: 1.5em 0 0.5em;
+        margin: 1.2em 0 0.4em; /* 减少了标题间距 */
         color: #1e293b;
       }
 
@@ -672,7 +1146,7 @@ onBeforeUnmount(() => {
         font-size: 1.875em;
         font-weight: 600;
         line-height: 1.3;
-        margin: 1.5em 0 0.5em;
+        margin: 1.2em 0 0.4em;
         color: #1e293b;
       }
 
@@ -680,7 +1154,7 @@ onBeforeUnmount(() => {
         font-size: 1.5em;
         font-weight: 600;
         line-height: 1.3;
-        margin: 1.5em 0 0.5em;
+        margin: 1.2em 0 0.4em;
         color: #1e293b;
       }
 
@@ -690,6 +1164,91 @@ onBeforeUnmount(() => {
 
         li {
           margin: 0.5em 0;
+        }
+      }
+
+      /* 任务列表样式 */
+      ul[data-type="taskList"] {
+        list-style: none;
+        padding-left: 0;
+
+        li {
+          display: flex;
+          align-items: flex-start;
+          margin: 0.5em 0;
+
+          > label {
+            flex: 0 0 auto;
+            margin-right: 0.5em;
+            user-select: none;
+          }
+
+          > div {
+            flex: 1 1 auto;
+          }
+
+          input[type="checkbox"] {
+            margin: 0;
+          }
+        }
+
+        li[data-checked="true"] > div {
+          text-decoration: line-through;
+          color: #9ca3af;
+        }
+      }
+
+      /* 表格样式 */
+      table {
+        border-collapse: collapse;
+        margin: 1.5em 0;
+        table-layout: fixed;
+        width: 100%;
+
+        td, th {
+          border: 1px solid #d1d5db;
+          padding: 8px 12px;
+          text-align: left;
+          vertical-align: top;
+          position: relative;
+          min-width: 1em;
+
+          > * {
+            margin: 0;
+          }
+        }
+
+        th {
+          background: #f9fafb;
+          font-weight: 600;
+        }
+
+        .selectedCell:after {
+          z-index: 2;
+          position: absolute;
+          content: "";
+          left: 0; right: 0; top: 0; bottom: 0;
+          background: rgba(200, 200, 255, 0.4);
+          pointer-events: none;
+        }
+
+        .column-resize-handle {
+          position: absolute;
+          right: -2px;
+          top: 0;
+          bottom: -2px;
+          width: 4px;
+          background: #4f46e5;
+          pointer-events: none;
+          opacity: 0;
+        }
+
+        .tableWrapper {
+          overflow-x: auto;
+        }
+
+        &.resize-cursor {
+          cursor: ew-resize;
         }
       }
 
@@ -864,6 +1423,17 @@ onBeforeUnmount(() => {
         }
       }
 
+      /* YouTube 视频样式 */
+      .iframe-wrapper {
+        text-align: center;
+        margin: 2em 0;
+
+        iframe {
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+      }
+
       &.resize-cursor {
         cursor: ew-resize;
       }
@@ -893,6 +1463,49 @@ onBeforeUnmount(() => {
     .preview-content {
       max-width: 800px;
       margin: 0 auto;
+    }
+  }
+
+  /* 表情选择器 */
+  .emoji-picker-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+
+    .emoji-picker {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 400px;
+      max-height: 500px;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+      .emoji-grid {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 8px;
+
+        .emoji-item {
+          font-size: 24px;
+          padding: 8px;
+          text-align: center;
+          cursor: pointer;
+          border-radius: 6px;
+          transition: background 0.2s ease;
+
+          &:hover {
+            background: #f1f5f9;
+          }
+        }
+      }
     }
   }
 }
