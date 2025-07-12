@@ -119,9 +119,17 @@
             v-if="editor.isActive('table')"
             @click="editor.chain().focus().addColumnBefore().run()"
             class="toolbar-button"
-            title="插入列"
+            title="向前插入列"
           >
-            <el-icon><Plus /></el-icon>列
+            <el-icon><Plus /></el-icon>←列
+          </button>
+          <button
+            v-if="editor.isActive('table')"
+            @click="editor.chain().focus().addColumnAfter().run()"
+            class="toolbar-button"
+            title="向后插入列"
+          >
+            <el-icon><Plus /></el-icon>列→
           </button>
           <button
             v-if="editor.isActive('table')"
@@ -135,9 +143,17 @@
             v-if="editor.isActive('table')"
             @click="editor.chain().focus().addRowBefore().run()"
             class="toolbar-button"
-            title="插入行"
+            title="向前插入行"
           >
-            <el-icon><Plus /></el-icon>行
+            <el-icon><Plus /></el-icon>↑行
+          </button>
+          <button
+            v-if="editor.isActive('table')"
+            @click="editor.chain().focus().addRowAfter().run()"
+            class="toolbar-button"
+            title="向后插入行"
+          >
+            <el-icon><Plus /></el-icon>行↓
           </button>
           <button
             v-if="editor.isActive('table')"
@@ -146,6 +162,32 @@
             title="删除行"
           >
             <el-icon><Minus /></el-icon>行
+          </button>
+          <button
+            v-if="editor.isActive('table')"
+            @click="editor.chain().focus().mergeCells().run()"
+            :disabled="!editor.can().mergeCells()"
+            class="toolbar-button"
+            title="合并单元格"
+          >
+            <span style="font-size: 12px; font-weight: bold;">合并</span>
+          </button>
+          <button
+            v-if="editor.isActive('table')"
+            @click="editor.chain().focus().splitCell().run()"
+            :disabled="!editor.can().splitCell()"
+            class="toolbar-button"
+            title="拆分单元格"
+          >
+            <span style="font-size: 12px; font-weight: bold;">拆分</span>
+          </button>
+          <button
+            v-if="editor.isActive('table')"
+            @click="editor.chain().focus().toggleHeaderRow().run()"
+            class="toolbar-button"
+            title="切换表头行"
+          >
+            <span style="font-size: 12px; font-weight: bold;">表头</span>
           </button>
           <button
             v-if="editor.isActive('table')"
@@ -309,9 +351,13 @@
             @keyup.enter="findNext"
           >
             <template #append>
-              <el-button @click="findNext" size="small">下一个</el-button>
+              <el-button @click="findPrevious" size="small">上一个</el-button>
+              <el-button @click="findNext" size="small" type="primary">下一个</el-button>
             </template>
           </el-input>
+          <span v-if="searchMatches.length > 0" class="search-count">
+            {{ (currentSearchIndex === 0 && searchMatches.length > 0) ? searchMatches.length : currentSearchIndex }}/{{ searchMatches.length }}
+          </span>
           <el-input
             v-model="replaceText"
             placeholder="替换为..."
@@ -355,6 +401,71 @@
       <!-- 编辑器内容 -->
       <div class="editor-content">
         <editor-content :editor="editor" />
+        
+        <!-- 表格右键菜单 -->
+        <div 
+          v-if="showTableContextMenu" 
+          class="table-context-menu"
+          :style="{ top: tableMenuPosition.y + 'px', left: tableMenuPosition.x + 'px' }"
+          @click.stop
+        >
+          <div class="context-menu-item" @click="editor?.chain().focus().addColumnBefore().run(); hideTableMenu()">
+            <el-icon><Plus /></el-icon>
+            <span>向前插入列</span>
+          </div>
+          <div class="context-menu-item" @click="editor?.chain().focus().addColumnAfter().run(); hideTableMenu()">
+            <el-icon><Plus /></el-icon>
+            <span>向后插入列</span>
+          </div>
+          <div class="context-menu-item" @click="editor?.chain().focus().deleteColumn().run(); hideTableMenu()">
+            <el-icon><Minus /></el-icon>
+            <span>删除列</span>
+          </div>
+          <div class="context-menu-separator"></div>
+          <div class="context-menu-item" @click="editor?.chain().focus().addRowBefore().run(); hideTableMenu()">
+            <el-icon><Plus /></el-icon>
+            <span>向前插入行</span>
+          </div>
+          <div class="context-menu-item" @click="editor?.chain().focus().addRowAfter().run(); hideTableMenu()">
+            <el-icon><Plus /></el-icon>
+            <span>向后插入行</span>
+          </div>
+          <div class="context-menu-item" @click="editor?.chain().focus().deleteRow().run(); hideTableMenu()">
+            <el-icon><Minus /></el-icon>
+            <span>删除行</span>
+          </div>
+          <div class="context-menu-separator"></div>
+          <div 
+            class="context-menu-item" 
+            :class="{ disabled: !editor?.can().mergeCells() }"
+            @click="editor?.can().mergeCells() && editor?.chain().focus().mergeCells().run(); hideTableMenu()"
+          >
+            <span>🔗</span>
+            <span>合并单元格</span>
+          </div>
+          <div 
+            class="context-menu-item"
+            :class="{ disabled: !editor?.can().splitCell() }"
+            @click="editor?.can().splitCell() && editor?.chain().focus().splitCell().run(); hideTableMenu()"
+          >
+            <span>✂️</span>
+            <span>拆分单元格</span>
+          </div>
+          <div class="context-menu-separator"></div>
+          <div class="context-menu-item" @click="editor?.chain().focus().toggleHeaderRow().run(); hideTableMenu()">
+            <span>📋</span>
+            <span>切换表头行</span>
+          </div>
+          <div class="context-menu-item" @click="editor?.chain().focus().toggleHeaderColumn().run(); hideTableMenu()">
+            <span>📋</span>
+            <span>切换表头列</span>
+          </div>
+          <div class="context-menu-separator"></div>
+          <div class="context-menu-item danger" @click="editor?.chain().focus().deleteTable().run(); hideTableMenu()">
+            <el-icon><Trash2 /></el-icon>
+            <span>删除表格</span>
+          </div>
+        </div>
       </div>
 
       <!-- 预览模式 -->
@@ -709,6 +820,10 @@ const editor = useEditor({
 watch(() => props.modelValue, (newValue) => {
   if (editor.value && editor.value.getHTML() !== newValue) {
     editor.value.commands.setContent(newValue, false)
+    // 内容变化后更新目录
+    setTimeout(() => {
+      updateTableOfContents()
+    }, 100)
   }
 })
 
@@ -818,106 +933,193 @@ const insertEmoji = (emoji: string) => {
   showEmojiPicker.value = false
 }
 
-// 搜索替换功能
-const findNext = () => {
+// 搜索替换功能 - 完全重写
+const currentSearchIndex = ref(0)
+const searchMatches = ref<Array<{from: number, to: number}>>([])
+
+// 表格右键菜单
+const showTableContextMenu = ref(false)
+const tableMenuPosition = ref({ x: 0, y: 0 })
+
+const findMatches = () => {
+  searchMatches.value = []
+  currentSearchIndex.value = 0
+  
   if (!searchText.value || !editor.value) return
   
   const { state } = editor.value
   const { doc } = state
-  const currentPos = state.selection.from
+  const searchValue = searchText.value.toLowerCase()
   
-  // 在文档中搜索文本
-  let found = false
-  let searchPos = currentPos
-  
-  // 从当前位置向后搜索
+  // 遍历所有文本节点查找匹配
   doc.descendants((node, pos) => {
-    if (found) return false
-    
     if (node.isText && node.text) {
-      const text = node.text
-      const index = text.indexOf(searchText.value, Math.max(0, searchPos - pos))
+      const text = node.text.toLowerCase()
+      let searchIndex = 0
+      let index = text.indexOf(searchValue, searchIndex)
       
-      if (index !== -1) {
-        const from = pos + index
-        const to = from + searchText.value.length
-        editor.value?.chain().focus().setTextSelection({ from, to }).run()
-        found = true
-        return false
+      while (index !== -1) {
+        searchMatches.value.push({
+          from: pos + index,
+          to: pos + index + searchText.value.length
+        })
+        searchIndex = index + 1
+        index = text.indexOf(searchValue, searchIndex)
       }
-    }
-    
-    if (pos >= searchPos) {
-      searchPos = 0 // 重置搜索位置，为下一个节点准备
     }
   })
-  
-  // 如果没找到，从头开始搜索
-  if (!found) {
-    doc.descendants((node, pos) => {
-      if (found) return false
-      
-      if (node.isText && node.text) {
-        const text = node.text
-        const index = text.indexOf(searchText.value)
-        
-        if (index !== -1) {
-          const from = pos + index
-          const to = from + searchText.value.length
-          editor.value?.chain().focus().setTextSelection({ from, to }).run()
-          found = true
-          return false
-        }
-      }
-    })
-  }
-  
-  if (!found) {
-    ElMessage.info('未找到匹配内容')
-  }
 }
 
+const findNext = () => {
+  if (!searchText.value || !editor.value) return
+  
+  // 如果还没有搜索过，先搜索
+  if (searchMatches.value.length === 0) {
+    findMatches()
+  }
+  
+  if (searchMatches.value.length === 0) {
+    ElMessage.info('未找到匹配内容')
+    return
+  }
+  
+  // 选择当前匹配项
+  const match = searchMatches.value[currentSearchIndex.value]
+  editor.value.chain().focus().setTextSelection({ from: match.from, to: match.to }).run()
+  
+  // 滚动到选中位置
+  const view = editor.value.view
+  view.dispatch(view.state.tr.scrollIntoView())
+  
+  // 更新索引到下一个
+  currentSearchIndex.value = (currentSearchIndex.value + 1) % searchMatches.value.length
+  
+  ElMessage.success(`找到 ${searchMatches.value.length} 个匹配项，当前第 ${currentSearchIndex.value === 0 ? searchMatches.value.length : currentSearchIndex.value} 个`)
+}
+
+const findPrevious = () => {
+  if (!searchText.value || !editor.value) return
+  
+  // 如果还没有搜索过，先搜索
+  if (searchMatches.value.length === 0) {
+    findMatches()
+  }
+  
+  if (searchMatches.value.length === 0) {
+    ElMessage.info('未找到匹配内容')
+    return
+  }
+  
+  // 更新索引到上一个
+  currentSearchIndex.value = currentSearchIndex.value === 0 ? searchMatches.value.length - 1 : currentSearchIndex.value - 1
+  
+  // 选择当前匹配项
+  const match = searchMatches.value[currentSearchIndex.value]
+  editor.value.chain().focus().setTextSelection({ from: match.from, to: match.to }).run()
+  
+  // 滚动到选中位置
+  const view = editor.value.view
+  view.dispatch(view.state.tr.scrollIntoView())
+  
+  ElMessage.success(`找到 ${searchMatches.value.length} 个匹配项，当前第 ${currentSearchIndex.value + 1} 个`)
+}
+
+// 监听搜索文本变化
+watch(searchText, () => {
+  if (searchText.value) {
+    findMatches()
+  } else {
+    searchMatches.value = []
+    currentSearchIndex.value = 0
+  }
+})
+
+// 表格右键菜单功能
+const hideTableMenu = () => {
+  showTableContextMenu.value = false
+}
+
+// 点击其他地方隐藏菜单
+const handleGlobalClick = () => {
+  hideTableMenu()
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleGlobalClick)
+  
+  // 添加表格右键菜单事件监听
+  if (editor.value) {
+    const editorElement = editor.value.view.dom
+    editorElement.addEventListener('contextmenu', (e) => {
+      // 检查是否在表格内
+      const target = e.target as HTMLElement
+      const tableCell = target.closest('td, th')
+      
+      if (tableCell && editor.value?.isActive('table')) {
+        e.preventDefault()
+        
+        tableMenuPosition.value = {
+          x: e.clientX,
+          y: e.clientY
+        }
+        showTableContextMenu.value = true
+      }
+    })
+    
+    // 初始化目录
+    if (props.modelValue) {
+      updatePreview(props.modelValue)
+      // 延迟一点更新目录，确保编辑器内容已渲染
+      setTimeout(() => {
+        updateTableOfContents()
+      }, 100)
+    }
+  }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleGlobalClick)
+  
+  if (editor.value) {
+    editor.value.destroy()
+  }
+  // 恢复body滚动
+  if (isFullscreen.value) {
+    document.body.style.overflow = ''
+  }
+})
+
 const replaceOne = () => {
-  if (!editor.value || !searchText.value) return
+  if (!editor.value || !searchText.value || searchMatches.value.length === 0) return
   
   const { from, to } = editor.value.state.selection
-  const selectedText = editor.value.state.doc.textBetween(from, to)
+  const currentMatch = searchMatches.value[currentSearchIndex.value === 0 ? searchMatches.value.length - 1 : currentSearchIndex.value - 1]
   
-  if (selectedText === searchText.value) {
+  // 检查当前选中内容是否是搜索匹配项
+  if (from === currentMatch.from && to === currentMatch.to) {
     editor.value.chain().focus().deleteSelection().insertContent(replaceText.value).run()
-    // 搜索下一个
-    setTimeout(findNext, 100)
+    
+    // 重新查找匹配项（因为文档内容已改变）
+    setTimeout(() => {
+      findMatches()
+      if (searchMatches.value.length > 0) {
+        // 如果还有匹配项，继续查找下一个
+        findNext()
+      } else {
+        ElMessage.success('替换完成，没有更多匹配项')
+      }
+    }, 100)
   } else {
+    // 如果当前选中内容不是匹配项，则查找下一个
     findNext()
   }
 }
 
 const replaceAll = () => {
-  if (!editor.value || !searchText.value) return
+  if (!editor.value || !searchText.value || searchMatches.value.length === 0) return
   
+  const matches = [...searchMatches.value]
   let replaceCount = 0
-  const { state } = editor.value
-  const { doc } = state
-  
-  // 收集所有匹配位置（从后往前，避免位置偏移）
-  const matches: Array<{from: number, to: number}> = []
-  
-  doc.descendants((node, pos) => {
-    if (node.isText && node.text) {
-      const text = node.text
-      let searchIndex = 0
-      let index = text.indexOf(searchText.value, searchIndex)
-      
-      while (index !== -1) {
-        matches.push({
-          from: pos + index,
-          to: pos + index + searchText.value.length
-        })
-        searchIndex = index + 1
-        index = text.indexOf(searchText.value, searchIndex)
-      }
-    }
-  })
   
   // 从后往前替换，避免位置偏移
   matches.reverse().forEach(match => {
@@ -929,6 +1131,10 @@ const replaceAll = () => {
       .run()
     replaceCount++
   })
+  
+  // 清空搜索结果
+  searchMatches.value = []
+  currentSearchIndex.value = 0
   
   if (replaceCount > 0) {
     ElMessage.success(`已替换 ${replaceCount} 处`)
@@ -946,9 +1152,10 @@ const updateTableOfContents = () => {
   
   doc.descendants((node, pos) => {
     if (node.type.name === 'heading') {
-      const id = `heading-${pos}`
       const text = node.textContent
       const level = node.attrs.level
+      // 创建更简单的ID
+      const id = `heading-${text.replace(/\s+/g, '-').toLowerCase()}-${pos}`
       
       toc.push({ id, text, level })
     }
@@ -958,28 +1165,54 @@ const updateTableOfContents = () => {
 }
 
 const scrollToHeading = (id: string) => {
-  const element = document.querySelector(`[data-id="${id}"]`)
-  if (element) {
-    element.scrollIntoView({ behavior: 'smooth' })
+  if (!editor.value) return
+  
+  // 从ID中提取文本内容
+  const parts = id.split('-')
+  const headingText = parts.slice(1, -1).join('-').toLowerCase()
+  
+  // 在编辑器内容中查找对应的标题
+  const doc = editor.value.state.doc
+  let targetPos = null
+  
+  doc.descendants((node, pos) => {
+    if (node.type.name === 'heading' && node.textContent.toLowerCase().replace(/\s+/g, '-') === headingText) {
+      targetPos = pos
+      return false // 停止搜索
+    }
+  })
+  
+  if (targetPos !== null) {
+    // 滚动到编辑器中的位置
+    const view = editor.value.view
+    const resolvedPos = view.state.doc.resolve(targetPos)
+    const coords = view.coordsAtPos(targetPos)
+    
+    // 滚动编辑器容器
+    const editorContainer = view.dom.closest('.editor-content')
+    if (editorContainer && coords) {
+      const containerRect = editorContainer.getBoundingClientRect()
+      const scrollTop = editorContainer.scrollTop + coords.top - containerRect.top - 100
+      editorContainer.scrollTo({ top: scrollTop, behavior: 'smooth' })
+    }
+    
+    // 滚动到指定位置
+    const tr = view.state.tr.scrollIntoView()
+    view.dispatch(tr)
+    view.focus()
+  } else {
+    // 降级方案：直接查找DOM元素
+    const editorElement = editor.value.view.dom
+    const headings = editorElement.querySelectorAll('h1, h2, h3, h4, h5, h6')
+    
+    for (const heading of headings) {
+      if (heading.textContent && heading.textContent.toLowerCase().replace(/\s+/g, '-') === headingText) {
+        heading.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        break
+      }
+    }
   }
 }
-
-onMounted(() => {
-  if (props.modelValue && editor.value) {
-    updatePreview(props.modelValue)
-    updateTableOfContents()
-  }
-})
-
-onBeforeUnmount(() => {
-  if (editor.value) {
-    editor.value.destroy()
-  }
-  // 恢复body滚动
-  if (isFullscreen.value) {
-    document.body.style.overflow = ''
-  }
-})
 </script>
 
 <style scoped lang="scss">
@@ -1105,6 +1338,15 @@ onBeforeUnmount(() => {
         .search-input,
         .replace-input {
           width: 200px;
+        }
+        
+        .search-count {
+          font-size: 12px;
+          color: #666;
+          padding: 4px 8px;
+          background: #f0f0f0;
+          border-radius: 4px;
+          white-space: nowrap;
         }
       }
     }
@@ -1602,6 +1844,60 @@ onBeforeUnmount(() => {
 
   .el-dialog__body {
     padding: 24px;
+  }
+}
+
+/* 表格右键菜单 */
+.table-context-menu {
+  position: fixed;
+  z-index: 10000;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 4px 0;
+  min-width: 160px;
+
+  .context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background: #f3f4f6;
+    }
+
+    &.disabled {
+      color: #9ca3af;
+      cursor: not-allowed;
+
+      &:hover {
+        background: transparent;
+      }
+    }
+
+    &.danger {
+      color: #dc2626;
+
+      &:hover {
+        background: #fef2f2;
+      }
+    }
+
+    .el-icon {
+      font-size: 16px;
+    }
+  }
+
+  .context-menu-separator {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 4px 0;
   }
 }
 </style> 
