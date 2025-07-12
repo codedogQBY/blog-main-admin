@@ -822,21 +822,58 @@ const insertEmoji = (emoji: string) => {
 const findNext = () => {
   if (!searchText.value || !editor.value) return
   
-  const { from, to } = editor.value.state.selection
-  const doc = editor.value.state.doc
-  const text = doc.textBetween(0, doc.content.size, ' ')
+  const { state } = editor.value
+  const { doc } = state
+  const currentPos = state.selection.from
   
-  const index = text.indexOf(searchText.value, to)
-  if (index !== -1) {
-    editor.value.chain().focus().setTextSelection({ from: index, to: index + searchText.value.length }).run()
-  } else {
-    // 如果没找到，从头开始搜索
-    const firstIndex = text.indexOf(searchText.value)
-    if (firstIndex !== -1) {
-      editor.value.chain().focus().setTextSelection({ from: firstIndex, to: firstIndex + searchText.value.length }).run()
-    } else {
-      ElMessage.info('未找到匹配内容')
+  // 在文档中搜索文本
+  let found = false
+  let searchPos = currentPos
+  
+  // 从当前位置向后搜索
+  doc.descendants((node, pos) => {
+    if (found) return false
+    
+    if (node.isText && node.text) {
+      const text = node.text
+      const index = text.indexOf(searchText.value, Math.max(0, searchPos - pos))
+      
+      if (index !== -1) {
+        const from = pos + index
+        const to = from + searchText.value.length
+        editor.value?.chain().focus().setTextSelection({ from, to }).run()
+        found = true
+        return false
+      }
     }
+    
+    if (pos >= searchPos) {
+      searchPos = 0 // 重置搜索位置，为下一个节点准备
+    }
+  })
+  
+  // 如果没找到，从头开始搜索
+  if (!found) {
+    doc.descendants((node, pos) => {
+      if (found) return false
+      
+      if (node.isText && node.text) {
+        const text = node.text
+        const index = text.indexOf(searchText.value)
+        
+        if (index !== -1) {
+          const from = pos + index
+          const to = from + searchText.value.length
+          editor.value?.chain().focus().setTextSelection({ from, to }).run()
+          found = true
+          return false
+        }
+      }
+    })
+  }
+  
+  if (!found) {
+    ElMessage.info('未找到匹配内容')
   }
 }
 
@@ -847,8 +884,9 @@ const replaceOne = () => {
   const selectedText = editor.value.state.doc.textBetween(from, to)
   
   if (selectedText === searchText.value) {
-    editor.value.chain().focus().insertContentAt({ from, to }, replaceText.value).run()
-    findNext()
+    editor.value.chain().focus().deleteSelection().insertContent(replaceText.value).run()
+    // 搜索下一个
+    setTimeout(findNext, 100)
   } else {
     findNext()
   }
@@ -857,12 +895,46 @@ const replaceOne = () => {
 const replaceAll = () => {
   if (!editor.value || !searchText.value) return
   
-  const doc = editor.value.state.doc
-  const text = doc.textBetween(0, doc.content.size, ' ')
-  const newText = text.replace(new RegExp(searchText.value, 'g'), replaceText.value)
+  let replaceCount = 0
+  const { state } = editor.value
+  const { doc } = state
   
-  editor.value.chain().focus().setContent(newText).run()
-  ElMessage.success('替换完成')
+  // 收集所有匹配位置（从后往前，避免位置偏移）
+  const matches: Array<{from: number, to: number}> = []
+  
+  doc.descendants((node, pos) => {
+    if (node.isText && node.text) {
+      const text = node.text
+      let searchIndex = 0
+      let index = text.indexOf(searchText.value, searchIndex)
+      
+      while (index !== -1) {
+        matches.push({
+          from: pos + index,
+          to: pos + index + searchText.value.length
+        })
+        searchIndex = index + 1
+        index = text.indexOf(searchText.value, searchIndex)
+      }
+    }
+  })
+  
+  // 从后往前替换，避免位置偏移
+  matches.reverse().forEach(match => {
+    editor.value?.chain()
+      .focus()
+      .setTextSelection(match)
+      .deleteSelection()
+      .insertContent(replaceText.value)
+      .run()
+    replaceCount++
+  })
+  
+  if (replaceCount > 0) {
+    ElMessage.success(`已替换 ${replaceCount} 处`)
+  } else {
+    ElMessage.info('未找到匹配内容')
+  }
 }
 
 // 目录功能
@@ -1117,7 +1189,7 @@ onBeforeUnmount(() => {
   .editor-content {
     flex: 1;
     overflow-y: auto;
-    padding: 16px 24px; /* 减少了顶部间距 */
+    padding: 8px 24px; /* 大幅减少顶部间距 */
 
     :deep(.ProseMirror) {
       min-height: 400px; /* 减少了最小高度 */
@@ -1125,9 +1197,14 @@ onBeforeUnmount(() => {
       font-size: 16px;
       line-height: 1.8;
       color: #334155;
+      padding-top: 0; /* 移除编辑器内部顶部间距 */
 
       > * + * {
         margin-top: 1em;
+      }
+
+      > *:first-child {
+        margin-top: 0; /* 第一个元素顶部无间距 */
       }
 
       p {
