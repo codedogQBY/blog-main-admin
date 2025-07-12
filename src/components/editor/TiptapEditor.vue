@@ -46,7 +46,7 @@
         <TiptapEditorTableContextMenu
           :visible="showTableContextMenu"
           :position="tableMenuPosition"
-          :editor="editor"
+          :editor="editor || null"
           :canMergeCells="editor?.can().mergeCells() || false"
           :canSplitCell="editor?.can().splitCell() || false"
           @action="handleTableAction"
