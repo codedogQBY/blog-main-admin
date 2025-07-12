@@ -640,30 +640,38 @@ const handleGlobalClick = () => {
 onMounted(() => {
   document.addEventListener('click', handleGlobalClick)
   
-  if (editor.value) {
-    const editorElement = editor.value.view.dom
-    editorElement.addEventListener('contextmenu', (e) => {
-      const target = e.target as HTMLElement
-      const tableCell = target.closest('td, th')
-      
-      if (tableCell && editor.value?.isActive('table')) {
-        e.preventDefault()
+  // 延迟一点时间等待编辑器初始化完成
+  setTimeout(() => {
+    if (editor.value) {
+      const editorElement = editor.value.view.dom
+      editorElement.addEventListener('contextmenu', (e) => {
+        const target = e.target as HTMLElement
+        const tableCell = target.closest('td, th')
         
-        tableMenuPosition.value = {
-          x: e.clientX,
-          y: e.clientY
+        if (tableCell && editor.value?.isActive('table')) {
+          e.preventDefault()
+          
+          tableMenuPosition.value = {
+            x: e.clientX,
+            y: e.clientY
+          }
+          showTableContextMenu.value = true
         }
-        showTableContextMenu.value = true
-      }
-    })
-    
-    if (props.modelValue) {
-      updatePreview(props.modelValue)
-      setTimeout(() => {
+      })
+      
+      // 初始化目录
+      if (props.modelValue) {
+        updatePreview(props.modelValue)
+        // 确保编辑器内容已渲染再更新目录
+        setTimeout(() => {
+          updateTableOfContents()
+        }, 200)
+      } else {
+        // 即使没有初始内容也要初始化目录
         updateTableOfContents()
-      }, 100)
+      }
     }
-  }
+  }, 100)
 })
 
 onBeforeUnmount(() => {

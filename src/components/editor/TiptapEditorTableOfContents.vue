@@ -7,6 +7,9 @@
       </el-button>
     </div>
     <div class="toc-content">
+      <div v-if="tableOfContents.length === 0" class="no-headings">
+        暂无标题
+      </div>
       <div 
         v-for="item in tableOfContents" 
         :key="item.id"
@@ -61,6 +64,13 @@ const emit = defineEmits<Emits>()
 
   .toc-content {
     padding: 8px;
+
+    .no-headings {
+      padding: 12px;
+      text-align: center;
+      color: #9ca3af;
+      font-size: 13px;
+    }
 
     .toc-item {
       padding: 6px 12px;
