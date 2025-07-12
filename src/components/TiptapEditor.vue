@@ -119,18 +119,33 @@
           @change="setCodeBlockLanguage"
           size="small"
           class="language-select"
-          placeholder="语言"
+          placeholder="选择语言"
+          filterable
         >
           <el-option label="JavaScript" value="javascript" />
           <el-option label="TypeScript" value="typescript" />
           <el-option label="Python" value="python" />
           <el-option label="Java" value="java" />
+          <el-option label="C++" value="cpp" />
+          <el-option label="C#" value="csharp" />
+          <el-option label="Go" value="go" />
+          <el-option label="Rust" value="rust" />
+          <el-option label="PHP" value="php" />
+          <el-option label="Ruby" value="ruby" />
           <el-option label="CSS" value="css" />
+          <el-option label="SCSS" value="scss" />
           <el-option label="HTML" value="html" />
+          <el-option label="Vue" value="vue" />
+          <el-option label="React (JSX)" value="jsx" />
           <el-option label="JSON" value="json" />
+          <el-option label="XML" value="xml" />
           <el-option label="SQL" value="sql" />
           <el-option label="Bash" value="bash" />
-          <el-option label="Plain Text" value="text" />
+          <el-option label="PowerShell" value="powershell" />
+          <el-option label="Dockerfile" value="dockerfile" />
+          <el-option label="YAML" value="yaml" />
+          <el-option label="Markdown" value="markdown" />
+          <el-option label="纯文本" value="text" />
         </el-select>
         <button
           @click="addImage"
@@ -215,11 +230,25 @@ import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
 import python from 'highlight.js/lib/languages/python'
 import java from 'highlight.js/lib/languages/java'
+import cpp from 'highlight.js/lib/languages/cpp'
+import csharp from 'highlight.js/lib/languages/csharp'
+import go from 'highlight.js/lib/languages/go'
+import rust from 'highlight.js/lib/languages/rust'
+import php from 'highlight.js/lib/languages/php'
+import ruby from 'highlight.js/lib/languages/ruby'
 import css from 'highlight.js/lib/languages/css'
+import scss from 'highlight.js/lib/languages/scss'
 import html from 'highlight.js/lib/languages/xml'
+import vue from 'highlight.js/lib/languages/xml' // Vue使用XML语法高亮
+import jsx from 'highlight.js/lib/languages/javascript' // JSX使用JavaScript语法高亮
 import json from 'highlight.js/lib/languages/json'
+import xml from 'highlight.js/lib/languages/xml'
 import sql from 'highlight.js/lib/languages/sql'
 import bash from 'highlight.js/lib/languages/bash'
+import powershell from 'highlight.js/lib/languages/powershell'
+import dockerfile from 'highlight.js/lib/languages/dockerfile'
+import yaml from 'highlight.js/lib/languages/yaml'
+import markdown from 'highlight.js/lib/languages/markdown'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   List,
@@ -273,11 +302,25 @@ lowlight.register('javascript', javascript)
 lowlight.register('typescript', typescript)
 lowlight.register('python', python)
 lowlight.register('java', java)
+lowlight.register('cpp', cpp)
+lowlight.register('csharp', csharp)
+lowlight.register('go', go)
+lowlight.register('rust', rust)
+lowlight.register('php', php)
+lowlight.register('ruby', ruby)
 lowlight.register('css', css)
+lowlight.register('scss', scss)
 lowlight.register('html', html)
+lowlight.register('vue', vue)
+lowlight.register('jsx', jsx)
 lowlight.register('json', json)
+lowlight.register('xml', xml)
 lowlight.register('sql', sql)
 lowlight.register('bash', bash)
+lowlight.register('powershell', powershell)
+lowlight.register('dockerfile', dockerfile)
+lowlight.register('yaml', yaml)
+lowlight.register('markdown', markdown)
 
 const editor = useEditor({
   content: props.modelValue,
@@ -326,6 +369,9 @@ const editor = useEditor({
     CodeBlockLowlight.configure({
       lowlight,
       defaultLanguage: 'javascript',
+      HTMLAttributes: {
+        class: 'code-block-wrapper',
+      },
     }),
   ],
   onUpdate: ({ editor }) => {
@@ -344,27 +390,69 @@ const editor = useEditor({
         const { $from } = selection
         const textBefore = $from.parent.textContent.slice(0, $from.parentOffset)
         
-        // 检查 Markdown 语法
+        // 检查 Markdown 语法并删除标记字符
         if (textBefore === '#') {
-          editor.value?.chain().focus().toggleHeading({ level: 1 }).run()
+          editor.value?.chain().focus()
+            .deleteRange({ from: $from.pos - 1, to: $from.pos })
+            .setHeading({ level: 1 })
+            .run()
           return true
         } else if (textBefore === '##') {
-          editor.value?.chain().focus().toggleHeading({ level: 2 }).run()
+          editor.value?.chain().focus()
+            .deleteRange({ from: $from.pos - 2, to: $from.pos })
+            .setHeading({ level: 2 })
+            .run()
           return true
         } else if (textBefore === '###') {
-          editor.value?.chain().focus().toggleHeading({ level: 3 }).run()
+          editor.value?.chain().focus()
+            .deleteRange({ from: $from.pos - 3, to: $from.pos })
+            .setHeading({ level: 3 })
+            .run()
+          return true
+        } else if (textBefore === '####') {
+          editor.value?.chain().focus()
+            .deleteRange({ from: $from.pos - 4, to: $from.pos })
+            .setHeading({ level: 4 })
+            .run()
+          return true
+        } else if (textBefore === '#####') {
+          editor.value?.chain().focus()
+            .deleteRange({ from: $from.pos - 5, to: $from.pos })
+            .setHeading({ level: 5 })
+            .run()
+          return true
+        } else if (textBefore === '######') {
+          editor.value?.chain().focus()
+            .deleteRange({ from: $from.pos - 6, to: $from.pos })
+            .setHeading({ level: 6 })
+            .run()
           return true
         } else if (textBefore === '>') {
-          editor.value?.chain().focus().toggleBlockquote().run()
+          editor.value?.chain().focus()
+            .deleteRange({ from: $from.pos - 1, to: $from.pos })
+            .setBlockquote()
+            .run()
           return true
         } else if (textBefore === '-' || textBefore === '*') {
-          editor.value?.chain().focus().toggleBulletList().run()
+          editor.value?.chain().focus()
+            .deleteRange({ from: $from.pos - 1, to: $from.pos })
+            .toggleBulletList()
+            .run()
           return true
-        } else if (/^\d+\./.test(textBefore)) {
-          editor.value?.chain().focus().toggleOrderedList().run()
-          return true
+        } else if (/^(\d+)\./.test(textBefore)) {
+          const match = textBefore.match(/^(\d+)\./)
+          if (match) {
+            editor.value?.chain().focus()
+              .deleteRange({ from: $from.pos - match[0].length, to: $from.pos })
+              .toggleOrderedList()
+              .run()
+            return true
+          }
         } else if (textBefore === '```') {
-          editor.value?.chain().focus().toggleCodeBlock().run()
+          editor.value?.chain().focus()
+            .deleteRange({ from: $from.pos - 3, to: $from.pos })
+            .setCodeBlock()
+            .run()
           return true
         }
       }
@@ -527,8 +615,12 @@ onBeforeUnmount(() => {
       }
 
       .language-select {
-        width: 120px;
-        margin-left: 4px;
+        width: 140px;
+        margin-left: 8px;
+        
+        :deep(.el-input__inner) {
+          font-size: 13px;
+        }
       }
     }
 
@@ -610,21 +702,131 @@ onBeforeUnmount(() => {
       }
 
       pre {
-        background: #f8fafc;
-        border-radius: 8px;
-        padding: 16px;
+        background: #1e293b;
+        border-radius: 12px;
+        padding: 20px;
         margin: 1.5em 0;
         overflow-x: auto;
-        font-family: 'Fira Code', monospace;
+        font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
         font-size: 0.9em;
         line-height: 1.6;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+        &::before {
+          content: attr(data-language);
+          position: absolute;
+          top: 12px;
+          right: 16px;
+          font-size: 0.75em;
+          color: #64748b;
+          background: #334155;
+          padding: 4px 8px;
+          border-radius: 4px;
+          text-transform: uppercase;
+          font-weight: 500;
+          z-index: 1;
+        }
 
         code {
           background: none;
           padding: 0;
           border-radius: 0;
-          color: inherit;
+          color: #e2e8f0;
           font-size: inherit;
+          font-family: inherit;
+          display: block;
+          white-space: pre;
+
+          // 语法高亮样式 - Material Theme
+          .hljs-keyword,
+          .hljs-built_in {
+            color: #c792ea;
+            font-weight: 500;
+          }
+          
+          .hljs-string,
+          .hljs-template-string {
+            color: #c3e88d;
+          }
+          
+          .hljs-number,
+          .hljs-literal {
+            color: #fd9170;
+          }
+          
+          .hljs-comment {
+            color: #546e7a;
+            font-style: italic;
+          }
+          
+          .hljs-function,
+          .hljs-title.function_ {
+            color: #82aaff;
+          }
+          
+          .hljs-variable,
+          .hljs-params {
+            color: #eeffff;
+          }
+          
+          .hljs-type,
+          .hljs-class {
+            color: #ffcb6b;
+          }
+          
+          .hljs-operator,
+          .hljs-punctuation {
+            color: #89ddff;
+          }
+          
+          .hljs-tag {
+            color: #f07178;
+          }
+          
+          .hljs-attribute,
+          .hljs-property {
+            color: #c792ea;
+          }
+          
+          .hljs-title,
+          .hljs-section {
+            color: #82aaff;
+            font-weight: 600;
+          }
+
+          .hljs-meta {
+            color: #ffcb6b;
+          }
+
+          .hljs-regexp {
+            color: #c3e88d;
+          }
+
+          .hljs-symbol {
+            color: #82aaff;
+          }
+        }
+
+        // 添加复制按钮的样式
+        &:hover::after {
+          content: '复制';
+          position: absolute;
+          top: 12px;
+          right: 80px;
+          font-size: 0.7em;
+          color: #94a3b8;
+          background: #334155;
+          padding: 4px 8px;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          z-index: 2;
+          
+          &:hover {
+            color: #e2e8f0;
+            background: #475569;
+          }
         }
       }
 
