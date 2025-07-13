@@ -298,7 +298,7 @@ const alerts = ref<Alert[]>([])
 const stats = ref<any[]>([])
 const pagination = reactive<Pagination>({
   page: 1,
-  limit: 20,
+  limit: 10,
   total: 0,
   totalPages: 0
 })

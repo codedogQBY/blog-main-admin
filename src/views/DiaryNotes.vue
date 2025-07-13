@@ -239,7 +239,7 @@ const notes = ref<any[]>([])
 const stats = ref<any>(null)
 const total = ref(0)
 const currentPage = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 
 // 搜索和筛选
 const searchQuery = ref('')

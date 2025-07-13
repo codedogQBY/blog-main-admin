@@ -450,7 +450,7 @@ const categories = ref<any[]>([])
 // 分页
 const pagination = reactive({
   page: 1,
-  limit: 20,
+  limit: 10, // 默认每页10条
   total: 0
 })
 

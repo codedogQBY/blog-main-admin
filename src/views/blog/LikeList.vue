@@ -81,7 +81,7 @@ import type { Like } from '@/api/interactions'
 const loading = ref(false)
 const likes = ref<Like[]>([])
 const currentPage = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 const total = ref(0)
 
 const filterForm = ref({

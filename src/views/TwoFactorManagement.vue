@@ -460,7 +460,7 @@ const securityStats = ref({
 
 // 分页相关
 const currentPage = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 const total = ref(0)
 
 // 模态框状态
