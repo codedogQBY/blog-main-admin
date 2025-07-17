@@ -656,7 +656,7 @@ const loadConfig = async () => {
       sections.value = aboutData.sections?.map(section => ({
         id: section.id,
         title: section.title,
-        content: JSON.parse(section.content),
+        content: typeof section.content === 'string' ? JSON.parse(section.content) : section.content,
         sort: section.sort,
         aboutId: section.aboutId,
         expanded: false,
@@ -880,7 +880,7 @@ const addSection = () => {
   sections.value.push({
     id: '',
     title: '',
-    content: '',
+    content: [''], // 修复：应该是数组而不是字符串
     sort: sections.value.length,
     aboutId: aboutId.value || '',
     expanded: true,

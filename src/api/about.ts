@@ -26,7 +26,7 @@ export interface AboutTag {
 export interface AboutSection {
   id: string
   title: string
-  content: string
+  content: string[] // 修复：应该是字符串数组
   sort: number
   aboutId: string
   images?: AboutImage[]
