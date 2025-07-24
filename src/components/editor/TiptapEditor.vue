@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import TiptapImage from '@tiptap/extension-image'
@@ -288,13 +288,16 @@ const editor = useEditor({
       const text = clipboardData.getData('text/plain')
       if (!text) return false
       
+      // 检查是否包含Markdown语法
       const hasMarkdown = /^#{1,6}\s+|^\s*[-*+]\s+|^\s*\d+\.\s+|^\s*>\s+|^```|^\s*\|.*\|.*\||\*\*.*\*\*|~~.*~~|`[^`]+`|\[.*?\]\(.*?\)|^---+$|^===+$|^\s*- \[[x ]\]/m.test(text)
       
       if (hasMarkdown) {
+        // 处理Markdown内容
         parseMarkdownAndInsert(text, editor.value, view)
         return true
       }
       
+      // 对于普通文本，让编辑器使用默认的粘贴行为
       return false
     },
     handleKeyDown: (view, event) => {
@@ -376,6 +379,39 @@ watch(searchText, () => {
     searchMatches.value = []
     currentSearchIndex.value = 0
   }
+})
+
+// 添加键盘事件监听器处理纯文本粘贴
+onMounted(() => {
+  const handleKeyDown = (event: KeyboardEvent) => {
+    // 检测 Cmd/Ctrl + Shift + V 快捷键
+    if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key === 'v') {
+      event.preventDefault()
+      
+      // 获取剪贴板中的纯文本
+      navigator.clipboard.readText().then(text => {
+        if (editor.value && text) {
+          // 删除当前选区（如果有的话）
+          if (!editor.value.state.selection.empty) {
+            editor.value.chain().focus().deleteSelection().run()
+          }
+          
+          // 插入纯文本
+          editor.value.chain().focus().insertContent(text).run()
+        }
+      }).catch(err => {
+        console.warn('无法读取剪贴板内容:', err)
+      })
+    }
+  }
+
+  // 添加事件监听器
+  document.addEventListener('keydown', handleKeyDown)
+
+  // 清理函数
+  onUnmounted(() => {
+    document.removeEventListener('keydown', handleKeyDown)
+  })
 })
 
 const updatePreview = (html: string) => {

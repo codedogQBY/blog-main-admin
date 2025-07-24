@@ -149,8 +149,18 @@ export const parseMarkdownAndInsert = (markdown: string, editor: any, view: any)
     htmlContent += '</tbody></table>'
   }
   
-  // 使用setContent来插入HTML内容
-  editor.commands.setContent(htmlContent)
+  // 在当前位置插入HTML内容，而不是替换整个内容
+  const { state } = view
+  const { selection } = state
+  const { $from } = selection
+  
+  // 删除当前选区（如果有的话）
+  if (!selection.empty) {
+    editor.chain().focus().deleteSelection().run()
+  }
+  
+  // 在当前位置插入HTML内容
+  editor.chain().focus().insertContent(htmlContent).run()
 }
 
 // 解析行内Markdown并转换为HTML
