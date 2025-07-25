@@ -480,8 +480,10 @@ const articleId = ref<string | null>(null)
 
 // 自动保存相关
 let autoSaveTimer: NodeJS.Timeout | null = null
+let contentChangeTimer: NodeJS.Timeout | null = null
 const CACHE_KEY = 'article-draft'
-const AUTO_SAVE_INTERVAL = 30000 // 30秒自动保存
+const AUTO_SAVE_INTERVAL = 5000 // 5秒自动保存
+const CONTENT_CHANGE_DEBOUNCE = 1000 // 内容变化防抖时间
 
 // 计算属性
 const saveStatusText = computed(() => {
@@ -501,8 +503,70 @@ const getCategoryName = (categoryId: string) => {
   return category?.name || '未分类'
 }
 
+// 监听页面离开
+const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  if (hasUnsavedChanges.value && (form.title.trim() || form.content.trim())) {
+    // 自动保存为草稿
+    autoSaveAsDraft()
+    e.preventDefault()
+    e.returnValue = '您有未保存的更改，已自动保存为草稿。确定要离开吗？'
+  }
+}
+
+// 键盘快捷键处理
+let saveInProgress = false
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  // 检测 Cmd/Ctrl + S 快捷键
+  if ((event.metaKey || event.ctrlKey) && event.key === 's') {
+    event.preventDefault()
+    
+    // 防止重复触发
+    if (saveInProgress) {
+      return
+    }
+    
+    saveInProgress = true
+    
+    if (form.title.trim() || form.content.trim()) {
+      saveToDraft()
+      lastSaved.value = new Date()
+      hasUnsavedChanges.value = false
+      ElMessage.success('已保存到本地')
+    } else {
+      ElMessage.warning('请先输入标题或内容')
+    }
+    
+    // 延迟重置状态，防止快速重复触发
+    setTimeout(() => {
+      saveInProgress = false
+    }, 1000)
+  }
+}
+
 // 初始化
 onMounted(async () => {
+  // 添加页面离开监听
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  
+  // 添加键盘事件监听器
+  document.addEventListener('keydown', handleKeyDown)
+  
+  // 添加路由离开监听
+  const handleRouteLeave = () => {
+    if (hasUnsavedChanges.value && (form.title.trim() || form.content.trim())) {
+      autoSaveAsDraft()
+    }
+  }
+  
+  // 监听路由变化
+  router.beforeEach((to, from, next) => {
+    if (from.path.includes('/admin/articles/edit') && hasUnsavedChanges.value && (form.title.trim() || form.content.trim())) {
+      autoSaveAsDraft()
+    }
+    next()
+  })
+  
   await loadData()
   
   // 检查是否是编辑模式
@@ -521,16 +585,23 @@ onMounted(async () => {
 
 // 清理
 onBeforeUnmount(() => {
+  // 移除页面离开监听
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  
+  // 移除键盘事件监听
+  document.removeEventListener('keydown', handleKeyDown)
+  
+  // 清理定时器
   if (autoSaveTimer) {
     clearInterval(autoSaveTimer)
   }
-})
-
-// 监听页面离开
-window.addEventListener('beforeunload', (e) => {
-  if (hasUnsavedChanges.value) {
-    e.preventDefault()
-    e.returnValue = '您有未保存的更改，确定要离开吗？'
+  if (contentChangeTimer) {
+    clearTimeout(contentChangeTimer)
+  }
+  
+  // 离开页面时自动保存为草稿
+  if (hasUnsavedChanges.value && (form.title.trim() || form.content.trim())) {
+    autoSaveAsDraft()
   }
 })
 
@@ -583,7 +654,9 @@ const handleChange = () => {
 }
 
 const handleTitleChange = () => {
-  handleChange()
+  hasUnsavedChanges.value = true
+  // 立即保存到本地缓存
+  saveToDraft()
   
   // 如果 slug 没有被锁定且为空，自动生成
   if (!slugLocked.value && !form.slug && form.title.trim()) {
@@ -596,14 +669,29 @@ const handleTitleChange = () => {
   }
 }
 
-const handleContentChange = () => {
-  handleChange()
+const handleContentChange = (newContent?: string) => {
+  if (newContent !== undefined) {
+    form.content = newContent
+  }
+  
+  // 防抖处理内容变化
+  if (contentChangeTimer) {
+    clearTimeout(contentChangeTimer)
+  }
+  
+  contentChangeTimer = setTimeout(() => {
+    hasUnsavedChanges.value = true
+    // 立即保存到本地缓存
+    saveToDraft()
+  }, CONTENT_CHANGE_DEBOUNCE)
 }
 
 const handleTagChange = (value: (string | number)[]) => {
   // 确保 tags 总是字符串数组
   form.tags = value.map(v => String(v))
-  handleChange()
+  hasUnsavedChanges.value = true
+  // 立即保存到本地缓存
+  saveToDraft()
 }
 
 // 封面图片选择器状态
@@ -620,6 +708,9 @@ const handleCoverImageSelect = (files: FileType | FileType[]) => {
   const file = Array.isArray(files) ? files[0] : files
   if (file) {
     form.coverImage = file.url
+    hasUnsavedChanges.value = true
+    // 立即保存到本地缓存
+    saveToDraft()
   }
 }
 
@@ -684,10 +775,10 @@ const handlePreview = () => {
 
 // 返回
 const handleBack = async () => {
-  if (hasUnsavedChanges.value) {
+  if (hasUnsavedChanges.value && (form.title.trim() || form.content.trim())) {
     try {
       await ElMessageBox.confirm(
-        '您有未保存的更改，确定要离开吗？',
+        '您有未保存的更改，将自动保存为草稿。确定要离开吗？',
         '提示',
         {
           confirmButtonText: '离开',
@@ -695,6 +786,8 @@ const handleBack = async () => {
           type: 'warning'
         }
       )
+      // 用户确认离开，自动保存为草稿
+      await autoSaveAsDraft()
     } catch {
       return
     }
@@ -703,11 +796,63 @@ const handleBack = async () => {
   router.push('/admin/articles')
 }
 
-// 自动保存
+
+
+// 自动保存为草稿（离开页面时调用）
+const autoSaveAsDraft = async () => {
+  if (!form.title.trim() && !form.content.trim()) {
+    return // 如果标题和内容都为空，不保存
+  }
+  
+  try {
+    // 确保保存为草稿状态
+    const originalPublished = form.published
+    form.published = false
+    
+    const articleData: CreateArticleRequest = {
+      title: form.title || '未命名文章',
+      content: form.content || '',
+      excerpt: form.excerpt,
+      coverImage: form.coverImage,
+      categoryId: form.categoryId,
+      tags: form.tags,
+      metaTitle: form.metaTitle,
+      metaDescription: form.metaDescription,
+      metaKeywords: form.metaKeywords,
+      canonicalUrl: form.canonicalUrl,
+      published: false, // 强制保存为草稿
+      readTime: form.readTime,
+      slug: form.slug
+    }
+    
+    if (isEditing.value && articleId.value) {
+      await articleApi.update(articleId.value, articleData as UpdateArticleRequest)
+    } else {
+      const newArticle = await articleApi.create(articleData)
+      articleId.value = newArticle.id
+      isEditing.value = true
+    }
+    
+    // 恢复原来的发布状态（如果用户没有修改的话）
+    if (originalPublished !== form.published) {
+      form.published = originalPublished
+    }
+    
+    hasUnsavedChanges.value = false
+    clearDraft() // 清除本地缓存
+    console.log('自动保存草稿成功')
+  } catch (error) {
+    console.error('自动保存草稿失败:', error)
+  }
+}
+
+// 自动保存到本地缓存
 const startAutoSave = () => {
   autoSaveTimer = setInterval(() => {
     if (hasUnsavedChanges.value && (form.title.trim() || form.content.trim())) {
       saveToDraft()
+      // 更新保存状态显示
+      lastSaved.value = new Date()
     }
   }, AUTO_SAVE_INTERVAL)
 }
@@ -729,7 +874,7 @@ const saveDraft = async () => {
       metaDescription: form.metaDescription,
       metaKeywords: form.metaKeywords,
       canonicalUrl: form.canonicalUrl,
-      published: form.published,
+      published: false, // 保存为草稿
       readTime: form.readTime,
       slug: form.slug
     }
@@ -758,11 +903,20 @@ const saveDraft = async () => {
 
 // 保存到本地缓存
 const saveToDraft = () => {
-  const draftData = {
-    ...form,
-    timestamp: Date.now()
+  try {
+    const draftData = {
+      ...form,
+      timestamp: Date.now()
+    }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(draftData))
+    
+    // 更新保存状态（但不显示消息，避免打扰用户）
+    if (!lastSaved.value) {
+      lastSaved.value = new Date()
+    }
+  } catch (error) {
+    console.warn('保存草稿到本地失败:', error)
   }
-  localStorage.setItem(CACHE_KEY, JSON.stringify(draftData))
 }
 
 // 从本地缓存恢复
