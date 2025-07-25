@@ -5,6 +5,7 @@
     :title="title"
     width="80%"
     class="file-selector-dialog"
+    :z-index="2000"
     @close="handleClose"
   >
     <!-- 工具栏 -->

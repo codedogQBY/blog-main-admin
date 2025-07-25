@@ -528,14 +528,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
     
     saveInProgress = true
     
-    if (form.title.trim() || form.content.trim()) {
-      saveToDraft()
-      lastSaved.value = new Date()
-      hasUnsavedChanges.value = false
-      ElMessage.success('已保存到本地')
-    } else {
-      ElMessage.warning('请先输入标题或内容')
-    }
+    // 调用保存草稿功能
+    saveDraft()
     
     // 延迟重置状态，防止快速重复触发
     setTimeout(() => {
@@ -615,6 +609,12 @@ const loadData = async () => {
     
     categories.value = Array.isArray(categoriesRes) ? categoriesRes : categoriesRes.data || []
     tags.value = Array.isArray(tagsRes) ? tagsRes : tagsRes.data || []
+    
+    // 如果是新建模式且没有选择分类，默认选中第一个分类
+    if (!isEditing.value && categories.value.length > 0 && !form.categoryId) {
+      form.categoryId = categories.value[0].id
+      hasUnsavedChanges.value = true
+    }
   } catch (error) {
     ElMessage.error('加载数据失败')
     console.error(error)
@@ -809,12 +809,18 @@ const autoSaveAsDraft = async () => {
     const originalPublished = form.published
     form.published = false
     
+    // 如果没有选择分类，默认选中第一个分类
+    let categoryId = form.categoryId
+    if (!categoryId && categories.value.length > 0) {
+      categoryId = categories.value[0].id
+    }
+    
     const articleData: CreateArticleRequest = {
       title: form.title || '未命名文章',
       content: form.content || '',
       excerpt: form.excerpt,
       coverImage: form.coverImage,
-      categoryId: form.categoryId,
+      categoryId: categoryId,
       tags: form.tags,
       metaTitle: form.metaTitle,
       metaDescription: form.metaDescription,
@@ -954,6 +960,12 @@ const restoreDraft = () => {
     }
     
     Object.assign(form, safeDraftData)
+    
+    // 如果恢复的草稿没有分类，且分类数据已加载，默认选中第一个分类
+    if (!form.categoryId && categories.value.length > 0) {
+      form.categoryId = categories.value[0].id
+    }
+    
     hasUnsavedChanges.value = true
     ElMessage.info('已恢复未保存的草稿')
   } catch (error) {
