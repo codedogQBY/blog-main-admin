@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    CustomImageComponent: typeof import('./src/components/editor/extensions/CustomImageComponent.vue')['default']
     DynamicMenu: typeof import('./src/components/DynamicMenu.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
     ElAvatar: typeof import('element-plus/es')['ElAvatar']

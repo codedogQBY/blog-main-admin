@@ -108,7 +108,7 @@
 import { ref, watch, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
-import TiptapImage from '@tiptap/extension-image'
+import CustomImage from './extensions/CustomImage'
 import TiptapLink from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
@@ -260,7 +260,7 @@ const editor = useEditor({
     TaskList,
     TaskItem.configure({ nested: true }),
     YouTube.configure({ controls: false, nocookie: true }),
-    TiptapImage.configure({ inline: true, allowBase64: true }),
+    CustomImage.configure({ inline: false, allowBase64: true }),
     TiptapLink.configure({
       openOnClick: false,
       HTMLAttributes: { class: 'editor-link' }
@@ -437,7 +437,10 @@ const addImage = () => {
 
 const handleImageSelect = (file: FileType | FileType[]) => {
   if (file && editor.value) {
-    editor.value.chain().focus().setImage({ src: (file as FileType).url }).run()
+    editor.value.chain().focus().setImage({ 
+      src: (file as FileType).url,
+      align: 'center'
+    }).run()
   }
 }
 
@@ -946,6 +949,33 @@ onBeforeUnmount(() => {
         height: auto;
         border-radius: 8px;
         margin: 1.5em 0;
+      }
+
+      /* 自定义图片样式 */
+      .custom-image-wrapper {
+        margin: 1.5em 0;
+        
+        &.image-align-left {
+          text-align: left;
+        }
+        
+        &.image-align-center {
+          text-align: center;
+        }
+        
+        &.image-align-right {
+          text-align: right;
+        }
+        
+        img {
+          margin: 0;
+          transition: all 0.2s ease;
+          
+          &:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+          }
+        }
       }
 
       hr {

@@ -174,6 +174,64 @@
         >
           <el-icon><ImageIcon /></el-icon>
         </button>
+        
+        <!-- 图片对齐控制 -->
+        <template v-if="editor.isActive('customImage')">
+          <div class="toolbar-separator-mini"></div>
+          <button
+            @click="editor.chain().focus().updateAttributes('customImage', { align: 'left' }).run()"
+            :class="['toolbar-button', { active: editor.getAttributes('customImage').align === 'left' }]"
+            title="图片左对齐"
+          >
+            <el-icon><AlignLeft /></el-icon>
+          </button>
+          <button
+            @click="editor.chain().focus().updateAttributes('customImage', { align: 'center' }).run()"
+            :class="['toolbar-button', { active: editor.getAttributes('customImage').align === 'center' }]"
+            title="图片居中"
+          >
+            <el-icon><AlignCenter /></el-icon>
+          </button>
+          <button
+            @click="editor.chain().focus().updateAttributes('customImage', { align: 'right' }).run()"
+            :class="['toolbar-button', { active: editor.getAttributes('customImage').align === 'right' }]"
+            title="图片右对齐"
+          >
+            <el-icon><AlignRight /></el-icon>
+          </button>
+          
+          <div class="toolbar-separator-mini"></div>
+          
+          <!-- 图片尺寸控制 -->
+          <button
+            @click="editor.chain().focus().updateAttributes('customImage', { width: '200px', height: null }).run()"
+            class="toolbar-button size-btn"
+            title="小尺寸"
+          >
+            小
+          </button>
+          <button
+            @click="editor.chain().focus().updateAttributes('customImage', { width: '400px', height: null }).run()"
+            class="toolbar-button size-btn"
+            title="中等尺寸"
+          >
+            中
+          </button>
+          <button
+            @click="editor.chain().focus().updateAttributes('customImage', { width: '600px', height: null }).run()"
+            class="toolbar-button size-btn"
+            title="大尺寸"
+          >
+            大
+          </button>
+          <button
+            @click="editor.chain().focus().updateAttributes('customImage', { width: null, height: null }).run()"
+            class="toolbar-button size-btn"
+            title="原始尺寸"
+          >
+            原始
+          </button>
+        </template>
         <button
           @click="$emit('addLink')"
           class="toolbar-button"
@@ -295,7 +353,10 @@ import {
   Search,
   BookOpen,
   Maximize2,
-  Minimize2
+  Minimize2,
+  AlignLeft,
+  AlignCenter,
+  AlignRight
 } from 'lucide-vue-next'
 import TiptapEditorTableToolbar from './TiptapEditorTableToolbar.vue'
 import TiptapEditorSearchBar from './TiptapEditorSearchBar.vue'
@@ -371,44 +432,50 @@ const setCodeBlockLanguage = (language: string) => {
       gap: 4px;
 
       .toolbar-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 36px;
-        height: 36px;
-        border: none;
-        background: transparent;
-        border-radius: 6px;
-        color: #64748b;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-size: 13px;
-        padding: 0 8px;
-        white-space: nowrap;
-
-        &:hover {
-          background: #e2e8f0;
-          color: #334155;
-        }
-
-        &.is-active {
-          background: #e0e7ff;
-          color: #4f46e5;
-        }
-
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 36px;
+          height: 36px;
+          border: none;
+          background: transparent;
+          border-radius: 6px;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-size: 13px;
+          padding: 0 8px;
+          white-space: nowrap;
 
           &:hover {
-            background: transparent;
+            background: #e2e8f0;
+            color: #334155;
+          }
+
+          &.is-active {
+            background: #e0e7ff;
+            color: #4f46e5;
+          }
+
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+
+            &:hover {
+              background: transparent;
+            }
+          }
+
+          &.size-btn {
+            padding: 4px 6px;
+            font-size: 12px;
+            min-width: 28px;
+          }
+
+          .el-icon {
+            font-size: 16px;
           }
         }
-
-        .el-icon {
-          font-size: 16px;
-        }
-      }
 
       .language-select {
         width: 140px;
@@ -421,11 +488,18 @@ const setCodeBlockLanguage = (language: string) => {
     }
 
     .toolbar-separator {
-      width: 1px;
-      height: 24px;
-      background: #e2e8f0;
-      margin: 0 4px;
-    }
+    width: 1px;
+    height: 24px;
+    background: #d1d5db;
+    margin: 0 4px;
+  }
+  
+  .toolbar-separator-mini {
+    width: 1px;
+    height: 16px;
+    background: #e2e8f0;
+    margin: 0 2px;
+  }
 
     .character-count {
       margin-left: auto;
