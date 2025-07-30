@@ -149,7 +149,7 @@ import markdown from 'highlight.js/lib/languages/markdown'
 
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Minus, Trash2 } from 'lucide-vue-next'
-import { fileApi } from '../../lib/api'
+import { fileApi, filesApi } from '../../lib/api'
 import FileSelector, {type FileType} from '../FileSelector.vue'
 
 // 导入拆分的组件
@@ -208,6 +208,162 @@ const tableMenuPosition = ref({ x: 0, y: 0 })
 // 图片选择器相关
 const imagePickerVisible = ref(false)
 const selectedImage = ref('')
+
+// 图片自动上传相关
+const defaultUploadFolder = ref('')
+const isProcessingImages = ref(false)
+
+// 获取默认上传文件夹
+const getDefaultUploadFolder = () => {
+  return localStorage.getItem('default-upload-folder') || ''
+}
+
+// 设置默认上传文件夹
+const setDefaultUploadFolder = (folderId: string) => {
+  localStorage.setItem('default-upload-folder', folderId)
+  defaultUploadFolder.value = folderId
+}
+
+// 初始化默认上传文件夹
+defaultUploadFolder.value = getDefaultUploadFolder()
+
+// 检测图片是否为非本链图片
+const isExternalImage = (src: string) => {
+  const imageHostDomain = import.meta.env.VITE_IMAGE_HOST_DOMAIN
+  if (!imageHostDomain) return false
+  
+  try {
+    const url = new URL(src)
+    const hostUrl = new URL(imageHostDomain)
+    return url.hostname !== hostUrl.hostname
+  } catch {
+    return false // 无效URL
+  }
+}
+
+// 下载并上传外部图片
+const downloadAndUploadImage = async (src: string): Promise<string> => {
+  try {
+    // 获取图片数据
+    const response = await fetch(src, {
+      mode: 'cors'
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    
+    const blob = await response.blob()
+    
+    // 从URL获取文件名
+    const urlPath = new URL(src).pathname
+    const fileName = urlPath.split('/').pop() || `image-${Date.now()}.jpg`
+    
+    // 创建File对象
+    const file = new File([blob], fileName, { type: blob.type })
+    
+    // 上传到指定文件夹
+    const uploadResult = await filesApi.uploadFile(file, defaultUploadFolder.value || null)
+    
+    return uploadResult.url
+  } catch (error) {
+    console.error('上传外部图片失败:', error)
+    throw error
+  }
+}
+
+// 将Base64转换为File对象并上传
+const uploadBase64Image = async (base64Data: string): Promise<string> => {
+  try {
+    // 解析Base64数据
+    const matches = base64Data.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/)
+    if (!matches) {
+      throw new Error('无效的Base64图片格式')
+    }
+    
+    const [, imageType, base64String] = matches
+    
+    // 将Base64转换为Blob
+    const byteCharacters = atob(base64String)
+    const byteNumbers = new Array(byteCharacters.length)
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i)
+    }
+    const byteArray = new Uint8Array(byteNumbers)
+    const blob = new Blob([byteArray], { type: `image/${imageType}` })
+    
+    // 创建File对象
+    const fileName = `paste-image-${Date.now()}.${imageType}`
+    const file = new File([blob], fileName, { type: `image/${imageType}` })
+    
+    // 上传到指定文件夹
+    const uploadResult = await filesApi.uploadFile(file, defaultUploadFolder.value || null)
+    
+    return uploadResult.url
+  } catch (error) {
+    console.error('上传Base64图片失败:', error)
+    throw error
+  }
+}
+// 处理内容中的外部图片和Base64图片
+const processExternalImages = async (content: string): Promise<string> => {
+  if (!content || isProcessingImages.value) return content
+  
+  const imageHostDomain = import.meta.env.VITE_IMAGE_HOST_DOMAIN
+  
+  isProcessingImages.value = true
+  
+  try {
+    // 匹配所有img标签
+    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/g
+    let processedContent = content
+    const matches = Array.from(content.matchAll(imgRegex))
+    
+    let processedCount = 0
+    const totalExternalImages = matches.filter(m => isExternalImage(m[1]) || m[1].startsWith('data:image/')).length
+    
+    for (const match of matches) {
+      const [fullMatch, src] = match
+      
+      // 处理Base64图片
+      if (src.startsWith('data:image/')) {
+        try {
+          ElMessage.info(`正在上传Base64图片 ${++processedCount}/${totalExternalImages}...`)
+          
+          const newSrc = await uploadBase64Image(src)
+          processedContent = processedContent.replace(src, newSrc)
+          
+          ElMessage.success(`Base64图片上传成功`)
+        } catch (error) {
+          console.error('处理Base64图片失败:', src.substring(0, 50) + '...', error)
+          ElMessage.warning(`Base64图片上传失败`)
+        }
+      }
+      // 处理外部链接图片
+      else if (imageHostDomain && isExternalImage(src)) {
+        try {
+          ElMessage.info(`正在上传外部图片 ${++processedCount}/${totalExternalImages}...`)
+          
+          const newSrc = await downloadAndUploadImage(src)
+          processedContent = processedContent.replace(src, newSrc)
+          
+          ElMessage.success(`图片上传成功`)
+        } catch (error) {
+          console.error('处理外部图片失败:', src, error)
+          ElMessage.warning(`图片 ${src} 上传失败`)
+        }
+      }
+    }
+    
+    if (processedCount > 0) {
+      ElMessage.success(`已成功上传 ${processedCount} 张图片`)
+    }
+    
+    return processedContent
+  } finally {
+    isProcessingImages.value = false
+  }
+}
 
 // Markdown导入相关
 const showMarkdownDialog = ref(false)
@@ -285,6 +441,61 @@ const editor = useEditor({
       const clipboardData = event.clipboardData
       if (!clipboardData) return false
       
+      // 首先检查是否有文件数据（直接粘贴图片文件）
+      const files = Array.from(clipboardData.files)
+      if (files.length > 0) {
+        const imageFiles = files.filter(file => file.type.startsWith('image/'))
+        if (imageFiles.length > 0) {
+          // 处理粘贴的图片文件
+          setTimeout(async () => {
+            for (const imageFile of imageFiles) {
+              try {
+                ElMessage.info(`正在上传图片 ${imageFile.name}...`)
+                const uploadResult = await filesApi.uploadFile(imageFile, defaultUploadFolder.value || null)
+                // 插入图片到编辑器
+                editor.value?.chain().focus().setImage({ 
+                  src: uploadResult.url,
+                  align: 'center' 
+                }).run()
+                ElMessage.success(`图片 ${imageFile.name} 上传成功`)
+              } catch (error) {
+                console.error('处理粘贴的图片文件失败:', imageFile.name, error)
+                ElMessage.warning(`图片 ${imageFile.name} 上传失败`)
+              }
+            }
+          }, 100)
+          return true
+        }
+      }
+      
+      // 检查剪贴板项目（可能包含图片数据）
+      const items = Array.from(clipboardData.items)
+      const imageItems = items.filter(item => item.type.startsWith('image/'))
+      if (imageItems.length > 0) {
+        setTimeout(async () => {
+          for (const item of imageItems) {
+            try {
+              const file = item.getAsFile()
+              if (file) {
+                ElMessage.info(`正在上传图片...`)
+                const uploadResult = await filesApi.uploadFile(file, defaultUploadFolder.value || null)
+                // 插入图片到编辑器
+                editor.value?.chain().focus().setImage({ 
+                  src: uploadResult.url,
+                  align: 'center' 
+                }).run()
+                ElMessage.success(`图片上传成功`)
+              }
+            } catch (error) {
+              console.error('处理图片数据失败:', error)
+              ElMessage.warning(`图片上传失败`)
+            }
+          }
+        }, 100)
+        return true
+      }
+      
+      // 然后检查文本数据
       const text = clipboardData.getData('text/plain')
       if (!text) return false
       
@@ -294,6 +505,74 @@ const editor = useEditor({
       if (hasMarkdown) {
         // 处理Markdown内容
         parseMarkdownAndInsert(text, editor.value, view)
+        
+        // 异步处理外部图片
+        setTimeout(async () => {
+          if (editor.value) {
+            const currentContent = editor.value.getHTML()
+            const processedContent = await processExternalImages(currentContent)
+            if (processedContent !== currentContent) {
+              editor.value.chain().focus().setContent(processedContent).run()
+            }
+          }
+        }, 100)
+        
+        return true
+      }
+      
+      // 对于普通文本，检查是否包含独立的图片URL或Base64图片
+      const imageUrlRegex = /^https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|bmp)(\?[^\s]*)?$/gi
+      const base64ImageRegex = /^data:image\/[a-zA-Z]+;base64,[A-Za-z0-9+\/]+=*$/
+      const lines = text.split('\n').filter(line => line.trim())
+      
+      const imageUrls = lines.filter(line => imageUrlRegex.test(line.trim()))
+      const base64Images = lines.filter(line => base64ImageRegex.test(line.trim()))
+      
+      if (imageUrls.length > 0 || base64Images.length > 0) {
+        // 处理独立的图片URL行和Base64图片
+        setTimeout(async () => {
+          // 处理普通图片URL
+          for (const imageUrl of imageUrls) {
+            const cleanUrl = imageUrl.trim()
+            if (isExternalImage(cleanUrl)) {
+              try {
+                const newSrc = await downloadAndUploadImage(cleanUrl)
+                // 插入图片到编辑器
+                editor.value?.chain().focus().setImage({ 
+                  src: newSrc,
+                  align: 'center' 
+                }).run()
+              } catch (error) {
+                console.error('处理粘贴的图片失败:', cleanUrl, error)
+                ElMessage.warning(`图片 ${cleanUrl} 上传失败`)
+              }
+            } else {
+              // 本站图片直接插入
+              editor.value?.chain().focus().setImage({ 
+                src: cleanUrl,
+                align: 'center' 
+              }).run()
+            }
+          }
+          
+          // 处理Base64图片
+          for (const base64Data of base64Images) {
+            const cleanData = base64Data.trim()
+            try {
+              ElMessage.info('正在上传Base64图片...')
+              const newSrc = await uploadBase64Image(cleanData)
+              // 插入图片到编辑器
+              editor.value?.chain().focus().setImage({ 
+                src: newSrc,
+                align: 'center' 
+              }).run()
+              ElMessage.success('Base64图片上传成功')
+            } catch (error) {
+              console.error('处理粘贴的Base64图片失败:', error)
+              ElMessage.warning('Base64图片上传失败')
+            }
+          }
+        }, 100)
         return true
       }
       
@@ -723,6 +1002,13 @@ onBeforeUnmount(() => {
   if (isFullscreen.value) {
     document.body.style.overflow = ''
   }
+})
+
+// 暴露方法给父组件
+defineExpose({
+  setDefaultUploadFolder,
+  getDefaultUploadFolder,
+  processExternalImages
 })
 </script>
 

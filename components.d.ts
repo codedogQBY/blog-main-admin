@@ -64,6 +64,7 @@ declare module 'vue' {
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ElUpload: typeof import('element-plus/es')['ElUpload']
     FileSelector: typeof import('./src/components/FileSelector.vue')['default']
+    FolderSelector: typeof import('./src/components/FolderSelector.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
     PermissionCheck: typeof import('./src/components/PermissionCheck.vue')['default']
     RecordScreenPlayer: typeof import('./src/components/RecordScreenPlayer.vue')['default']

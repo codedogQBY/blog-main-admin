@@ -33,6 +33,17 @@
           <el-icon><View /></el-icon>
           预览
         </el-button>
+        
+        <!-- 默认上传文件夹设置 -->
+        <div class="default-folder-setting">
+          <el-tooltip content="设置粘贴图片的默认上传文件夹" placement="bottom">
+            <el-button @click="showFolderSelector" class="folder-btn">
+              <el-icon><FolderOpened /></el-icon>
+              {{ getDefaultFolderName() }}
+            </el-button>
+          </el-tooltip>
+        </div>
+        
         <PermissionCheck permission="article.update">
           <el-button @click="saveDraft" class="draft-btn">
             <el-icon><Document /></el-icon>
@@ -73,6 +84,7 @@
         <!-- 内容编辑器 -->
         <div class="content-editor">
           <TiptapEditor
+            ref="editorRef"
             v-model="form.content"
             placeholder="开始创作你的精彩内容..."
             @update:modelValue="handleContentChange"
@@ -395,6 +407,15 @@
       fileType="image"
       @select="handleCoverImageSelect"
     />
+
+    <!-- 文件夹选择器 -->
+    <FolderSelector
+      :visible="folderSelectorVisible"
+      @update:visible="folderSelectorVisible = $event"
+      title="选择默认上传文件夹"
+      :default-folder-id="defaultUploadFolder.id"
+      @select="handleFolderSelect"
+    />
   </div>
 </template>
 
@@ -425,11 +446,13 @@ import {
   Refresh,
   Link,
   Lock,
-  Unlock
+  Unlock,
+  FolderOpened
 } from '@element-plus/icons-vue'
 import TiptapEditor from '@/components/editor/TiptapEditor.vue'
 import FileSelector, {type FileType} from '@/components/FileSelector.vue'
-import { articleApi, categoryApi, tagApi, fileApi } from '@/lib/api'
+import FolderSelector, {type FolderType} from '@/components/FolderSelector.vue'
+import { articleApi, categoryApi, tagApi, fileApi, filesApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
 import PermissionCheck from '@/components/PermissionCheck.vue'
 import type { CreateArticleRequest, UpdateArticleRequest } from '@/lib/api'
@@ -563,6 +586,9 @@ onMounted(async () => {
   
   await loadData()
   
+  // 初始化默认上传文件夹
+  await initDefaultUploadFolder()
+  
   // 检查是否是编辑模式
   if (route.params.id) {
     isEditing.value = true
@@ -575,6 +601,13 @@ onMounted(async () => {
   
   // 启动自动保存
   startAutoSave()
+  
+  // 设置编辑器的默认上传文件夹
+  setTimeout(() => {
+    if (editorRef.value && defaultUploadFolder.value.id !== undefined) {
+      editorRef.value.setDefaultUploadFolder(defaultUploadFolder.value.id)
+    }
+  }, 200)
 })
 
 // 清理
@@ -697,6 +730,66 @@ const handleTagChange = (value: (string | number)[]) => {
 // 封面图片选择器状态
 const coverImagePickerVisible = ref(false)
 const selectedCoverImage = ref('')
+
+// 文件夹选择器状态
+const folderSelectorVisible = ref(false)
+const defaultUploadFolder = ref<{ id: string | null; name: string }>({ id: null, name: '根目录' })
+const editorRef = ref<any>(null)
+
+// 初始化默认上传文件夹
+const initDefaultUploadFolder = async () => {
+  const savedFolderId = localStorage.getItem('default-upload-folder')
+  if (savedFolderId) {
+    try {
+      // 如果保存的是 'null'，设置为根目录
+      if (savedFolderId === 'null' || savedFolderId === '') {
+        defaultUploadFolder.value = { id: null, name: '根目录' }
+      } else {
+        // 尝试获取文件夹信息
+        const folders = await filesApi.getFolders({})
+        const folder = folders.data?.find((f: any) => f.id === savedFolderId)
+        if (folder) {
+          defaultUploadFolder.value = { id: folder.id, name: folder.name }
+        } else {
+          // 文件夹不存在，重置为根目录
+          defaultUploadFolder.value = { id: null, name: '根目录' }
+          localStorage.setItem('default-upload-folder', '')
+        }
+      }
+    } catch (error) {
+      console.error('初始化默认上传文件夹失败:', error)
+      defaultUploadFolder.value = { id: null, name: '根目录' }
+    }
+  }
+}
+
+// 获取默认文件夹名称
+const getDefaultFolderName = () => {
+  return defaultUploadFolder.value.name
+}
+
+// 显示文件夹选择器
+const showFolderSelector = () => {
+  folderSelectorVisible.value = true
+}
+
+// 处理文件夹选择
+const handleFolderSelect = (folder: FolderType) => {
+  defaultUploadFolder.value = {
+    id: folder.id,
+    name: folder.name
+  }
+  
+  // 保存到 localStorage
+  localStorage.setItem('default-upload-folder', folder.id || '')
+  
+  // 设置编辑器的默认上传文件夹
+  if (editorRef.value) {
+    editorRef.value.setDefaultUploadFolder(folder.id)
+  }
+  
+  ElMessage.success(`已设置默认上传文件夹为：${folder.name}`)
+}
 
 // 选择封面图片
 const selectCoverImage = () => {
@@ -1244,6 +1337,40 @@ const getConfidenceClass = () => {
     .toolbar-right {
       display: flex;
       gap: 12px;
+      align-items: center;
+
+      .default-folder-setting {
+        .folder-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-weight: 500;
+          color: #64748b;
+          border: 1px solid #e2e8f0;
+          background: white;
+          transition: all 0.2s ease;
+          max-width: 150px;
+          
+          .el-icon {
+            flex-shrink: 0;
+          }
+          
+          /* 文件夹名称超长处理 */
+          span:last-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          &:hover {
+            color: #3b82f6;
+            border-color: #3b82f6;
+            background: #f8fafc;
+          }
+        }
+      }
 
       .preview-btn,
       .draft-btn {
