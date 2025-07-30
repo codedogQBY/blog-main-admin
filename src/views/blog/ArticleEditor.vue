@@ -746,7 +746,8 @@ const initDefaultUploadFolder = async () => {
         defaultUploadFolder.value = { id: null, name: '根目录' }
       } else {
         // 尝试获取文件夹信息
-        const folders = await filesApi.getFolders()
+        const foldersResponse = await filesApi.getFolders()
+        const folders = foldersResponse.data
         const folder = folders.find((f: any) => f.id === savedFolderId)
         if (folder) {
           defaultUploadFolder.value = { id: folder.id, name: folder.name }

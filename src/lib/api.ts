@@ -616,9 +616,9 @@ class ApiClient {
   }
 
   // 文件管理
-  async getFolders(parentId?: string): Promise<FileFolder[]> {
+  async getFolders(parentId?: string): Promise<PaginationResult<FileFolder>> {
     const params = parentId ? { parentId } : {}
-    const response = await this.client.get<FileFolder[]>('/files/folders', { params })
+    const response = await this.client.get<PaginationResult<FileFolder>>('/files/folders', { params })
     return response.data
   }
 
