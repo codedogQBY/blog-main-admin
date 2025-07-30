@@ -181,12 +181,14 @@ const sizePresets = {
 const imageStyle = computed(() => {
   const style: Record<string, string> = {}
   
-  if (width.value) {
-    style.width = width.value.includes('%') || width.value.includes('px') ? width.value : width.value + 'px'
+  if (width.value != null) {
+    const widthStr = String(width.value)
+    style.width = widthStr.includes('%') || widthStr.includes('px') ? widthStr : widthStr + 'px'
   }
   
-  if (height.value) {
-    style.height = height.value.includes('%') || height.value.includes('px') ? height.value : height.value + 'px'
+  if (height.value != null) {
+    const heightStr = String(height.value)
+    style.height = heightStr.includes('%') || heightStr.includes('px') ? heightStr : heightStr + 'px'
   }
   
   return style
@@ -194,8 +196,8 @@ const imageStyle = computed(() => {
 
 // 监听属性变化，更新自定义尺寸输入框
 watch([width, height], () => {
-  customWidth.value = width.value || ''
-  customHeight.value = height.value || ''
+  customWidth.value = width.value ? String(width.value) : ''
+  customHeight.value = height.value ? String(height.value) : ''
   
   // 判断当前尺寸类型
   if (width.value === '200px') {
@@ -263,8 +265,8 @@ const startResize = (direction: string, event: MouseEvent) => {
   
   const startX = event.clientX
   const startY = event.clientY
-  const startWidth = parseInt(width.value) || naturalWidth.value || 400
-  const startHeight = parseInt(height.value) || naturalHeight.value || 300
+  const startWidth = width.value ? parseInt(String(width.value)) : naturalWidth.value || 400
+  const startHeight = height.value ? parseInt(String(height.value)) : naturalHeight.value || 300
   
   // 添加拖拽状态样式
   document.body.style.cursor = getResizeCursor(direction)
