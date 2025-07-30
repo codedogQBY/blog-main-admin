@@ -263,7 +263,7 @@ const downloadAndUploadImage = async (src: string): Promise<string> => {
     const file = new File([blob], fileName, { type: blob.type })
     
     // 上传到指定文件夹
-    const uploadResult = await filesApi.uploadFile(file, defaultUploadFolder.value || null)
+    const uploadResult = await filesApi.uploadFile(file, defaultUploadFolder.value || undefined)
     
     return uploadResult.url
   } catch (error) {
@@ -297,7 +297,7 @@ const uploadBase64Image = async (base64Data: string): Promise<string> => {
     const file = new File([blob], fileName, { type: `image/${imageType}` })
     
     // 上传到指定文件夹
-    const uploadResult = await filesApi.uploadFile(file, defaultUploadFolder.value || null)
+    const uploadResult = await filesApi.uploadFile(file, defaultUploadFolder.value || undefined)
     
     return uploadResult.url
   } catch (error) {
@@ -451,7 +451,7 @@ const editor = useEditor({
             for (const imageFile of imageFiles) {
               try {
                 ElMessage.info(`正在上传图片 ${imageFile.name}...`)
-                const uploadResult = await filesApi.uploadFile(imageFile, defaultUploadFolder.value || null)
+                const uploadResult = await filesApi.uploadFile(imageFile, defaultUploadFolder.value || undefined)
                 // 插入图片到编辑器
                 editor.value?.chain().focus().setImage({ 
                   src: uploadResult.url,
@@ -478,7 +478,7 @@ const editor = useEditor({
               const file = item.getAsFile()
               if (file) {
                 ElMessage.info(`正在上传图片...`)
-                const uploadResult = await filesApi.uploadFile(file, defaultUploadFolder.value || null)
+                const uploadResult = await filesApi.uploadFile(file, defaultUploadFolder.value || undefined)
                 // 插入图片到编辑器
                 editor.value?.chain().focus().setImage({ 
                   src: uploadResult.url,
